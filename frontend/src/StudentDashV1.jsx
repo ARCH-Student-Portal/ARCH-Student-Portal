@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react"; /*Imported Components*/
 import * as THREE from "three";
 import { gsap } from "gsap";
 import "./StudentDashV1.css";
@@ -10,6 +10,7 @@ export default function StudentDashV1() {
   const appRef = useRef(null);
   const sidebarRef = useRef(null);
   const topbarRef = useRef(null);
+  const [collapse, setCollapse] = useState(false); /*Sidebar Collapsing Usage*/
 
   // CURSOR
   useEffect(() => {
@@ -438,8 +439,11 @@ export default function StudentDashV1() {
 
       {/* APP */}
       <div id="app" ref={appRef}>
-        <nav id="sidebar" ref={sidebarRef}>
+        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
           <div className="sb-top-bar" />
+          <button className = "sb-toggle" onClick={() => setCollapse(c => !c)}> {/*Sidebar Icon Button*/}
+            <span/><span/><span/>
+          </button> 
           <div className="sb-logo">
             <div className="logo-box">A</div>
             <div><div className="logo-name">ARCH</div><div className="logo-tagline">Student Portal</div></div>
