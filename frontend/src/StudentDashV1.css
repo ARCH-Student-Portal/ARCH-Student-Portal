@@ -102,7 +102,7 @@ body.hov #cur-ring{width:52px;height:52px;border-color:rgba(255,255,255,.75);bac
 }
 .logo-name{font-size:18px;font-weight:900;letter-spacing:.14em;background:linear-gradient(90deg,#fff 20%,var(--blue2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .logo-tagline{font-size:9px;color:var(--dimmer);letter-spacing:.2em;text-transform:uppercase;margin-top:2px}
-.sb-user{margin:10px;padding:11px;border-radius:11px;background:rgba(26,100,255,.06);border:1px solid rgba(26,120,255,.12);display:flex;align-items:center;gap:11px;cursor:pointer;transition:all .2s}
+#sidebar:not(.collapse) .sb-user{margin:10px;padding:11px;border-radius:11px;background:rgba(26,100,255,.06);border:1px solid rgba(26,120,255,.12);display:flex;align-items:center;gap:11px;cursor:pointer;transition:all .2s}
 .sb-user:hover{background:rgba(26,100,255,.12);border-color:rgba(64,169,255,.25)}
 .uav{width:33px;height:33px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;box-shadow:0 0 12px rgba(26,120,255,.5)}
 .uname{font-size:12px;font-weight:700;color:#fff}
@@ -112,7 +112,7 @@ body.hov #cur-ring{width:52px;height:52px;border-color:rgba(255,255,255,.75);bac
 .ni:hover{background:rgba(13, 137, 253, 0.102);color:#0d89fd}
 .ni.active{background:rgba(26,100,255,.1);border-color:rgba(64,169,255,.2);color:#1a64ff}
 .ni.active::after{content:'';position:absolute;left:0;top:15%;height:70%;width:2.5px;background:linear-gradient(180deg,var(--blue2),var(--blue3));border-radius:0 2px 2px 0;box-shadow:0 0 8px var(--blue2),0 0 16px rgba(64,169,255,.4)}
-.ni-ic{width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.ni-ic{width:26px;height:26px;border-radius:7px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .ni.active .ni-ic{background:rgba(26,100,255,.15);color:var(--blue2)}
 .nbadge{margin-left:auto;background:var(--red);color:#fff;font-size:9px;padding:2px 6px;border-radius:7px;font-weight:700;box-shadow:0 0 10px rgba(255,77,106,.6);position:relative}
 .nbadge::before{content:'🔥';position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:11px;animation:microFire .55s ease-in-out infinite alternate}
@@ -124,14 +124,61 @@ body.hov #cur-ring{width:52px;height:52px;border-color:rgba(255,255,255,.75);bac
 
 /*Set of stuff actually collapsing*/
 #sidebar.collapse{width:52px; min-width:52px;}
-#sidebar.collapse .sb-logo,
-#sidebar.collapse .sb-user,  
+#sidebar.collapse .logo-name,
+#sidebar.collapse .logo-tagline,  
+#sidebar.collapse .uname,
+#sidebar.collapse .uid,
 #sidebar.collapse .nav-sec,
 #sidebar.collapse .sb-foot,
-#sidebar.collapse .nbadge{display:none}
+#sidebar.collapse .nbadge{
+  display:none
+}
+#sidebar.collapse .sb-logo{
+  display: flex;
+  flex-direction:column;
+  padding:14px 0; 
+  justify-content:center;
+  align-items:center;
+  border-bottom:none;
+  width:100%;
+  gap:0;
+}
+#sidebar.collapse .logo-box{
+  margin: 0;
+  flex-shrink:0;
+}
+#sidebar.collapse .uav{
+  margin: 0 auto;
+  flex-shrink:0;
+}
+#sidebar.collapse .sb-user{
+  margin:6px 0;
+  padding:8px;
+  justify-content:center;
+  border:none;
+  background:none;
+  box-shadow: none;
+  width:100%; /*To better center it by subtracting it with padding*/
+}
+#sidebar.collapse .sb-toggle{
+  align-self:center;
+  margin:10px auto 0;
+  padding:10px;
+}
 /*Set of stuff actually collapsing*/
-#sidebar.collapse .ni{justify-content:center;padding:8px;margin: 1px 4px}
-#sidebar{transition: width 0.3s ease, min-width 0.3s ease;} /*Transition*/
+#sidebar.collapse .ni{
+  justify-content:center;
+  padding:8px;
+  margin: 1px 4px;
+  font-size:0; /*Removes the text and keeps logoes*/
+  gap:0;
+}
+#sidebar.collapse .ni-ic{
+  font-size: 20px;
+}
+#sidebar{
+  transition: width 0.3s ease, min-width 0.3s ease;
+} /*Transition*/
 
 
 /* ── MAIN ── */
@@ -343,7 +390,6 @@ html,body{
 #topbar,
 .glass-card,
 .sc,
-.sb-user,
 .ni-ic,
 .nb-btn,
 .att-ok,
