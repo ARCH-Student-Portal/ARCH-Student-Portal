@@ -1,0 +1,325 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #00040e;
+  cursor: auto;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+:root {
+  --bg:     #00040e;
+  --s1:     #010814;
+  --s2:     #020c1e;
+  --blue:   #1a78ff;
+  --blue2:  #40a9ff;
+  --blue3:  #91d5ff;
+  --white:  #ffffff;
+  --off:    #cce4ff;
+  --dim:    #6a90b8;
+  --dimmer: #243550;
+  --green:  #00e676;
+  --red:    #ff4d6a;
+  --amber:  #ffab00;
+}
+
+/* ── CURSOR ── */
+#cur-ring {
+  position: fixed; width: 32px; height: 32px; border-radius: 50%;
+  border: 1.5px solid rgba(64,169,255,0.8);
+  pointer-events: none; z-index: 99999;
+  transform: translate(-50%,-50%);
+  transition: width .2s, height .2s, border-color .2s, background .2s;
+}
+#cur-dot {
+  position: fixed; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--blue2); pointer-events: none; z-index: 99999;
+  transform: translate(-50%,-50%);
+  box-shadow: 0 0 8px var(--blue2), 0 0 16px rgba(26,120,255,0.6);
+}
+body.hov #cur-ring {
+  width: 52px; height: 52px;
+  border-color: rgba(255,255,255,.75);
+  background: rgba(26,100,255,.08);
+}
+
+/* ── OVERLAYS ── */
+#lp-webgl { position: fixed; inset: 0; z-index: 0; }
+
+.lp-scanlines {
+  position: fixed; inset: 0; z-index: 800; pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(0,60,180,.006) 3px, rgba(0,60,180,.006) 4px
+  );
+}
+.lp-vignette {
+  position: fixed; inset: 0; z-index: 801; pointer-events: none;
+  background: radial-gradient(ellipse 90% 90% at 50% 50%, transparent 30%, rgba(0,4,14,.75) 100%);
+}
+.lp-corner { position: fixed; z-index: 802; pointer-events: none; width: 65px; height: 65px; opacity: .55; }
+.lp-corner.tl { top: 14px; left: 14px;  border-top: 1px solid rgba(64,169,255,.55); border-left:  1px solid rgba(64,169,255,.55); }
+.lp-corner.tr { top: 14px; right: 14px; border-top: 1px solid rgba(64,169,255,.55); border-right: 1px solid rgba(64,169,255,.55); }
+.lp-corner.bl { bottom: 14px; left: 14px;  border-bottom: 1px solid rgba(64,169,255,.55); border-left:  1px solid rgba(64,169,255,.55); }
+.lp-corner.br { bottom: 14px; right: 14px; border-bottom: 1px solid rgba(64,169,255,.55); border-right: 1px solid rgba(64,169,255,.55); }
+
+/* ── INTRO (identical to dashboard) ── */
+#lp-intro {
+  position: fixed; inset: 0; z-index: 50000;
+  background: #00040e;
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+  overflow: hidden;
+}
+#lp-intro-canvas  { position: absolute; inset: 0; }
+#lp-intro-line {
+  position: absolute; top: 50%; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blue), var(--blue2), #fff, var(--blue2), var(--blue), transparent);
+  transform: scaleX(0); transform-origin: center;
+  box-shadow: 0 0 18px var(--blue2), 0 0 40px var(--blue), 0 0 80px rgba(26,100,255,.4);
+  z-index: 2;
+}
+#lp-intro-logo {
+  position: relative; z-index: 2;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(80px,15vw,180px); font-weight: 900;
+  color: #fff; letter-spacing: .18em; opacity: 0; transform: scale(0.85);
+  text-shadow: 0 0 40px rgba(64,169,255,.9), 0 0 100px rgba(26,100,255,.7), 0 0 200px rgba(0,60,200,.4);
+  background: linear-gradient(135deg, #fff 30%, var(--blue2) 60%, var(--blue) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+#lp-intro-sub {
+  position: relative; z-index: 2;
+  font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 300;
+  color: rgba(145,213,255,.85); letter-spacing: .35em; text-transform: uppercase;
+  opacity: 0; transform: translateY(10px); margin-top: 12px;
+}
+#lp-intro-uni {
+  position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(100,160,255,.6);
+  letter-spacing: .22em; text-transform: uppercase; opacity: 0; z-index: 2; white-space: nowrap;
+}
+#lp-intro-flash { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 4; pointer-events: none; }
+
+/* ── LOGIN PAGE WRAPPER ── */
+#lp-app {
+  position: relative; z-index: 10;
+  width: 100vw; height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+}
+
+/* ── CENTER CARD ── */
+.lp-card {
+  position: relative;
+  width: min(460px, 92vw);
+  background: rgba(2,8,20,.85);
+  border: 1px solid rgba(64,169,255,.18);
+  border-radius: 24px;
+  padding: 38px 36px 34px;
+  backdrop-filter: blur(36px); -webkit-backdrop-filter: blur(36px);
+  box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(64,169,255,.08), inset 0 1px 0 rgba(255,255,255,.06);
+  overflow: hidden;
+}
+.lp-card-shine {
+  position: absolute; inset: 0; border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255,255,255,.05) 0%, transparent 45%);
+  pointer-events: none;
+}
+.lp-top-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blue), var(--blue2), #fff, var(--blue2), var(--blue), transparent);
+  background-size: 300% 100%;
+  animation: lpBarFlow 3s linear infinite;
+  box-shadow: 0 0 12px var(--blue2), 0 0 24px rgba(26,100,255,.3);
+}
+@keyframes lpBarFlow { 0% { background-position: 0 0 } 100% { background-position: 300% 0 } }
+
+/* ── BRANDING ── */
+.lp-brand {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 28px;
+}
+.lp-logo-box {
+  width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--blue), var(--blue2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 19px; font-weight: 900; color: #fff;
+  box-shadow: 0 0 0 1px rgba(64,169,255,.3), 0 0 24px rgba(26,100,255,.5), 0 0 50px rgba(26,100,255,.2);
+  animation: lpLogoPulse 4s ease-in-out infinite;
+}
+@keyframes lpLogoPulse {
+  0%,100% { box-shadow: 0 0 0 1px rgba(64,169,255,.3), 0 0 18px rgba(26,100,255,.45), 0 0 45px rgba(26,100,255,.15); }
+  50%      { box-shadow: 0 0 0 1px rgba(145,213,255,.55), 0 0 28px rgba(64,169,255,.7), 0 0 70px rgba(26,100,255,.28); }
+}
+.lp-brand-name {
+  font-size: 20px; font-weight: 900; letter-spacing: .14em;
+  background: linear-gradient(90deg, #fff 20%, var(--blue2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.lp-brand-tagline {
+  font-size: 9px; color: var(--dimmer); letter-spacing: .2em;
+  text-transform: uppercase; margin-top: 2px;
+}
+
+/* ── TAB SWITCHER ── */
+.lp-tabs {
+  display: flex; gap: 4px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px; padding: 4px;
+  margin-bottom: 28px;
+}
+.lp-tab {
+  flex: 1; padding: 9px 6px;
+  border-radius: 9px; border: none; background: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  color: var(--dim); cursor: pointer;
+  transition: all .2s; position: relative; overflow: hidden;
+}
+.lp-tab:hover { color: var(--blue3); background: rgba(64,169,255,.06); }
+.lp-tab.active {
+  background: linear-gradient(135deg, rgba(26,100,255,.22), rgba(64,169,255,.12));
+  border: 1px solid rgba(64,169,255,.28);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(26,100,255,.25), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.lp-tab.active::after {
+  content: '';
+  position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blue2), transparent);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--blue2);
+}
+.lp-tab-icon { font-size: 14px; display: block; margin-bottom: 2px; }
+
+/* ── FORM HEADING ── */
+.lp-form-head { margin-bottom: 22px; }
+.lp-form-title {
+  font-size: 22px; font-weight: 800; color: #fff;
+  letter-spacing: .03em; line-height: 1.2;
+}
+.lp-form-title span {
+  background: linear-gradient(90deg, #fff, var(--blue2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.lp-form-sub {
+  font-size: 11px; color: var(--dimmer); margin-top: 5px;
+  font-family: 'JetBrains Mono', monospace; letter-spacing: .06em;
+}
+
+/* ── INPUTS ── */
+.lp-field { margin-bottom: 14px; }
+.lp-label {
+  display: block; font-size: 10px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--dim); margin-bottom: 7px;
+}
+.lp-input-wrap { position: relative; }
+.lp-input-icon {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  font-size: 15px; pointer-events: none; opacity: .5;
+}
+.lp-input {
+  width: 100%; padding: 12px 14px 12px 40px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  color: #fff; outline: none;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.lp-input::placeholder { color: var(--dimmer); font-size: 12px; }
+.lp-input:focus {
+  border-color: rgba(64,169,255,.5);
+  background: rgba(26,100,255,.07);
+  box-shadow: 0 0 0 3px rgba(26,100,255,.12), 0 0 20px rgba(26,100,255,.1);
+}
+.lp-input.error { border-color: rgba(255,77,106,.55); box-shadow: 0 0 0 3px rgba(255,77,106,.1); }
+
+/* password toggle */
+.lp-pw-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  font-size: 15px; opacity: .45; transition: opacity .2s; padding: 4px;
+}
+.lp-pw-toggle:hover { opacity: .9; }
+
+/* ── ERROR MESSAGE ── */
+.lp-error-msg {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,77,106,.08); border: 1px solid rgba(255,77,106,.22);
+  border-radius: 9px; padding: 10px 13px;
+  font-size: 11px; color: #ff6b81; margin-bottom: 14px;
+  animation: lpShake .35s ease;
+}
+@keyframes lpShake {
+  0%,100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+/* ── SUBMIT BUTTON ── */
+.lp-btn {
+  width: 100%; padding: 13px;
+  background: linear-gradient(135deg, var(--blue), #0d55cc);
+  border: 1px solid rgba(64,169,255,.35);
+  border-radius: 11px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: #fff; cursor: pointer;
+  position: relative; overflow: hidden;
+  transition: transform .15s, box-shadow .2s;
+  box-shadow: 0 8px 28px rgba(26,100,255,.35), 0 0 0 1px rgba(64,169,255,.2);
+  margin-top: 6px;
+}
+.lp-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px rgba(26,100,255,.55), 0 0 0 1px rgba(145,213,255,.35), 0 0 60px rgba(26,100,255,.2);
+}
+.lp-btn:active { transform: translateY(0px); }
+.lp-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.lp-btn-shine {
+  position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+  transform: skewX(-20deg);
+  animation: lpBtnShine 3s ease-in-out infinite;
+}
+@keyframes lpBtnShine { 0%,100% { left: -100% } 50% { left: 150% } }
+
+/* loading spinner inside button */
+.lp-spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff; border-radius: 50%;
+  animation: lpSpin .7s linear infinite; margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes lpSpin { to { transform: rotate(360deg); } }
+
+/* ── FOOTER ── */
+.lp-card-foot {
+  margin-top: 20px; padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,.05);
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--dimmer); letter-spacing: .12em;
+}
+
+/* ── COMING SOON PANEL (Teacher / Admin) ── */
+.lp-coming-soon {
+  text-align: center; padding: 32px 0 20px;
+}
+.lp-cs-icon { font-size: 42px; margin-bottom: 14px; }
+.lp-cs-title {
+  font-size: 16px; font-weight: 700; color: var(--dim); letter-spacing: .06em;
+}
+.lp-cs-sub {
+  font-size: 11px; color: var(--dimmer); margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace; letter-spacing: .06em;
+}
