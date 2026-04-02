@@ -160,7 +160,7 @@ body.hov #cur-ring {
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
 .lp-brand-tagline {
-  font-size: 9px; color: var(--dimmer); letter-spacing: .2em;
+  font-size: 9px; color: #ffffff; letter-spacing: .2em;
   text-transform: uppercase; margin-top: 2px;
 }
 
@@ -207,7 +207,7 @@ body.hov #cur-ring {
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
 .lp-form-sub {
-  font-size: 11px; color: var(--dimmer); margin-top: 5px;
+  font-size: 11px; color: #ffffff; margin-top: 5px;
   font-family: 'JetBrains Mono', monospace; letter-spacing: .06em;
 }
 
@@ -232,7 +232,7 @@ body.hov #cur-ring {
   color: #fff; outline: none;
   transition: border-color .2s, box-shadow .2s, background .2s;
 }
-.lp-input::placeholder { color: var(--dimmer); font-size: 12px; }
+.lp-input::placeholder { color: #ffffff; font-size: 12px; }
 .lp-input:focus {
   border-color: rgba(64,169,255,.5);
   background: rgba(26,100,255,.07);
@@ -308,7 +308,7 @@ body.hov #cur-ring {
   border-top: 1px solid rgba(255,255,255,.05);
   text-align: center;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; color: var(--dimmer); letter-spacing: .12em;
+  font-size: 9px; color: #ffffff; letter-spacing: .12em;
 }
 
 /* ── COMING SOON PANEL (Teacher / Admin) ── */
@@ -320,6 +320,6 @@ body.hov #cur-ring {
   font-size: 16px; font-weight: 700; color: var(--dim); letter-spacing: .06em;
 }
 .lp-cs-sub {
-  font-size: 11px; color: var(--dimmer); margin-top: 6px;
+  font-size: 11px; color: #ffffff; margin-top: 6px;
   font-family: 'JetBrains Mono', monospace; letter-spacing: .06em;
 }

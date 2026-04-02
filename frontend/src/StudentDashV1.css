@@ -73,6 +73,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
   backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);
   position:relative;overflow:hidden;
   transform:translateX(-100%);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .sb-top-bar{
   position:absolute;top:0;left:0;right:0;height:2px;
@@ -174,7 +176,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 #sidebar{
   transition: width 0.3s ease, min-width 0.3s ease;
 } /*Transition*/
-
+/*Control of the Sidebar's slider*/
+#sidebar::-webkit-scrollbar { width: 3px; }
+#sidebar::-webkit-scrollbar-thumb { 
+  background: rgba(64,169,255,.2); 
+  border-radius: 2px; 
+}
 
 /* ── MAIN ── */
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
