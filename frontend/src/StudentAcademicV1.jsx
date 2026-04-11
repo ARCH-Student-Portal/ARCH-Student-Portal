@@ -317,12 +317,23 @@ export default function StudentAcademicV1() {
                   </div>
 
                   <div className="glass-card list-card" style={{opacity: 1, transform: 'none'}}>
+                    <div className="sem-switcher">
+                      {academicData.semesters.map((sem) => (
+                        <button
+                          key={sem.name}
+                          className={`sem-pill ${selectedSem.name === sem.name ? 'active' : ''}`}
+                          onClick={() => setSelectedSem(sem)}
+                        >
+                          {sem.name}
+                        </button>
+                      ))}
+                    </div>
+
                     <div className="ch" style={{marginBottom: '5px'}}>
                       <div className="ct" style={{fontSize: '20px'}}><div className="ctbar"/>{selectedSem.name} Courses</div>
                       <div className="sem-chip" style={{background: '#1a78ff22', color: '#1a78ff', fontSize: '14px'}}>{selectedSem.gpa} GPA</div>
                     </div>
-                    <div style={{fontSize: '12px', color: 'var(--dimmer)', marginBottom: '15px'}}>* Click a bar on the graph above to view its specific courses.</div>
-                    
+
                     <div className="sem-list">
                       <AnimatePresence mode="wait">
                         <motion.div key={selectedSem.name} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
@@ -338,8 +349,8 @@ export default function StudentAcademicV1() {
                       </AnimatePresence>
                     </div>
                   </div>
-                </motion.div>
-              )}
+                  </motion.div>
+                  )}
 
               {activeTab === 'credits' && (
                 <motion.div 
