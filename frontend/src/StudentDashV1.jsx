@@ -16,30 +16,6 @@ export default function StudentDashV1() {
   const topbarRef = useRef(null);
   const [collapse, setCollapse] = useState(false); /*Sidebar Collapsing Usage*/
 
-  // CURSOR
-  useEffect(() => {
-    const ring = document.getElementById("cur-ring");
-    const dot = document.getElementById("cur-dot");
-    let mx = 0, my = 0, rx = 0, ry = 0;
-    const onMove = (e) => {
-      mx = e.clientX; my = e.clientY;
-      dot.style.left = mx + "px"; dot.style.top = my + "px";
-    };
-    document.addEventListener("mousemove", onMove);
-    const lerp = () => {
-      rx += (mx - rx) * 0.1; ry += (my - ry) * 0.1;
-      ring.style.left = Math.round(rx) + "px";
-      ring.style.top = Math.round(ry) + "px";
-      requestAnimationFrame(lerp);
-    };
-    lerp();
-    const els = document.querySelectorAll(".hov-target");
-    const on = () => document.body.classList.add("hov");
-    const off = () => document.body.classList.remove("hov");
-    els.forEach((el) => { el.addEventListener("mouseenter", on); el.addEventListener("mouseleave", off); });
-    return () => document.removeEventListener("mousemove", onMove);
-  }, []);
-
   // MARVEL INTRO
   useEffect(() => {
     // --- SESSION STORAGE CHECK ---
@@ -465,8 +441,6 @@ export default function StudentDashV1() {
 
   return (
     <>
-      <div id="cur-ring" />
-      <div id="cur-dot" />
       <div className="scanlines" />
       <div className="vignette" />
       <div className="corner-tl" /><div className="corner-tr" />

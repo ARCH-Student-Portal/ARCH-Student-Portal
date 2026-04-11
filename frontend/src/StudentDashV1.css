@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Bitcount+Grid+Double&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:none;font-family:'Inter',sans-serif}
+html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;font-family:'Space Grotesk',sans-serif}
 
 :root{
   --bg:#00040e;
@@ -18,11 +18,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:none;
   --red:#ff4d6a;
   --amber:#ffab00;
 }
-
-/* ── CURSOR ── */
-#cur-ring{position:fixed;width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(64,169,255,0.8);pointer-events:none;z-index:99999;transform:translate(-50%,-50%);transition:width .2s,height .2s,border-color .2s,background .2s}
-#cur-dot{position:fixed;width:5px;height:5px;border-radius:50%;background:var(--blue2);pointer-events:none;z-index:99999;transform:translate(-50%,-50%);box-shadow:0 0 8px var(--blue2),0 0 16px rgba(26,120,255,0.6)}
-body.hov #cur-ring{width:52px;height:52px;border-color:rgba(255,255,255,.75);background:rgba(26,100,255,.08)}
 
 /* ── OVERLAYS ── */
 #webgl{position:fixed;inset:0;z-index:0}
@@ -78,6 +73,8 @@ body.hov #cur-ring{width:52px;height:52px;border-color:rgba(255,255,255,.75);bac
   backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);
   position:relative;overflow:hidden;
   transform:translateX(-100%);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .sb-top-bar{
   position:absolute;top:0;left:0;right:0;height:2px;
@@ -176,7 +173,13 @@ body.hov #cur-ring{width:52px;height:52px;border-color:rgba(255,255,255,.75);bac
 }
 #sidebar{
   transition: width 0.3s ease, min-width 0.3s ease;
-} 
+} /*Transition*/
+/*Control of the Sidebar's slider*/
+#sidebar::-webkit-scrollbar { width: 3px; }
+#sidebar::-webkit-scrollbar-thumb { 
+  background: rgba(64,169,255,.2); 
+  border-radius: 2px; 
+}
 
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 #topbar{height:56px;min-height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:rgba(0,4,14,.8);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border-bottom:1px solid rgba(255,255,255,.05);position:relative;z-index:20;opacity:0}
