@@ -172,6 +172,40 @@ html,body{width:100%;height:100%;overflow:hidden;background:#ffffff;color:#0f3d8
 .sem-bar-fill{ height:100%; background:linear-gradient(90deg, var(--blue), var(--blue2)); border-radius:4px; transition:width 1.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .sem-gpa{ font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700; color:var(--blue); width:40px; text-align:right; }
 
+/* Semester pill switcher */
+.sem-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.sem-pill {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(18, 78, 170, 0.18);
+  background: #f1f5f9;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dimmer);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sem-pill:hover {
+  border-color: var(--blue2);
+  color: var(--blue);
+  background: rgba(26, 100, 255, 0.06);
+}
+
+.sem-pill.active {
+  background: linear-gradient(135deg, rgba(26, 100, 255, 0.15), rgba(64, 169, 255, 0.08));
+  border-color: rgba(26, 100, 255, 0.4);
+  color: var(--blue);
+  box-shadow: 0 2px 10px rgba(26, 100, 255, 0.15);
+}
+
 .credits-layout{ display:flex; flex-direction:column; gap:20px; }
 .full-width-card{ padding:30px; }
 .credit-total-text{ font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:700; color:var(--blue); }
