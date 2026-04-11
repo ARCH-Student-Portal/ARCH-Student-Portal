@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Bitcount+Grid+Double&display=swap');
 
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;font-family:'Space Grotesk',sans-serif}
@@ -41,7 +41,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 }
 #intro-logo{
   position:relative;z-index:2;
-  font-family:'Space Grotesk',sans-serif;
+  font-family:'Inter',sans-serif;
   font-size:clamp(80px,15vw,180px);font-weight:900;
   color:#fff;letter-spacing:.18em;opacity:0;transform:scale(0.85);
   text-shadow:0 0 40px rgba(64,169,255,.9),0 0 100px rgba(26,100,255,.7),0 0 200px rgba(0,60,200,.4);
@@ -50,7 +50,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 }
 #intro-sub{
   position:relative;z-index:2;
-  font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:300;
+  font-family:'Inter',sans-serif;font-size:18px;font-weight:300;
   color:rgba(145,213,255,.85);letter-spacing:.35em;text-transform:uppercase;
   opacity:0;transform:translateY(10px);margin-top:12px;
 }
@@ -116,10 +116,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 @keyframes microFire{0%{transform:translateX(-50%) scale(1) rotate(-7deg);opacity:.85}100%{transform:translateX(-50%) scale(1.3) rotate(7deg);opacity:1}}
 .sb-foot{margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.04);font-size:9px;color:var(--dimmer);text-align:center;letter-spacing:.1em}
 
-.sb-toggle{ display:flex; flex-direction: column; gap:5px; padding:10px 14px; margin: 10px 8px 0; background:none; border:none; cursor:pointer; align-self:flex-start;} /*Collapsing Rules*/
+.sb-toggle{ display:flex; flex-direction: column; gap:5px; padding:10px 14px; margin: 10px 8px 0; background:none; border:none; cursor:pointer; align-self:flex-start;} 
 .sb-toggle span{display:block; width:20px; height:2px; background:#145ec9; border-radius:2px; }
 
-/*Set of stuff actually collapsing*/
 #sidebar.collapse{width:52px; min-width:52px;}
 #sidebar.collapse .logo-name,
 #sidebar.collapse .logo-tagline,  
@@ -155,19 +154,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
   border:none;
   background:none;
   box-shadow: none;
-  width:100%; /*To better center it by subtracting it with padding*/
+  width:100%;
 }
 #sidebar.collapse .sb-toggle{
   align-self:center;
   margin:10px auto 0;
   padding:10px;
 }
-/*Set of stuff actually collapsing*/
 #sidebar.collapse .ni{
   justify-content:center;
   padding:8px;
   margin: 1px 4px;
-  font-size:0; /*Removes the text and keeps logoes*/
+  font-size:0; 
   gap:0;
 }
 #sidebar.collapse .ni-ic{
@@ -183,7 +181,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
   border-radius: 2px; 
 }
 
-/* ── MAIN ── */
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 #topbar{height:56px;min-height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:rgba(0,4,14,.8);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border-bottom:1px solid rgba(255,255,255,.05);position:relative;z-index:20;opacity:0}
 .tb-glow{position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(64,169,255,.55),rgba(255,255,255,.4),rgba(64,169,255,.55),transparent)}
@@ -204,7 +201,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 #scroll::-webkit-scrollbar{width:3px}
 #scroll::-webkit-scrollbar-thumb{background:rgba(64,169,255,.2);border-radius:2px}
 
-/* ── STAT CARDS ── */
 .sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .sc{border-radius:16px;padding:20px;position:relative;overflow:hidden;cursor:default;opacity:0;transform:translateY(50px);transition:opacity .4s,transform .5s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}
 .sc:hover{transform:translateY(-5px) scale(1.02)!important}
@@ -227,13 +223,22 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 .sc-b .sc-label{color:#1a64ff}
 .sc-c .sc-label{color:#1aff7dc7}
 .sc-d .sc-label{color:rgba(255,120,140,.8)}
-.sc-val{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;color:#fff;line-height:1}
+
+/* RETRO PIXEL FONT FOR DASHBOARD NUMBERS */
+.sc-val{
+  font-family:'Bitcount Grid Double',monospace; 
+  font-size:36px; 
+  font-weight:700;
+  color:#145ec9;
+  line-height:1;
+  text-shadow:0 1px 0 rgba(0,0,0,.22);
+}
+
 .sc-delta{font-size:10px;font-weight:600;margin-top:7px}
 .d-up{color:var(--green)}
 .d-warn{color:var(--amber)}
 .d-blue{color:var(--blue3)}
 
-/* ── GREEN BUBBLES — bigger, more visible ── */
 .bubbles{position:absolute;bottom:0;left:0;right:0;height:50px;pointer-events:none;overflow:hidden}
 .bubble{
   position:absolute;bottom:-10px;border-radius:50%;
@@ -248,7 +253,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
   100%{transform:translateY(-60px) scale(.3);opacity:0}
 }
 
-/* ── CARD FIRE — big visible flames across bottom ── */
 .card-fire{
   position:absolute;bottom:0;left:0;right:0;
   height:55px;
@@ -271,11 +275,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
   100%{transform:scaleY(1.25) scaleX(.8) rotate(4deg)}
 }
 
-/* ── CONTENT GRID ── */
 .cgrid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
 .rcol{display:flex;flex-direction:column;gap:12px}
 
-/* ── GLASS CARDS ── */
 .glass-card{
   background:rgba(2,8,20,.8);
   border:1px solid rgba(255,255,255,.08);
@@ -292,10 +294,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 .ca{font-size:10px;color:var(--blue2);cursor:pointer;font-weight:600;opacity:.65;transition:opacity .2s,transform .2s;letter-spacing:.04em}
 .ca:hover{opacity:1;transform:translateX(3px)}
 
-/* ── COURSE ROWS ── */
 .crow{display:flex;align-items:center;gap:10px;padding:8px 7px;border-radius:8px;border:1px solid transparent;cursor:pointer;transition:all .18s;margin-bottom:2px}
 .crow:hover{background:#1a64ff0f;border-color:rgba(64,169,255,.12);transform:translateX(4px)}
-.crow:hover .cname{color:#0d89fd} /*Unique Hovering Colour Change*/
+.crow:hover .cname{color:#0d89fd}
 .cdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .cinfo{flex:1}
 .cname{font-size:11px;font-weight:600;color:#fff}
@@ -305,7 +306,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 .g-b{color:var(--blue2);text-shadow:0 0 10px rgba(64,169,255,.55)}
 .g-c{color:var(--amber);text-shadow:0 0 10px rgba(255,171,0,.5)}
 
-/* ── CREDIT BAR ── */
 .credit-wrap{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.05)}
 .credit-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .credit-title{font-size:10px;font-weight:600;color:var(--dim);letter-spacing:.07em;text-transform:uppercase}
@@ -319,10 +319,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 .cl{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--dimmer)}
 .cl-sw{width:7px;height:7px;border-radius:2px;flex-shrink:0}
 
-/* ── NOTICES ── */
 .nitem{padding:10px 9px;border-radius:9px;border:1px solid transparent;cursor:pointer;transition:all .18s;margin-bottom:3px}
 .nitem:hover{background:rgba(26,100,255,.06);border-color:rgba(64,169,255,.14);padding-left:13px}
-.nitem:hover .ntitle{color:#0d89fd} /*Unique Hovering Colour Change*/
+.nitem:hover .ntitle{color:#0d89fd} 
 .ntag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:4px}
 .nt-urg{background:rgba(255,77,106,.13);color:#ff6b81;border:1px solid rgba(255,77,106,.22);box-shadow:0 0 8px rgba(255,77,106,.18)}
 .nt-uni{background:rgba(26,100,255,.1);color:var(--blue2);border:1px solid rgba(64,169,255,.2)}
@@ -330,14 +329,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 .ntitle{font-size:11px;font-weight:600;color:#fff;margin-top:4px}
 .ndate{font-size:9px;color:var(--dimmer);margin-top:3px;font-family:'JetBrains Mono',monospace}
 
-/* ── INLINE FIRE (on notice urgent tag) ── */
 .inline-fire{display:flex;align-items:flex-end;gap:2px;height:22px}
 .iflame{border-radius:50% 50% 20% 20%;transform-origin:bottom center;animation:bigFlame ease-in-out infinite alternate}
 .if1{width:6px;height:12px;background:linear-gradient(0deg,#cc2200,#ff6600,#ffaa00);animation-duration:.4s;box-shadow:0 0 6px #ff4400}
 .if2{width:8px;height:18px;background:linear-gradient(0deg,#ff1100,#ff5500,#ffcc00);animation-duration:.35s;animation-delay:.05s;box-shadow:0 0 8px #ff2200}
 .if3{width:6px;height:12px;background:linear-gradient(0deg,#cc2200,#ff6600,#ffaa00);animation-duration:.38s;animation-delay:.09s;box-shadow:0 0 6px #ff4400}
 
-/* ── ATTENDANCE ── */
 .attgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px}
 .attmini{padding:12px 7px;border-radius:10px;text-align:center;transition:transform .2s,box-shadow .2s;cursor:default;position:relative;overflow:hidden}
 .attmini:hover{transform:translateY(-3px)}
@@ -348,7 +345,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 .att-bubbles{position:absolute;bottom:0;left:0;right:0;height:28px;pointer-events:none;overflow:hidden}
 .att-bubble{position:absolute;bottom:-5px;width:5px;height:5px;border-radius:50%;background:#00e676;opacity:0;box-shadow:0 0 6px rgba(0,230,118,.8);animation:bubbleRise 2.2s ease-in infinite}
 
-/* ── WIDGET FIRE (on bad att card) ── */
 .widget-fire{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:flex-end;justify-content:center;gap:3px;padding-bottom:1px;pointer-events:none;height:40px}
 .wf{border-radius:50% 50% 20% 20%;transform-origin:bottom center;animation:bigFlame ease-in-out infinite alternate}
 .wf1{width:10px;height:20px;background:linear-gradient(0deg,#cc2200,#ff6600,#ffaa00);animation-duration:.4s;box-shadow:0 0 8px #ff4400}
@@ -362,7 +358,6 @@ html,body{width:100%;height:100%;overflow:hidden;background:#00040e;cursor:auto;
 .att-bad .attpct{color:#ff4d6a;text-shadow:0 0 12px rgba(255,77,106,.55)}
 .attlabel{font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-top:3px;color:var(--dimmer);position:relative;z-index:1}
 
-/* ── ALERT ROW ── */
 .att-alert{display:flex;align-items:center;gap:10px;background:rgba(255,60,80,.07);border:1px solid rgba(255,60,80,.2);border-radius:9px;padding:10px 13px;font-size:11px;color:#ff6b81;box-shadow:0 0 18px rgba(255,60,80,.08)}
 .alert-fire{display:flex;align-items:flex-end;gap:2px;height:24px;flex-shrink:0}
 .af{border-radius:50% 50% 20% 20%;transform-origin:bottom center;animation:bigFlame ease-in-out infinite alternate}
@@ -407,7 +402,6 @@ html,body{
 .pg-title,
 .pg-title span,
 .ct,
-.sc-val,
 .cname,
 .ntitle,
 .attpct,
@@ -446,7 +440,6 @@ html,body{
 .cname{font-size:15px}
 .ntitle{font-size:15px}
 .att-alert{font-size:14px}
-.sc-val{font-size:34px}
 
 .logo-tagline,
 .uid,

@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react"; /*Imported Components*/
+import { useNavigate, useLocation } from "react-router-dom"; // <-- Added router imports
 import * as THREE from "three";
 import { gsap } from "gsap";
 import "./StudentDashV1.css";
 
 export default function StudentDashV1() {
+  const navigate = useNavigate(); // <-- Initialized navigate
+  const location = useLocation(); // <-- Initialized location to check active route
+
   const webglRef = useRef(null);
   const introCanvasRef = useRef(null);
   const introRef = useRef(null);
@@ -14,6 +18,45 @@ export default function StudentDashV1() {
 
   // MARVEL INTRO
   useEffect(() => {
+    // --- SESSION STORAGE CHECK ---
+    const hasPlayedIntro = sessionStorage.getItem("archIntroPlayed");
+    
+    if (hasPlayedIntro) {
+      // If intro already played, skip it and load the dashboard fast
+      introRef.current.style.display = "none";
+      appRef.current.style.opacity = 1;
+      sidebarRef.current.style.transform = "translateX(0)";
+      topbarRef.current.style.opacity = 1;
+
+      // Animate cards in quickly without the massive intro delays
+      document.querySelectorAll(".sc").forEach((el, i) => {
+        gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.7)", delay: i * 0.1 });
+      });
+      document.querySelectorAll(".glass-card").forEach((el, i) => {
+        gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.4)", delay: 0.2 + i * 0.1 });
+      });
+
+      // Quick count up
+      countUp("v1", 3.62, 2, "", 1000);
+      countUp("v2", 86, 0, "", 800);
+      countUp("v3", 5, 0, "", 600);
+      countUp("v4", 78, 0, "%", 800);
+      
+      setTimeout(() => {
+        setText("d1", "↑ +0.08 this semester");
+        setText("d2", "of 136 required");
+        setText("d3", "courses active");
+        setText("d4", "1 course at risk");
+        const bd = document.getElementById("bar-done");
+        const ba = document.getElementById("bar-active");
+        if (bd) bd.style.width = "63%";
+        if (ba) ba.style.width = "11%";
+      }, 500);
+
+      return; // Stop the rest of the intro from running
+    }
+    // -----------------------------
+
     const canvas = introCanvasRef.current;
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
@@ -112,6 +155,9 @@ export default function StudentDashV1() {
 
     const afterIntro = () => {
       cancelAnimationFrame(animId);
+      
+      sessionStorage.setItem("archIntroPlayed", "true"); // <-- Save the flag so it doesn't run again
+
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out", delay: 0.05 });
@@ -426,22 +472,30 @@ export default function StudentDashV1() {
             <div className="uav">AB</div>
             <div><div className="uname">Areeb Bucha</div><div className="uid">21K-3210</div></div>
           </div>
+          
+          {/* Sidebar map uses actual routes and triggers the navigate function */}
           {[
-            ["Overview", [["⊞","Dashboard",true],["◎","Academic",false]]],
-            ["Courses",[["＋","Registration",false],["◈","Grades",false],["▦","Marks",false],["✓","Attendance",false],["▤","Timetable",false]]],
-            ["Communication",[["◉","Notices",false]]],
-            ["Account",[["◌","Profile",false]]],
+            ["Overview", [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
+            ["Courses",[["＋","Registration","/student/registration"],["◈","Grades","/student/grades"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
+            ["Communication",[["◉","Notices","/student/notices"]]],
+            ["Account",[["◌","Profile","/student/profile"]]],
           ].map(([sec, items]) => (
             <div key={sec}>
               <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, active]) => (
-                <div className={`ni hov-target${active ? " active" : ""}`} key={label}>
+              {items.map(([ic, label, path]) => (
+                <div 
+                  className={`ni hov-target${location.pathname === path ? " active" : ""}`} 
+                  key={label}
+                  onClick={() => navigate(path)}
+                  style={{cursor: 'pointer'}}
+                >
                   <div className="ni-ic">{ic}</div>{label}
                   {label === "Notices" && <span className="nbadge">3</span>}
                 </div>
               ))}
             </div>
           ))}
+          
           <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
         </nav>
 
@@ -497,10 +551,14 @@ export default function StudentDashV1() {
             <div className="cgrid">
               <div className="glass-card hov-target" id="card1">
                 <div className="card-shine"/>
+                
+                {/* --- CHANGED THIS SECTION --- Added onClick to View grades */}
                 <div className="ch">
                   <div className="ct"><div className="ctbar"/>Current Courses</div>
-                  <div className="ca hov-target">View grades →</div>
+                  <div className="ca hov-target" onClick={() => navigate('/student/academic')} style={{cursor: 'pointer'}}>View grades →</div>
                 </div>
+                {/* --------------------------------- */}
+
                 {courses.map((c,i) => (
                   <div className="crow hov-target" key={i}>
                     <div className="cdot" style={{background:c.color,boxShadow:`0 0 10px ${c.color}88`}}/>
