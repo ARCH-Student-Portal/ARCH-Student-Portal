@@ -379,7 +379,7 @@ export default function LoginPage() {
 
     // No current backend failsefe check
     setLoading(false);
-    navigate("/dashboard");
+    navigate("/student/dashboard");
   };
 
   return (
