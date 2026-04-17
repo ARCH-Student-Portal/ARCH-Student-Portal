@@ -331,3 +331,91 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #ffffff; c
   /* slightly wider on profile page since there's space */
   width: 360px;
 }
+
+/* ── IMPROVED CONTACT CARD + LOGOUT ── */
+.prof-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.prof-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid rgba(18,78,170,.08);
+  transition: all 0.25s ease;
+}
+
+.prof-info-row:hover {
+  background: #f0f5ff;
+  border-color: rgba(26,100,255,.18);
+  transform: translateX(4px);
+}
+
+.prof-info-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: rgba(26,100,255,.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  color: var(--blue);
+}
+
+.prof-info-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+  margin-bottom: 3px;
+}
+
+.prof-info-value {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.prof-info-value.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+}
+
+/* Log Out Button */
+.logout-btn {
+  margin-top: 24px;
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #ff4d6a, #e63950);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 24px rgba(255, 77, 106, 0.3);
+}
+
+.logout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(255, 77, 106, 0.45);
+  background: linear-gradient(135deg, #ff334d, #d32f2f);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+}
