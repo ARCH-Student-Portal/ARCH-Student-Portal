@@ -383,8 +383,15 @@ export default function StudentProfile() {
                     </div>
                   ))}
                 </div>
-              </div>
 
+                {/* Log Out Button - Added at the bottom of Contact card */}
+                <button 
+                  className="logout-btn"
+                  onClick={() => navigate('/')}
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         </div>
