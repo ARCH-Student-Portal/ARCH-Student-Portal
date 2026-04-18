@@ -10,8 +10,8 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
   --green:     #00e676;
   --red:       #ff4d6a;
   --amber:     #ffab00;
-  --dimmer:    #1f4f99;
-  --text-main: #145ec9;
+  --dimmer:    #2d5299;
+  --text-main: #0f3880;
 }
 
 /* ── INTRO ── */
@@ -159,7 +159,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
 #ntc-sidebar.collapse .ni-ic { font-size: 20px; }
 
 /* ── MAIN AREA ── */
-#ntc-main  { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#ntc-main  { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
 #ntc-topbar {
   height: 56px; min-height: 56px;
@@ -179,25 +179,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
 
 #ntc-scroll {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  padding: 20px 24px;
+  padding: 28px 24px 32px;
   display: flex; flex-direction: column; gap: 16px;
   position: relative; z-index: 2;
+  /* Make sure children can expand and push scroll */
+  min-height: 0;
 }
 #ntc-scroll::-webkit-scrollbar { width: 4px; }
 #ntc-scroll::-webkit-scrollbar-thumb { background: rgba(26,100,255,.2); border-radius: 2px; }
-
-/* ══════════════════════════════════════════
-   SHARED CARD BASE
-══════════════════════════════════════════ */
-.ntc-card {
-  background: #ffffff;
-  border: 1px solid rgba(18,78,170,.2);
-  border-radius: 18px;
-  padding: 20px 24px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.07);
-  position: relative;
-  overflow: hidden;
-}
 
 /* ══════════════════════════════════════════
    SHARED CARD BASE
@@ -209,14 +198,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
   padding: 24px 28px;
   box-shadow: 0 6px 24px rgba(0,0,0,.06);
   position: relative;
-  overflow: hidden;
+  /* No overflow:hidden — flames must protrude above the card */
 }
 
 /* ══════════════════════════════════════════
    TIMELINE OUTER CARD
 ══════════════════════════════════════════ */
 .tl-outer-card {
-  /* no extra padding override needed */
+  overflow: visible;
 }
 
 /* Card header row */
@@ -232,14 +221,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--text-main);
   letter-spacing: .02em;
   margin-bottom: 5px;
 }
 .tl-ctbar {
-  width: 4px; height: 18px; border-radius: 2px;
+  width: 4px; height: 22px; border-radius: 2px;
   background: linear-gradient(180deg, var(--blue), var(--blue2));
   flex-shrink: 0;
 }
@@ -290,6 +279,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
   grid-template-columns: repeat(16, 1fr);
   gap: 5px;
   padding-bottom: 10px;
+  /* Top clearance so flames (28px) + breathing room don't clip on the card edge */
+  padding-top: 36px;
+  overflow: visible;
 }
 
 /* ── SEGMENT BASE ── */
@@ -377,7 +369,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
 }
 .tl-seg-wnum {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-main);
   letter-spacing: .04em;
@@ -389,7 +381,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
 .tl-seg--notice   .tl-seg-wnum { color: #ff4d6a; }
 
 .tl-seg-exam {
-  font-size: 8.5px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -519,7 +511,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
   gap: 8px;
   padding: 6px 14px;
   border-radius: 20px;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: .04em;
   background: rgba(26,120,255,.1);
@@ -558,7 +550,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
 }
 
 .detail-status {
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -625,88 +617,373 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: #f0f5ff; c
 .detail-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
+/* ── NOTICE ROW ── */
 .notice-row {
   display: flex;
   align-items: stretch;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(18,78,170,.1);
-  background: #fafbff;
-  transition: all .18s;
+  border: 1px solid rgba(18,78,170,.12);
+  background: #ffffff;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 .notice-row:hover {
-  border-color: rgba(26,120,255,.2);
-  background: #f4f8ff;
+  border-color: rgba(26,120,255,.25);
+  box-shadow: 0 3px 14px rgba(26,120,255,.08);
   transform: translateX(3px);
 }
 
+/* ── Deadline state variants ── */
+.notice-row--done {
+  background: #f0faf4;
+  border-color: rgba(22,163,74,.2);
+}
+.notice-row--done:hover {
+  border-color: rgba(22,163,74,.35);
+  box-shadow: 0 3px 14px rgba(22,163,74,.1);
+}
+.notice-row--urgent {
+  background: #fff7f7;
+  border-color: rgba(220,38,38,.2);
+}
+.notice-row--urgent:hover {
+  border-color: rgba(220,38,38,.35);
+  box-shadow: 0 3px 14px rgba(220,38,38,.1);
+}
+
 .notice-row-bar {
-  width: 4px;
+  width: 5px;
   flex-shrink: 0;
-  border-radius: 0;
-  opacity: 0.85;
 }
 
 .notice-row-body {
   flex: 1;
-  padding: 14px 16px;
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
+  min-width: 0;
 }
 
 .notice-row-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: nowrap;
+}
+
+/* Type badge */
+.notice-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Course chip */
+.notice-course-chip {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(26,120,255,.08);
+  color: #2255aa;
+  border: 1px solid rgba(26,120,255,.18);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Deadline status badge */
+.deadline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Date — pushed to the right */
+.notice-date-chip {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a4960;
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── PIN BUTTON — always visible, clear states ── */
+.pin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px 5px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(26,120,255,.2);
+  background: rgba(26,120,255,.06);
+  color: #4477cc;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .18s;
+  flex-shrink: 0;
+  white-space: nowrap;
+  letter-spacing: .03em;
+}
+.pin-btn:hover {
+  background: rgba(26,120,255,.14);
+  border-color: rgba(26,120,255,.35);
+  color: var(--blue);
+}
+.pin-btn--active {
+  background: rgba(26,120,255,.12);
+  border-color: rgba(26,120,255,.4);
+  color: var(--blue);
+}
+.pin-btn--active:hover {
+  background: rgba(255,77,106,.08);
+  border-color: rgba(255,77,106,.3);
+  color: #ff4d6a;
+}
+.pin-btn-icon { font-size: 12px; line-height: 1; }
+.pin-btn-label { line-height: 1; }
+
+/* Notice title */
+.notice-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a3a6e;
+  line-height: 1.35;
+  letter-spacing: -.01em;
+}
+.notice-title--done {
+  text-decoration: line-through;
+  color: #6b8ab0;
+  text-decoration-color: rgba(22,163,74,.5);
+  text-decoration-thickness: 2px;
+}
+
+/* Notice detail */
+.notice-detail {
+  font-size: 13px;
+  color: #4a6090;
+  line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════
+   PINNED ANNOUNCEMENTS
+══════════════════════════════════════════ */
+
+.pinned-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pinned-section-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.pinned-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: .02em;
+}
+
+.pinned-icon { font-size: 14px; line-height: 1; }
+
+.pinned-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 20px;
+  background: rgba(26,120,255,.12);
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 800;
+  border: 1px solid rgba(26,120,255,.2);
+}
+
+.pinned-clear-btn {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dimmer);
+  background: none;
+  border: none;
+  cursor: pointer;
+  letter-spacing: .04em;
+  opacity: 0.6;
+  transition: opacity .15s;
+  padding: 2px 0;
+}
+.pinned-clear-btn:hover { opacity: 1; color: #ff4d6a; }
+
+/* Pinned card */
+.pinned-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pinned-card {
+  display: flex;
+  align-items: stretch;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(18,78,170,.14);
+  box-shadow: 0 2px 10px rgba(0,0,0,.045);
+  position: relative;
+  transition: all .18s;
+}
+.pinned-card::before {
+  /* subtle top-left corner fold — signals "pinned" */
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 0; height: 0;
+  border-top: 18px solid rgba(26,120,255,.18);
+  border-right: 18px solid transparent;
+  z-index: 1;
+  pointer-events: none;
+}
+.pinned-card:hover {
+  border-color: rgba(26,120,255,.22);
+  box-shadow: 0 4px 16px rgba(0,0,0,.07);
+  transform: translateX(2px);
+}
+
+.pinned-card-stripe {
+  width: 4px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.pinned-card-body {
+  flex: 1;
+  padding: 13px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pinned-card-top {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.notice-tag {
-  display: inline-flex;
+.pinned-card-actions {
+  margin-left: auto;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  padding: 3px 9px;
-  border-radius: 20px;
-  border: 1px solid;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
-.notice-course-chip {
-  font-size: 11px;
+.pinned-unpin-btn {
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .06em;
   padding: 3px 9px;
   border-radius: 20px;
-  background: rgba(26,120,255,.08);
+  background: rgba(18,78,170,.06);
   color: var(--dimmer);
-  border: 1px solid rgba(26,120,255,.14);
-  font-family: 'JetBrains Mono', monospace;
+  border: 1px solid rgba(18,78,170,.15);
+  cursor: pointer;
+  transition: all .15s;
+}
+.pinned-unpin-btn:hover {
+  background: rgba(255,77,106,.08);
+  color: #ff4d6a;
+  border-color: rgba(255,77,106,.25);
 }
 
-.notice-date-chip {
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(31,79,153,.55);
-  font-family: 'JetBrains Mono', monospace;
-  margin-left: auto;
+.pinned-dismiss-btn {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(18,78,170,.12);
+  background: rgba(18,78,170,.04);
+  color: var(--dimmer);
+  font-size: 10px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.pinned-dismiss-btn:hover {
+  background: rgba(255,77,106,.1);
+  border-color: rgba(255,77,106,.3);
+  color: #ff4d6a;
 }
 
-.notice-title {
-  font-size: 14px;
+/* pin-btn styles defined above in notice-row section */
+
+/* ── PINNED BOARD as a full card (lower slot) ── */
+.pinned-card-outer {
+  padding: 22px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Empty pinned state */
+.pinned-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0 32px;
+  gap: 8px;
+}
+.pinned-empty-glyph {
+  font-size: 32px;
+  opacity: 0.18;
+  line-height: 1;
+  filter: grayscale(1);
+}
+.pinned-empty-title {
+  font-size: 25px;
   font-weight: 700;
-  color: var(--text-main);
-  line-height: 1.3;
+  color: var(--dimmer);
+}
+.pinned-empty-hint {
+  font-size: 15px;
+  color: rgba(31,79,153,.4);
+  letter-spacing: .03em;
 }
 
-.notice-detail {
-  font-size: 12.5px;
-  color: var(--dimmer);
-  line-height: 1.55;
-}
+/* remove the old floating pinned-section wrapper — now lives inside ntc-card */
+.pinned-section { display: contents; }
