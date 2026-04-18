@@ -5,6 +5,8 @@ import StudentDashV1 from "./StudentDashV1";
 import StudentAcademicV1 from "./StudentAcademicV1";
 import StudentAttendance from "./StudentAttendance";
 import StudentRegistrationV1 from "./StudentRegistrationV1";
+import StudentProfile from "./StudentProfile"
+import StudentNotices from "./StudentNotices"
 import StudentProfile from "./StudentProfile";
 import StudentTimetableV1 from "./StudentTimetableV1"; // <-- ADDED IMPORT
 
