@@ -5,9 +5,10 @@ import StudentDashV1 from "./StudentDashV1";
 import StudentAcademicV1 from "./StudentAcademicV1";
 import StudentAttendance from "./StudentAttendance";
 import StudentRegistrationV1 from "./StudentRegistrationV1";
-import StudentProfile from "./StudentProfile"
-import StudentNotices from "./StudentNotices"
+import StudentProfile from "./StudentProfile";
+import StudentNotices from "./StudentNotices";
 import StudentTimetableV1 from "./StudentTimetableV1"; // <-- ADDED IMPORT
+import StudentMarks from "./StudentMarks";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -58,6 +59,12 @@ function AnimatedRoutes() {
         <Route path="/student/timetable" element={
           <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4, ease: "easeInOut" }} style={{ height: '100vh', width: '100vw' }}>
             <StudentTimetableV1 />
+          </motion.div>
+        } />
+
+        <Route path="/student/marks" element={
+          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4, ease: "easeInOut" }} style={{ height: '100vh', width: '100vw' }}>
+            <StudentMarks />
           </motion.div>
         } />
 
