@@ -7,60 +7,77 @@ import "./StudentNotices.css";
 // ── CURRENT WEEK (1-indexed, 0 = semester not started) ───────────────────────
 const CURRENT_WEEK = 7;
 
+// ── TODAY for deadline calculations (set to the "portal's" reference date) ────
+// Spring 2025 semester — we simulate today as Mar 4, 2025 (start of W7)
+const TODAY = new Date("2025-03-04");
+
+// ── DEADLINE STATUS ───────────────────────────────────────────────────────────
+// Returns: "done" | "urgent" | "upcoming" | null (no parseable date)
+function getDeadlineStatus(isoDate) {
+  if (!isoDate) return null;
+  const d = new Date(isoDate);
+  if (isNaN(d)) return null;
+  const diffMs   = d - TODAY;
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0)  return "done";
+  if (diffDays <= 3) return "urgent";
+  return "upcoming";
+}
+
 // ── WEEK DATA ─────────────────────────────────────────────────────────────────
 const WEEK_DATA = {
   1:  { notices: [] },
   2:  { notices: [
-    { type: "quiz",       course: "DSA",   title: "Quiz 1",           detail: "Covers arrays, linked lists, and Big-O notation. Closed book, 20 mins.", date: "Mon, Jan 20" },
+    { type: "quiz",       course: "DSA",   title: "Quiz 1",           detail: "Covers arrays, linked lists, and Big-O notation. Closed book, 20 mins.", date: "Mon, Jan 20", isoDate: "2025-01-20" },
   ]},
   3:  { notices: [] },
   4:  { notices: [
-    { type: "assignment", course: "OOAD",  title: "Assignment 1 Due", detail: "UML class diagram for a library management system. Submit on LMS before 11:59 PM.", date: "Wed, Feb 5" },
-    { type: "quiz",       course: "DB",    title: "Quiz 1",           detail: "ER diagrams, relational model, and normalization up to 3NF.", date: "Fri, Feb 7" },
+    { type: "assignment", course: "OOAD",  title: "Assignment 1 Due", detail: "UML class diagram for a library management system. Submit on LMS before 11:59 PM.", date: "Wed, Feb 5", isoDate: "2025-02-05" },
+    { type: "quiz",       course: "DB",    title: "Quiz 1",           detail: "ER diagrams, relational model, and normalization up to 3NF.", date: "Fri, Feb 7", isoDate: "2025-02-07" },
   ]},
   5:  { exam: "Mid 1", notices: [
-    { type: "exam",       course: "DSA",   title: "Mid 1 — DSA",      detail: "Chapters 1–5: Arrays, LL, Stacks, Queues, Trees. 2-hour paper. Hall C.", date: "Mon, Feb 10" },
-    { type: "exam",       course: "OOAD",  title: "Mid 1 — OOAD",     detail: "UML, use-cases, design patterns (Singleton, Factory). 1.5 hours.", date: "Wed, Feb 12" },
-    { type: "exam",       course: "DB",    title: "Mid 1 — Database",  detail: "ER to relational mapping, SQL queries, normalization. Open notes.", date: "Thu, Feb 13" },
+    { type: "exam",       course: "DSA",   title: "Mid 1 — DSA",      detail: "Chapters 1–5: Arrays, LL, Stacks, Queues, Trees. 2-hour paper. Hall C.", date: "Mon, Feb 10", isoDate: "2025-02-10" },
+    { type: "exam",       course: "OOAD",  title: "Mid 1 — OOAD",     detail: "UML, use-cases, design patterns (Singleton, Factory). 1.5 hours.", date: "Wed, Feb 12", isoDate: "2025-02-12" },
+    { type: "exam",       course: "DB",    title: "Mid 1 — Database",  detail: "ER to relational mapping, SQL queries, normalization. Open notes.", date: "Thu, Feb 13", isoDate: "2025-02-13" },
   ]},
   6:  { notices: [] },
   7:  { notices: [
-    { type: "quiz",       course: "DSA",   title: "Quiz 2",           detail: "Binary search trees, AVL trees, and graph traversal. 15 mins, in-lab.", date: "Tue, Mar 4" },
-    { type: "assignment", course: "OOAD",  title: "Assignment 2 Due", detail: "Sequence and activity diagrams for an e-commerce platform. Groups of 3.", date: "Thu, Mar 6" },
+    { type: "quiz",       course: "DSA",   title: "Quiz 2",           detail: "Binary search trees, AVL trees, and graph traversal. 15 mins, in-lab.", date: "Tue, Mar 4", isoDate: "2025-03-04" },
+    { type: "assignment", course: "OOAD",  title: "Assignment 2 Due", detail: "Sequence and activity diagrams for an e-commerce platform. Groups of 3.", date: "Thu, Mar 6", isoDate: "2025-03-06" },
   ]},
   8:  { notices: [
-    { type: "assignment", course: "DB",    title: "Assignment 2 Due", detail: "Full SQL schema + 15 queries for a hospital database. ER diagram required.", date: "Wed, Mar 12" },
+    { type: "assignment", course: "DB",    title: "Assignment 2 Due", detail: "Full SQL schema + 15 queries for a hospital database. ER diagram required.", date: "Wed, Mar 12", isoDate: "2025-03-12" },
   ]},
   9:  { notices: [
-    { type: "quiz",       course: "Calc",  title: "Quiz 3",           detail: "Integration by parts, partial fractions, and improper integrals.", date: "Mon, Mar 17" },
-    { type: "quiz",       course: "OOAD",  title: "Quiz 2",           detail: "Design patterns: Observer, Decorator, Strategy. MCQs + short answers.", date: "Fri, Mar 21" },
+    { type: "quiz",       course: "Calc",  title: "Quiz 3",           detail: "Integration by parts, partial fractions, and improper integrals.", date: "Mon, Mar 17", isoDate: "2025-03-17" },
+    { type: "quiz",       course: "OOAD",  title: "Quiz 2",           detail: "Design patterns: Observer, Decorator, Strategy. MCQs + short answers.", date: "Fri, Mar 21", isoDate: "2025-03-21" },
   ]},
   10: { exam: "Mid 2", notices: [
-    { type: "exam",       course: "DSA",   title: "Mid 2 — DSA",      detail: "Graphs, shortest paths (Dijkstra), hashing, heaps. 2 hours. Hall A.", date: "Tue, Mar 25" },
-    { type: "exam",       course: "OOAD",  title: "Mid 2 — OOAD",     detail: "Full design cycle, SOLID principles, refactoring. 1.5 hours.", date: "Thu, Mar 27" },
-    { type: "exam",       course: "DB",    title: "Mid 2 — Database",  detail: "Transactions, concurrency, indexing, query optimisation.", date: "Fri, Mar 28" },
+    { type: "exam",       course: "DSA",   title: "Mid 2 — DSA",      detail: "Graphs, shortest paths (Dijkstra), hashing, heaps. 2 hours. Hall A.", date: "Tue, Mar 25", isoDate: "2025-03-25" },
+    { type: "exam",       course: "OOAD",  title: "Mid 2 — OOAD",     detail: "Full design cycle, SOLID principles, refactoring. 1.5 hours.", date: "Thu, Mar 27", isoDate: "2025-03-27" },
+    { type: "exam",       course: "DB",    title: "Mid 2 — Database",  detail: "Transactions, concurrency, indexing, query optimisation.", date: "Fri, Mar 28", isoDate: "2025-03-28" },
   ]},
   11: { notices: [] },
   12: { notices: [
-    { type: "assignment", course: "DSA",   title: "Assignment 3 Due", detail: "Implement a graph library with BFS, DFS, Dijkstra, and Kruskal. C++.", date: "Mon, Apr 7" },
-    { type: "quiz",       course: "DB",    title: "Quiz 2",           detail: "Stored procedures, triggers, and views in SQL Server.", date: "Wed, Apr 9" },
+    { type: "assignment", course: "DSA",   title: "Assignment 3 Due", detail: "Implement a graph library with BFS, DFS, Dijkstra, and Kruskal. C++.", date: "Mon, Apr 7", isoDate: "2025-04-07" },
+    { type: "quiz",       course: "DB",    title: "Quiz 2",           detail: "Stored procedures, triggers, and views in SQL Server.", date: "Wed, Apr 9", isoDate: "2025-04-09" },
   ]},
   13: { notices: [
-    { type: "quiz",       course: "DSA",   title: "Quiz 3",           detail: "Dynamic programming: knapsack, LCS, matrix chain multiplication.", date: "Tue, Apr 15" },
+    { type: "quiz",       course: "DSA",   title: "Quiz 3",           detail: "Dynamic programming: knapsack, LCS, matrix chain multiplication.", date: "Tue, Apr 15", isoDate: "2025-04-15" },
   ]},
   14: { notices: [
-    { type: "assignment", course: "OOAD",  title: "Final Project Due", detail: "Full OO design + implementation of a student portal module. Demo required.", date: "Thu, Apr 24" },
-    { type: "assignment", course: "DB",    title: "Final Project Due", detail: "End-to-end database application with front-end. Viva on submission day.", date: "Fri, Apr 25" },
+    { type: "assignment", course: "OOAD",  title: "Final Project Due", detail: "Full OO design + implementation of a student portal module. Demo required.", date: "Thu, Apr 24", isoDate: "2025-04-24" },
+    { type: "assignment", course: "DB",    title: "Final Project Due", detail: "End-to-end database application with front-end. Viva on submission day.", date: "Fri, Apr 25", isoDate: "2025-04-25" },
   ]},
   15: { notices: [
-    { type: "quiz",       course: "Calc",  title: "Quiz 4",           detail: "Series, sequences, and Taylor/Maclaurin expansions. Last graded activity.", date: "Mon, Apr 28" },
+    { type: "quiz",       course: "Calc",  title: "Quiz 4",           detail: "Series, sequences, and Taylor/Maclaurin expansions. Last graded activity.", date: "Mon, Apr 28", isoDate: "2025-04-28" },
   ]},
   16: { exam: "Finals", notices: [
-    { type: "exam",       course: "DSA",   title: "Final — DSA",      detail: "Comprehensive. All topics. 3-hour paper. Grand Hall.", date: "Mon, May 5" },
-    { type: "exam",       course: "OOAD",  title: "Final — OOAD",     detail: "Full semester content + project evaluation. 2.5 hours.", date: "Wed, May 7" },
-    { type: "exam",       course: "DB",    title: "Final — Database",  detail: "All topics including NoSQL overview. 2.5 hours. Open notes.", date: "Thu, May 8" },
-    { type: "exam",       course: "Calc",  title: "Final — Calculus",  detail: "Comprehensive calculus exam. Calculators allowed. 2 hours.", date: "Fri, May 9" },
-    { type: "exam",       course: "PF",    title: "Final — Prog Fund", detail: "Python fundamentals, OOP, file I/O. Practical component included.", date: "Sat, May 10" },
+    { type: "exam",       course: "DSA",   title: "Final — DSA",      detail: "Comprehensive. All topics. 3-hour paper. Grand Hall.", date: "Mon, May 5", isoDate: "2025-05-05" },
+    { type: "exam",       course: "OOAD",  title: "Final — OOAD",     detail: "Full semester content + project evaluation. 2.5 hours.", date: "Wed, May 7", isoDate: "2025-05-07" },
+    { type: "exam",       course: "DB",    title: "Final — Database",  detail: "All topics including NoSQL overview. 2.5 hours. Open notes.", date: "Thu, May 8", isoDate: "2025-05-08" },
+    { type: "exam",       course: "Calc",  title: "Final — Calculus",  detail: "Comprehensive calculus exam. Calculators allowed. 2 hours.", date: "Fri, May 9", isoDate: "2025-05-09" },
+    { type: "exam",       course: "PF",    title: "Final — Prog Fund", detail: "Python fundamentals, OOP, file I/O. Practical component included.", date: "Sat, May 10", isoDate: "2025-05-10" },
   ]},
 };
 
@@ -68,30 +85,156 @@ const TYPE_META = {
   quiz:       { icon: "✏️", label: "Quiz",       color: "#40a9ff", bg: "rgba(64,169,255,.12)",  border: "rgba(64,169,255,.3)"  },
   assignment: { icon: "📋", label: "Assignment", color: "#ff9800", bg: "rgba(255,152,0,.10)",   border: "rgba(255,152,0,.3)"   },
   exam:       { icon: "📝", label: "Exam",       color: "#ff4d6a", bg: "rgba(255,77,106,.10)",  border: "rgba(255,77,106,.3)"  },
+  announcement: { icon: "📣", label: "Announcement", color: "#7c4dff", bg: "rgba(124,77,255,.10)", border: "rgba(124,77,255,.3)" },
+};
+
+// ── INITIAL PINNED ANNOUNCEMENTS ──────────────────────────────────────────────
+const INITIAL_PINNED = [
+  {
+    id: "pin-1",
+    type: "announcement",
+    title: "Mid-Term 2 Hall Allocation Published",
+    detail: "Hall assignments for Mid 2 exams (Week 10) are now available on the LMS portal under 'Exam Schedule'. Students must carry their ID cards.",
+    date: "Mar 18, 2025",
+    from: "Exam Office",
+  },
+  {
+    id: "pin-2",
+    type: "announcement",
+    title: "LMS Maintenance — Saturday 2–4 AM",
+    detail: "The LMS portal will be unavailable for scheduled maintenance. Plan submissions accordingly. No deadline extensions will be granted for this window.",
+    date: "Mar 16, 2025",
+    from: "IT Department",
+  },
+  {
+    id: "pin-3",
+    type: "exam",
+    title: "Reminder: OOAD Assignment 2 — Groups of 3 Only",
+    detail: "Individual submissions will not be accepted. Ensure your group is registered on LMS before submitting sequence and activity diagrams.",
+    date: "Mar 14, 2025",
+    from: "Dr. Hamza Raheel",
+  },
+];
+
+// ── DEADLINE STATUS BADGE CONFIG ─────────────────────────────────────────────
+const STATUS_META = {
+  done:     { label: "Done",       color: "#16a34a", bg: "rgba(22,163,74,.1)",   border: "rgba(22,163,74,.25)",  icon: "✓" },
+  urgent:   { label: "Due Soon",   color: "#dc2626", bg: "rgba(220,38,38,.1)",   border: "rgba(220,38,38,.25)",  icon: "⚠" },
+  upcoming: { label: null,         color: null,      bg: null,                   border: null,                   icon: null },
+};
+
+// ── NOTICE ROW ────────────────────────────────────────────────────────────────
+const NoticeRow = ({ n, pinned, onPin, onUnpin }) => {
+  const meta   = TYPE_META[n.type] || TYPE_META.announcement;
+  const status = getDeadlineStatus(n.isoDate);
+  const sm     = STATUS_META[status] || null;
+
+  // Row-level tint based on deadline state
+  const rowMod = status === "done"   ? " notice-row--done"
+               : status === "urgent" ? " notice-row--urgent"
+               : "";
+
+  // Left bar colour: override to green/red when done/urgent
+  const barColor = status === "done"   ? "#16a34a"
+                 : status === "urgent" ? "#dc2626"
+                 : meta.color;
+
+  return (
+    <div className={`notice-row${rowMod}`}>
+      <div className="notice-row-bar" style={{ background: barColor }} />
+      <div className="notice-row-body">
+
+        {/* Top meta row */}
+        <div className="notice-row-top">
+          <span className="notice-tag" style={{ color: meta.color, background: meta.bg, borderColor: meta.border }}>
+            {meta.icon} {meta.label}
+          </span>
+          <span className="notice-course-chip">{n.course || n.from}</span>
+
+          {/* Deadline status badge — only shown when done or urgent */}
+          {sm && sm.label && (
+            <span className="deadline-badge" style={{ color: sm.color, background: sm.bg, borderColor: sm.border }}>
+              {sm.icon} {sm.label}
+            </span>
+          )}
+
+          <span className="notice-date-chip">{n.date}</span>
+
+          {/* Pin button — always visible, clear toggle state */}
+          <button
+            className={`pin-btn${pinned ? " pin-btn--active" : ""}`}
+            onClick={(e) => { e.stopPropagation(); pinned ? onUnpin(n) : onPin(n); }}
+            title={pinned ? "Unpin this notice" : "Pin to board"}
+            aria-label={pinned ? "Unpin" : "Pin"}
+          >
+            <span className="pin-btn-icon">📌</span>
+            <span className="pin-btn-label">{pinned ? "Pinned" : "Pin"}</span>
+          </button>
+        </div>
+
+        {/* Title — line-through when done */}
+        <div className={`notice-title${status === "done" ? " notice-title--done" : ""}`}>
+          {n.title}
+        </div>
+        <div className="notice-detail">{n.detail}</div>
+      </div>
+    </div>
+  );
 };
 
 // ── MAIN COMPONENT ─────────────────────────────────────────────────────────────
 export default function StudentNotices() {
-  const navigate      = useNavigate();
-  const location      = useLocation();
-  const webglRef      = useRef(null);
+  const navigate       = useNavigate();
+  const location       = useLocation();
+  const webglRef       = useRef(null);
   const introCanvasRef = useRef(null);
-  const introRef      = useRef(null);
-  const appRef        = useRef(null);
-  const sidebarRef    = useRef(null);
-  const [collapse, setCollapse]       = useState(false);
-  const [selectedWeek, setSelectedWeek] = useState(null);
-  const panelRef = useRef(null);
+  const introRef       = useRef(null);
+  const appRef         = useRef(null);
+  const sidebarRef     = useRef(null);
+  const panelRef       = useRef(null);
+  const scrollRef      = useRef(null);
+
+  const [collapse,      setCollapse]      = useState(false);
+  const [selectedWeek,  setSelectedWeek]  = useState(null);
+  const [pinnedItems,   setPinnedItems]   = useState(INITIAL_PINNED);
+  const [dismissedPins, setDismissedPins] = useState(new Set());
+
+  // Visible pinned = all pinned minus those dismissed this session
+  const visiblePinned = pinnedItems.filter(p => !dismissedPins.has(p.id));
+
+  const pinNotice = (notice) => {
+    const id = notice.id || `pin-${Date.now()}`;
+    const item = { ...notice, id };
+    setPinnedItems(prev => [item, ...prev.filter(p => p.id !== id)]);
+    setDismissedPins(prev => { const s = new Set(prev); s.delete(id); return s; });
+    // scroll to top so user sees it appear
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const unpinItem = (item) => {
+    setPinnedItems(prev => prev.filter(p => p.id !== item.id));
+  };
+
+  const dismissPin = (id) => {
+    setDismissedPins(prev => new Set([...prev, id]));
+  };
+
+  const isPinned = (notice) => pinnedItems.some(p => p.id === notice.id || p.title === notice.title);
+
+  // Build a flat notice id for week notices
+  const makeNoticeId = (week, idx) => `w${week}-n${idx}`;
 
   const handleWeekClick = (w) => {
     setSelectedWeek(prev => prev === w ? null : w);
   };
 
+  // Animate lower slot in whenever it swaps
   useEffect(() => {
     if (panelRef.current) {
-      if (selectedWeek !== null) {
-        gsap.fromTo(panelRef.current, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" });
-      }
+      gsap.fromTo(panelRef.current,
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.32, ease: "power3.out" }
+      );
     }
   }, [selectedWeek]);
 
@@ -446,12 +589,10 @@ export default function StudentNotices() {
             </div>
           </div>
 
-          <div id="ntc-scroll">
+          <div id="ntc-scroll" ref={scrollRef}>
 
             {/* ── SEMESTER TIMELINE CARD ── */}
             <div className="ntc-card tl-outer-card">
-
-              {/* Header row */}
               <div className="tl-card-header">
                 <div className="tl-card-header-left">
                   <div className="tl-card-title">
@@ -469,7 +610,6 @@ export default function StudentNotices() {
                 </div>
               </div>
 
-              {/* The 16-segment bar */}
               <div className="tl-bar-wrap">
                 <div className="tl-bar">
                   {Array.from({ length: 16 }, (_, i) => {
@@ -482,7 +622,6 @@ export default function StudentNotices() {
                     const isSelected = selectedWeek === w;
                     const fireLabels = { 5: "Mid 1", 10: "Mid 2", 16: "Finals" };
 
-                    // State priority: selected > current > fire > alert > past-alert > past > future
                     let state = "future";
                     if (past && hasNotices) state = "past-notice";
                     else if (past)          state = "past";
@@ -496,7 +635,6 @@ export default function StudentNotices() {
                         className={`tl-seg tl-seg--${state}${isSelected ? " tl-seg--selected" : ""}`}
                         onClick={() => handleWeekClick(w)}
                       >
-                        {/* Fire animation for exam weeks */}
                         {isFire && (
                           <div className={`tl-fire${past ? " tl-fire--dim" : ""}`}>
                             <div className="tl-flame tl-flame--1" />
@@ -504,55 +642,36 @@ export default function StudentNotices() {
                             <div className="tl-flame tl-flame--3" />
                           </div>
                         )}
-
-                        {/* Current week pulse ring */}
                         {isCurrent && <div className="tl-pulse" />}
-
-                        {/* Segment body */}
                         <div className="tl-seg-inner">
                           <div className="tl-seg-wnum">W{w}</div>
-                          {isFire && (
-                            <div className="tl-seg-exam">{fireLabels[w]}</div>
-                          )}
-                          {hasNotices && !isFire && (
-                            <div className="tl-seg-pip">{data.notices.length}</div>
-                          )}
+                          {isFire && <div className="tl-seg-exam">{fireLabels[w]}</div>}
+                          {hasNotices && !isFire && <div className="tl-seg-pip">{data.notices.length}</div>}
                         </div>
-
-                        {/* Selected indicator notch */}
                         {isSelected && <div className="tl-seg-notch" />}
                       </div>
                     );
                   })}
                 </div>
-
-                {/* Progress fill underline */}
                 <div className="tl-progress-track">
-                  <div
-                    className="tl-progress-fill"
-                    style={{ width: `${((CURRENT_WEEK - 1) / 16) * 100}%` }}
-                  />
+                  <div className="tl-progress-fill" style={{ width: `${((CURRENT_WEEK - 1) / 16) * 100}%` }} />
                 </div>
               </div>
-
             </div>
 
-            {/* ── DETAIL PANEL ── */}
-            {selectedWeek !== null && (() => {
-              const data       = WEEK_DATA[selectedWeek] || { notices: [] };
-              const past       = selectedWeek < CURRENT_WEEK;
-              const isCurrent  = selectedWeek === CURRENT_WEEK;
-              const isFire     = selectedWeek === 5 || selectedWeek === 10 || selectedWeek === 16;
+            {/* ── LOWER SLOT: week detail OR pinned board ── */}
+            {selectedWeek !== null ? (() => {
+              const data      = WEEK_DATA[selectedWeek] || { notices: [] };
+              const past      = selectedWeek < CURRENT_WEEK;
+              const isCurrent = selectedWeek === CURRENT_WEEK;
+              const isFire    = selectedWeek === 5 || selectedWeek === 10 || selectedWeek === 16;
               const fireLabels = { 5: "Mid 1", 10: "Mid 2", 16: "Finals" };
-              const empty      = data.notices.length === 0;
-
+              const empty     = data.notices.length === 0;
               const statusLabel = isCurrent ? "Current Week" : past ? "Completed" : "Upcoming";
               const statusMod   = isCurrent ? "status--now" : past ? "status--past" : "status--future";
 
               return (
                 <div className="ntc-card detail-card" ref={panelRef}>
-
-                  {/* Detail header */}
                   <div className="detail-hd">
                     <div className="detail-hd-left">
                       <div className={`detail-week-pill${isFire ? " pill--fire" : past ? " pill--past" : isCurrent ? " pill--now" : ""}`}>
@@ -561,15 +680,12 @@ export default function StudentNotices() {
                       </div>
                       <div className={`detail-status ${statusMod}`}>{statusLabel}</div>
                     </div>
-                    <button className="detail-close-btn" onClick={() => setSelectedWeek(null)}>
-                      <span>✕</span>
-                    </button>
+                    {/* ✕ closes detail and returns to pinned board */}
+                    <button className="detail-close-btn" onClick={() => setSelectedWeek(null)}>✕</button>
                   </div>
 
-                  {/* Divider */}
                   <div className="detail-divider" />
 
-                  {/* Empty state */}
                   {empty ? (
                     <div className="detail-empty">
                       <div className="detail-empty-glyph">—</div>
@@ -579,29 +695,81 @@ export default function StudentNotices() {
                   ) : (
                     <div className="detail-list">
                       {data.notices.map((n, idx) => {
-                        const meta = TYPE_META[n.type];
+                        const nWithId = { ...n, id: makeNoticeId(selectedWeek, idx) };
                         return (
-                          <div className="notice-row" key={idx}>
-                            <div className="notice-row-bar" style={{ background: meta.color }} />
-                            <div className="notice-row-body">
-                              <div className="notice-row-top">
-                                <span className="notice-tag" style={{ color: meta.color, background: meta.bg, borderColor: meta.border }}>
-                                  {meta.icon} {meta.label}
-                                </span>
-                                <span className="notice-course-chip">{n.course}</span>
-                                <span className="notice-date-chip">{n.date}</span>
-                              </div>
-                              <div className="notice-title">{n.title}</div>
-                              <div className="notice-detail">{n.detail}</div>
-                            </div>
-                          </div>
+                          <NoticeRow
+                            key={idx}
+                            n={nWithId}
+                            pinned={isPinned(nWithId)}
+                            onPin={pinNotice}
+                            onUnpin={unpinItem}
+                          />
                         );
                       })}
                     </div>
                   )}
                 </div>
               );
-            })()}
+            })() : (
+              /* ── PINNED BOARD — shown on load and after closing detail ── */
+              <div className="ntc-card pinned-card-outer" ref={panelRef}>
+                <div className="pinned-section-hd">
+                  <div className="pinned-section-title">
+                    <span className="pinned-icon">📌</span>
+                    Pinned Announcements
+                    {visiblePinned.length > 0 && (
+                      <span className="pinned-count">{visiblePinned.length}</span>
+                    )}
+                  </div>
+                  {visiblePinned.length > 0 && (
+                    <button
+                      className="pinned-clear-btn"
+                      onClick={() => setDismissedPins(new Set(pinnedItems.map(p => p.id)))}
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                {visiblePinned.length === 0 ? (
+                  <div className="pinned-empty">
+                    <div className="pinned-empty-glyph">📌</div>
+                    <div className="pinned-empty-title">No pinned announcements</div>
+                    <div className="pinned-empty-hint">Pin any notice from a week to keep it here</div>
+                  </div>
+                ) : (
+                  <div className="pinned-list">
+                    {visiblePinned.map(item => (
+                      <div className="pinned-card" key={item.id}>
+                        <div className="pinned-card-stripe" style={{ background: TYPE_META[item.type]?.color || "#7c4dff" }} />
+                        <div className="pinned-card-body">
+                          <div className="pinned-card-top">
+                            <span
+                              className="notice-tag"
+                              style={{
+                                color:       TYPE_META[item.type]?.color  || "#7c4dff",
+                                background:  TYPE_META[item.type]?.bg     || "rgba(124,77,255,.1)",
+                                borderColor: TYPE_META[item.type]?.border || "rgba(124,77,255,.3)",
+                              }}
+                            >
+                              {TYPE_META[item.type]?.icon} {TYPE_META[item.type]?.label}
+                            </span>
+                            <span className="notice-course-chip">{item.course || item.from}</span>
+                            <span className="notice-date-chip">{item.date}</span>
+                            <div className="pinned-card-actions">
+                              <button className="pinned-unpin-btn" onClick={() => unpinItem(item)} title="Unpin permanently">Unpin</button>
+                              <button className="pinned-dismiss-btn" onClick={() => dismissPin(item.id)} title="Dismiss">✕</button>
+                            </div>
+                          </div>
+                          <div className="notice-title">{item.title}</div>
+                          <div className="notice-detail">{item.detail}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
         </div>
