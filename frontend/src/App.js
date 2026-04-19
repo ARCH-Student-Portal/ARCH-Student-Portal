@@ -9,6 +9,7 @@ import StudentProfile from "./StudentProfile";
 import StudentNotices from "./StudentNotices";
 import StudentTimetableV1 from "./StudentTimetableV1"; // <-- ADDED IMPORT
 import StudentMarks from "./StudentMarks";
+import { CourseProvider } from "./CourseContext"; // ← ADD THIS
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -76,7 +77,9 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AnimatedRoutes />
+      <CourseProvider>        {/* ← WRAP HERE */}
+        <AnimatedRoutes />
+      </CourseProvider>        {/* ← CLOSE HERE */}
     </BrowserRouter>
   );
 }
