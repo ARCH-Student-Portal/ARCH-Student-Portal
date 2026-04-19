@@ -214,7 +214,7 @@ export default function StudentRegistrationV1() {
           <div className="sb-user"><div className="uav">AB</div><div><div className="uname">Areeb Bucha</div><div className="uid">21K-3210</div></div></div>
           {[
             ["Overview",      [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
-            ["Courses",       [["＋","Registration","/student/registration"],["◈","Grades","/student/grades"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
+            ["Courses",       [["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
             ["Communication", [["◉","Notices","/student/notices"]]],
             ["Account",       [["◌","Profile","/student/profile"]]],
           ].map(([sec, items]) => (
