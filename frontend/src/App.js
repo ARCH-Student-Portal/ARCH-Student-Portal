@@ -12,6 +12,9 @@ import StudentRegistrationV1 from "./StudentRegistrationV1";
 import StudentProfile from "./StudentProfile";
 import StudentNotices from "./StudentNotices";
 import StudentTimetableV1 from "./StudentTimetableV1";
+import StudentMarks from "./StudentMarks";
+import StudentTranscript from "./StudentTranscript";
+import { CourseProvider } from "./CourseContext";
 
 // ── TEACHER ──
 import TeacherDashboardV1 from "./TeacherDashboardV1";
@@ -32,7 +35,6 @@ const Page = ({ children }) => (
 
 function AnimatedRoutes() {
   const location = useLocation();
-
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
@@ -49,13 +51,12 @@ function AnimatedRoutes() {
         <Route path="/student/profile" element={<Page><StudentProfile /></Page>} />
         <Route path="/student/notices" element={<Page><StudentNotices /></Page>} />
         <Route path="/student/timetable" element={<Page><StudentTimetableV1 /></Page>} />
+        <Route path="/student/marks" element={<Page><StudentMarks /></Page>} />
+        <Route path="/student/transcript" element={<Page><StudentTranscript /></Page>} />
 
-        {/* ── TEACHER ROUTES (Now matching Student structure perfectly) ── */}
+        {/* ── TEACHER ROUTES ── */}
         <Route path="/teacher/dashboard" element={<Page><TeacherDashboardV1 /></Page>} />
         <Route path="/teacher/sections" element={<Page><TeacherSectionsV1 /></Page>} />
-        
-        {/* Future routes will go here like this: */}
-        {/* <Route path="/teacher/alerts" element={<Page><TeacherAlertsV1 /></Page>} /> */}
 
       </Routes>
     </AnimatePresence>
@@ -65,7 +66,9 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AnimatedRoutes />
+      <CourseProvider>
+        <AnimatedRoutes />
+      </CourseProvider>
     </BrowserRouter>
   );
 }

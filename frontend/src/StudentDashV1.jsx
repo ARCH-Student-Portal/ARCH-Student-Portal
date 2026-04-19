@@ -476,7 +476,7 @@ export default function StudentDashV1() {
           {/* Sidebar map uses actual routes and triggers the navigate function */}
           {[
             ["Overview", [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
-            ["Courses",[["＋","Registration","/student/registration"],["◈","Grades","/student/grades"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
+            ["Courses",[["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
             ["Communication",[["◉","Notices","/student/notices"]]],
             ["Account",[["◌","Profile","/student/profile"]]],
           ].map(([sec, items]) => (
