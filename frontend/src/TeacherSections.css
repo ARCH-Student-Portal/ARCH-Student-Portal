@@ -1,0 +1,140 @@
+/* =========================================
+   TEACHER SECTIONS (INNER STYLES ONLY)
+   Relies on StudentDashV1.css for the shell layout
+   ========================================= */
+
+/* ── TABS ── */
+.ts-tabs-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(18,78,170,.1);
+  padding-bottom: 10px;
+}
+.ts-tab {
+  background: transparent;
+  border: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f4f99;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.6;
+}
+.ts-tab:hover { background: rgba(18,78,170,.05); opacity: 1; }
+.ts-tab.active {
+  background: #ffffff;
+  color: #145ec9;
+  opacity: 1;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border: 1px solid rgba(18,78,170,.15);
+}
+
+/* ── LEFT CARD: COMMAND BOARD ── */
+.ts-course-header { margin-bottom: 24px; }
+.ts-course-header h2 { font-size: 20px; font-weight: 800; color: #145ec9; margin-bottom: 4px; }
+.ts-course-header p { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #1f4f99; }
+
+/* ── 3D ISOMETRIC CHART (Clean & Professional) ── */
+.ts-viz-box {
+  background: rgba(18,78,170,.03);
+  border: 1px solid rgba(18,78,170,.1);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+  height: 180px;
+}
+
+.ts-viz-info { display: flex; flex-direction: column; gap: 16px; }
+.ts-viz-stat span { font-size: 11px; font-weight: 700; color: #1f4f99; text-transform: uppercase; letter-spacing: 0.5px; }
+.ts-viz-stat h3 { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 800; color: #145ec9; line-height: 1.1; }
+
+.ts-iso-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: 120px;
+  padding-bottom: 20px;
+}
+.iso-bar {
+  width: 30px;
+  position: relative;
+  background: #1a78ff;
+  border-radius: 2px 2px 0 0;
+  box-shadow: -4px 0 10px rgba(0,0,0,0.05) inset;
+}
+.iso-top {
+  position: absolute; top: -8px; left: -4px; width: 30px; height: 12px;
+  background: #40a9ff; transform: skewX(-40deg); border-radius: 2px;
+}
+.iso-face {
+  position: absolute; top: -4px; left: -8px; width: 8px; height: 100%;
+  background: #0d55cc; transform: skewY(-50deg); border-radius: 2px 0 0 2px;
+}
+.iso-lbl { position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%); font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #145ec9; }
+
+/* Adjusted colors for bars */
+.bar-b { background: #40a9ff; } .bar-b .iso-top { background: #91d5ff; } .bar-b .iso-face { background: #1a78ff; }
+.bar-c { background: #ffab00; } .bar-c .iso-top { background: #ffcc66; } .bar-c .iso-face { background: #cc8800; }
+.bar-f { background: #ff4d6a; } .bar-f .iso-top { background: #ff99ab; } .bar-f .iso-face { background: #cc0022; }
+
+/* ── ACTION BUTTONS ── */
+.ts-actions { display: flex; flex-direction: column; gap: 10px; }
+.ts-btn {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: 10px;
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+}
+.ts-btn:hover { transform: translateY(-2px); }
+.btn-ic { font-size: 16px; }
+
+.btn-primary { background: #1a78ff; color: #fff; border: none; box-shadow: 0 4px 12px rgba(26,120,255,0.3); }
+.btn-primary:hover { box-shadow: 0 6px 16px rgba(26,120,255,0.4); }
+.btn-secondary { background: rgba(26,120,255,0.1); color: #1a78ff; border: 1px solid rgba(26,120,255,0.2); }
+.btn-outline { background: #ffffff; color: #145ec9; border: 1px solid rgba(18,78,170,.2); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+/* ── RIGHT CARD: ROSTER GRID ── */
+.ts-roster-header {
+  display: flex; align-items: center;
+  padding: 10px 16px; margin-bottom: 8px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; color: #1f4f99;
+  border-bottom: 1px solid rgba(18,78,170,.1);
+}
+.ts-roster-list {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+}
+.ts-roster-list::-webkit-scrollbar { width: 3px; }
+.ts-roster-list::-webkit-scrollbar-thumb { background: rgba(26,120,255,0.2); border-radius: 2px; }
+
+.ts-roster-row {
+  display: flex; align-items: center;
+  padding: 10px 16px; border-radius: 8px;
+  background: rgba(18,78,170,.02); border: 1px solid transparent;
+  transition: all 0.2s; cursor: pointer;
+}
+.ts-roster-row:hover { background: rgba(18,78,170,.06); border-color: rgba(18,78,170,.1); transform: translateX(2px); }
+
+/* Column Widths */
+.tr-id { width: 80px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #1f4f99; }
+.tr-name { flex: 1; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: #145ec9; }
+.tr-att { width: 60px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+.tr-grd { width: 40px; text-align: right; font-size: 14px; color: #145ec9; }
+
+.tr-avatar {
+  width: 24px; height: 24px; border-radius: 6px;
+  background: rgba(26,120,255,0.1); color: #1a78ff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+
+/* Status Colors */
+.status-ok { color: #00e676; }
+.status-warn { color: #ffab00; }
+.status-danger { color: #ff4d6a; }
