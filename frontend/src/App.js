@@ -5,62 +5,41 @@ import StudentDashV1 from "./StudentDashV1";
 import StudentAcademicV1 from "./StudentAcademicV1";
 import StudentAttendance from "./StudentAttendance";
 import StudentRegistrationV1 from "./StudentRegistrationV1";
-import StudentProfile from "./StudentProfile"
-import StudentNotices from "./StudentNotices"
-import StudentTimetableV1 from "./StudentTimetableV1"; // <-- ADDED IMPORT
+import StudentProfile from "./StudentProfile";
+import StudentNotices from "./StudentNotices";
+import StudentTimetableV1 from "./StudentTimetableV1";
+import StudentMarks from "./StudentMarks";
+import StudentTranscript from "./StudentTranscript";
+import { CourseProvider } from "./CourseContext";
+
+const wrap = (Child) => (
+  <motion.div
+    initial={{ x: 50, opacity: 0 }}
+    animate={{ x: 0, opacity: 1 }}
+    exit={{ x: -50, opacity: 0 }}
+    transition={{ duration: 0.4, ease: "easeInOut" }}
+    style={{ height: "100vh", width: "100vw" }}
+  >
+    <Child />
+  </motion.div>
+);
 
 function AnimatedRoutes() {
   const location = useLocation();
-
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<LoginPage />} />
-
-        <Route path="/student/dashboard" element={
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4, ease: "easeInOut" }} style={{ height: '100vh', width: '100vw' }}>
-            <StudentDashV1 />
-          </motion.div>
-        } />
-
-        <Route path="/student/academic" element={
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4, ease: "easeInOut" }} style={{ height: '100vh', width: '100vw' }}>
-            <StudentAcademicV1 />
-          </motion.div>
-        } />
-
-        <Route path="/student/registration" element={
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4, ease: "easeInOut" }} style={{ height: '100vh', width: '100vw' }}>
-            <StudentRegistrationV1 />
-          </motion.div>
-        } />
-
-        <Route path="/student/attendance" element={
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4, ease: "easeInOut" }} style={{ height: '100vh', width: '100vw' }}>
-            <StudentAttendance />
-          </motion.div>
-        } />
-
-        <Route path="/student/profile" element={
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4, ease: "easeInOut" }} style={{ height: '100vh', width: '100vw' }}>
-            <StudentProfile />
-          </motion.div>
-        } />
-
-        <Route path="/student/notices" element={
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4, ease: "easeInOut" }} style={{ height: '100vh', width: '100vw' }}>
-            <StudentNotices />
-          </motion.div>
-        } />
-
-        {/* TIMETABLE ROUTE ADDED HERE */}
-        <Route path="/student/timetable" element={
-          <motion.div initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -50, opacity: 0 }} transition={{ duration: 0.4, ease: "easeInOut" }} style={{ height: '100vh', width: '100vw' }}>
-            <StudentTimetableV1 />
-          </motion.div>
-        } />
-
+        <Route path="/"                     element={<Navigate to="/login" replace />} />
+        <Route path="/login"                element={<LoginPage />} />
+        <Route path="/student/dashboard"    element={wrap(StudentDashV1)} />
+        <Route path="/student/academic"     element={wrap(StudentAcademicV1)} />
+        <Route path="/student/registration" element={wrap(StudentRegistrationV1)} />
+        <Route path="/student/attendance"   element={wrap(StudentAttendance)} />
+        <Route path="/student/profile"      element={wrap(StudentProfile)} />
+        <Route path="/student/notices"      element={wrap(StudentNotices)} />
+        <Route path="/student/timetable"    element={wrap(StudentTimetableV1)} />
+        <Route path="/student/marks"        element={wrap(StudentMarks)} />
+        <Route path="/student/transcript"   element={wrap(StudentTranscript)} />
       </Routes>
     </AnimatePresence>
   );
@@ -69,7 +48,9 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AnimatedRoutes />
+      <CourseProvider>
+        <AnimatedRoutes />
+      </CourseProvider>
     </BrowserRouter>
   );
 }
