@@ -19,6 +19,9 @@ import { CourseProvider } from "./CourseContext";
 // ── TEACHER ──
 import TeacherDashboardV1 from "./TeacherDashboardV1";
 import TeacherSectionsV1 from "./TeacherSectionsV1";
+import TeacherGradebook from "./TeacherGradebook";
+import TeacherAttendance from "./TeacherAttendance";
+import TeacherSchedule from "./TeacherSchedule";
 
 // Reusable page transition wrapper
 const Page = ({ children }) => (
@@ -57,6 +60,9 @@ function AnimatedRoutes() {
         {/* ── TEACHER ROUTES ── */}
         <Route path="/teacher/dashboard" element={<Page><TeacherDashboardV1 /></Page>} />
         <Route path="/teacher/sections" element={<Page><TeacherSectionsV1 /></Page>} />
+        <Route path="/teacher/gradebook" element={<Page><TeacherGradebook /></Page>} />
+        <Route path="/teacher/attendance" element={<Page><TeacherAttendance /></Page>} />
+        <Route path="/teacher/schedule" element={<Page><TeacherSchedule /></Page>} />
 
       </Routes>
     </AnimatePresence>

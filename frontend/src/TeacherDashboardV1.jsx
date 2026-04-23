@@ -434,7 +434,7 @@ export default function TeacherDashV1() {
           
           {[
             ["Overview", [["⊞","Dashboard","/teacher/dashboard"]]],
-            ["Management",[["◈","My Sections","/teacher/sections"],["▦","Gradebook","/teacher/gradebook"],["✓","Attendance","/teacher/attendance"],["▤","Schedule","/teacher/timetable"]]],
+            ["Management",[["◈","My Sections","/teacher/sections"],["▦","Gradebook","/teacher/gradebook"],["✓","Attendance","/teacher/attendance"],["▤","Schedule","/teacher/schedule"]]],
             ["Communication",[["◉","Broadcast Alerts","/teacher/alerts"]]],
             ["Account",[["◌","Profile","/teacher/profile"]]],
           ].map(([sec, items]) => (
