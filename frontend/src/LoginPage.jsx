@@ -1,25 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
 import { gsap } from "gsap";
 import { useNavigate } from "react-router-dom";
 import "./LoginPage.css";
 
 export default function LoginPage() {
-  const webglRef      = useRef(null);
   const introCanvasRef = useRef(null);
-  const introRef      = useRef(null);
-  const appRef        = useRef(null);
+  const auroraCanvasRef = useRef(null);
+  const introRef       = useRef(null);
+  const appRef         = useRef(null);
 
-  const [activeTab,   setActiveTab]   = useState("student");
-  const [studentId,   setStudentId]   = useState("");
-  const [password,    setPassword]    = useState("");
-  const [showPw,      setShowPw]      = useState(false);
-  const [loading,     setLoading]     = useState(false);
-  const [errorMsg,    setErrorMsg]    = useState("");
+  const [activeTab, setActiveTab] = useState("student");
+  const [userId,    setUserId]    = useState("");
+  const [password,  setPassword]  = useState("");
+  const [showPw,    setShowPw]    = useState(false);
+  const [loading,   setLoading]   = useState(false);
+  const [errorMsg,  setErrorMsg]  = useState("");
 
   const navigate = useNavigate();
 
-  // ── CINEMATIC INTRO ──
+  // ── CINEMATIC INTRO (100% UNTOUCHED) ──
   useEffect(() => {
     const canvas = introCanvasRef.current;
     const ctx    = canvas.getContext("2d");
@@ -120,271 +119,133 @@ export default function LoginPage() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── THREE.JS BACKGROUND ──
+  // ── AURORA MESH BACKGROUND ──
   useEffect(() => {
-  const canvas = webglRef.current;
-  let W = window.innerWidth, H = window.innerHeight;
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
-  renderer.setSize(W, H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(0x00000e, 1);
+    const canvas = auroraCanvasRef.current;
+    let W = canvas.width  = window.innerWidth;
+    let H = canvas.height = window.innerHeight;
+    const ctx = canvas.getContext("2d");
 
-  const scene  = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x00040e, 0.008);
-  const camera = new THREE.PerspectiveCamera(75, W / H, 0.1, 300);
-  camera.position.set(0, 2, 12);
+    // Each blob: position, size, color, drift speed and phase
+    const blobs = [
+      { x: 0.15, y: 0.3,  r: 0.45, color: "26,100,255",   speed: 0.00018, phase: 0 },
+      { x: 0.75, y: 0.6,  r: 0.5,  color: "64,169,255",   speed: 0.00013, phase: 1.2 },
+      { x: 0.5,  y: 0.85, r: 0.4,  color: "10,60,180",    speed: 0.00022, phase: 2.4 },
+      { x: 0.85, y: 0.15, r: 0.38, color: "100,60,255",   speed: 0.00016, phase: 0.7 },
+      { x: 0.25, y: 0.75, r: 0.42, color: "0,180,255",    speed: 0.00019, phase: 3.1 },
+      { x: 0.6,  y: 0.2,  r: 0.35, color: "20,40,140",    speed: 0.00014, phase: 1.8 },
+    ];
 
-  scene.add(new THREE.AmbientLight(0x001155, 1.2));
-  const dirLight = new THREE.DirectionalLight(0x2255ff, 2.5);
-  dirLight.position.set(-8, 15, 3);
-  scene.add(dirLight);
-  const pointLight = new THREE.PointLight(0x0033ff, 4, 40);
-  pointLight.position.set(0, 5, 0);
-  scene.add(pointLight);
-  const pointLight2 = new THREE.PointLight(0xff2266, 2, 25);
-  pointLight2.position.set(-10, -5, -5);
-  scene.add(pointLight2);
+    // Stars drawn once on a static layer
+    const stars = Array.from({ length: 180 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.2 + 0.2,
+      o: Math.random() * 0.5 + 0.1,
+      tw: (Math.random() - 0.5) * 0.008,
+    }));
 
-  // ── SPIKY SHARDS instead of atoms ──
-  const shards = [];
-  const mkShard = (x, y, z, scale) => {
-    const g = new THREE.Group();
-    const geo = new THREE.IcosahedronGeometry(0.4 * scale, 0);
-    const mat = new THREE.MeshPhongMaterial({
-      color: 0x0044ff, wireframe: true,
-      transparent: true, opacity: 45, lightMapIntensity: 12,
-      emissive: 0x00040e, emissiveIntensity: 8, pointLight: 0x7bff24,
-      shininess: 1000, wireframeLinewidth: 100
-    });
-    g.add(new THREE.Mesh(geo, mat));
-    // inner solid
-    const inner = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.18 * scale, 0),
-      new THREE.MeshPhongMaterial({ color: 0x113399, transparent: true, opacity: 0.6, emissive: 0x0022aa, emissiveIntensity: 1.2 })
-    );
-    g.add(inner);
-    g.position.set(x, y, z);
-    scene.add(g);
-    shards.push({
-      mesh: g,
-      rx: (Math.random() - 0.5) * 0.03,
-      ry: (Math.random() - 0.5) * 0.025,
-      rz: (Math.random() - 0.5) * 0.02,
-      floatSpeed: Math.random() * 0.012 + 0.005,
-      floatPhase: Math.random() * Math.PI * 2,
-    });
-  };
-  mkShard(-6, 3, -6, 2.2);
-  mkShard(7, -2, -7, 2.8);
-  mkShard(-3, -4, -8, 1.8);
-  mkShard(4, 5, -9, 2.4);
-  mkShard(0, 0, -10, 1.5);
-  mkShard(-8, -1, -5, 1.3);
-  mkShard(9, 2, -4, 1.6);
+    let t = 0, animId;
 
-  // ── CHAOS PARTICLES ──
-  const COUNT = 400;
-  const ptPos = new Float32Array(COUNT * 3);
-  const ptCol = new Float32Array(COUNT * 3);
-  const ptVel = [];
-  for (let i = 0; i < COUNT; i++) {
-    ptPos[i*3]   = (Math.random() - 0.5) * 40;
-    ptPos[i*3+1] = (Math.random() - 0.5) * 28;
-    ptPos[i*3+2] = (Math.random() - 0.5) * 20 - 5;
-    const speed = Math.random() * 0.018 + 0.004;
-    const angle = Math.random() * Math.PI * 2;
-    ptVel.push({
-      x: Math.cos(angle) * speed,
-      y: Math.sin(angle) * speed,
-      burst: Math.random() * 300 | 0,
-    });
-    const t = Math.random();
-    if (t < 0.3) { ptCol[i*3]=0.05; ptCol[i*3+1]=0.35; ptCol[i*3+2]=1.0; }
-    else if (t < 0.55) { ptCol[i*3]=0.9; ptCol[i*3+1]=0.95; ptCol[i*3+2]=1.0; }
-    else if (t < 0.75) { ptCol[i*3]=0.02; ptCol[i*3+1]=0.18; ptCol[i*3+2]=0.9; }
-    else { ptCol[i*3]=0.5; ptCol[i*3+1]=0.7; ptCol[i*3+2]=1.0; }
-  }
-  const ptGeo = new THREE.BufferGeometry();
-  ptGeo.setAttribute("position", new THREE.BufferAttribute(ptPos, 3));
-  ptGeo.setAttribute("color",    new THREE.BufferAttribute(ptCol, 3));
-  scene.add(new THREE.Points(ptGeo, new THREE.PointsMaterial({
-    size: 0.09, transparent: true, opacity: 0.75, vertexColors: true,
-  })));
+    const draw = () => {
+      animId = requestAnimationFrame(draw);
+      t += 1;
 
-  // ── DENSE CONNECTION LINES ──
-  const maxLines = COUNT * COUNT;
-  const linePos  = new Float32Array(maxLines * 6);
-  const lineGeo  = new THREE.BufferGeometry();
-  lineGeo.setAttribute("position", new THREE.BufferAttribute(linePos, 3));
-  lineGeo.setDrawRange(0, 0);
-  scene.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({
-    color: 0x1155ff, transparent: true, opacity: 0.18,
-  })));
+      // Deep space base
+      ctx.fillStyle = "#00040e";
+      ctx.fillRect(0, 0, W, H);
 
-  // second line layer — closer threshold, brighter
-  const linePos2 = new Float32Array(maxLines * 6);
-  const lineGeo2 = new THREE.BufferGeometry();
-  lineGeo2.setAttribute("position", new THREE.BufferAttribute(linePos2, 3));
-  lineGeo2.setDrawRange(0, 0);
-  scene.add(new THREE.LineSegments(lineGeo2, new THREE.LineBasicMaterial({
-    color: 0x4499ff, transparent: true, opacity: 0.32,
-  })));
+      // Aurora blobs — each is a large soft radial gradient
+      blobs.forEach((b) => {
+        // Drift: each blob drifts in a slow elliptical path
+        const ox = Math.sin(t * b.speed * Math.PI * 2 + b.phase) * 0.12;
+        const oy = Math.cos(t * b.speed * Math.PI * 2 + b.phase * 0.7) * 0.08;
 
-  // ── RANDOM STREAK LINES (static chaos) ──
-  for (let s = 0; s < 18; s++) {
-    const pts = [];
-    let cx = (Math.random() - 0.5) * 30;
-    let cy = (Math.random() - 0.5) * 20;
-    const cz = (Math.random() - 0.5) * 12 - 4;
-    const segs = Math.floor(Math.random() * 6) + 2;
-    for (let k = 0; k <= segs; k++) {
-      pts.push(new THREE.Vector3(cx, cy, cz));
-      cx += (Math.random() - 0.5) * 8;
-      cy += (Math.random() - 0.5) * 6;
-    }
-    const streakGeo = new THREE.BufferGeometry().setFromPoints(pts);
-    const alpha = Math.random() * 0.12 + 0.04;
-    scene.add(new THREE.Line(streakGeo, new THREE.LineBasicMaterial({
-      color: Math.random() > 0.4 ? 0x0033cc : 0x3366ff,
-      transparent: true, opacity: alpha,
-    })));
-  }
+        const cx = (b.x + ox) * W;
+        const cy = (b.y + oy) * H;
+        const radius = b.r * Math.min(W, H);
 
-  // ── DEBRIS PLANES ──
-  for (let d = 0; d < 12; d++) {
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(
-        Math.random() * 2 + 0.5,
-        Math.random() * 0.15 + 0.03
-      ),
-      new THREE.MeshBasicMaterial({
-        color: 0x0044dd, transparent: true,
-        opacity: Math.random() * 0.12 + 0.03,
-        side: THREE.DoubleSide,
-      })
-    );
-    mesh.position.set(
-      (Math.random() - 0.5) * 24,
-      (Math.random() - 0.5) * 16,
-      (Math.random() - 0.5) * 10 - 3
-    );
-    mesh.rotation.set(
-      Math.random() * Math.PI,
-      Math.random() * Math.PI,
-      Math.random() * Math.PI
-    );
-    scene.add(mesh);
-  }
+        // Breathing: pulse opacity slowly
+        const breathe = 0.055 + Math.sin(t * b.speed * Math.PI * 4 + b.phase) * 0.025;
 
-  let nmx = 0, nmy = 0;
-  const onMove = (e) => { nmx = (e.clientX / W) * 2 - 1; nmy = -(e.clientY / H) * 2 + 1; };
-  document.addEventListener("mousemove", onMove);
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+        grad.addColorStop(0,   `rgba(${b.color},${breathe})`);
+        grad.addColorStop(0.4, `rgba(${b.color},${breathe * 0.5})`);
+        grad.addColorStop(1,   `rgba(${b.color},0)`);
 
-  let frame = 0, animId;
-  const loop = () => {
-    animId = requestAnimationFrame(loop);
-    frame++;
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+      });
 
-    shards.forEach((s) => {
-      s.mesh.rotation.x += s.rx;
-      s.mesh.rotation.y += s.ry;
-      s.mesh.rotation.z += s.rz;
-      s.mesh.position.y += Math.sin(frame * s.floatSpeed + s.floatPhase) * 0.006;
-    });
+      // Subtle horizontal aurora bands
+      const bandY1 = H * (0.35 + Math.sin(t * 0.00025) * 0.08);
+      const bandY2 = H * (0.65 + Math.cos(t * 0.0002)  * 0.06);
 
-    const p = ptGeo.attributes.position.array;
-    for (let i = 0; i < COUNT; i++) {
-      const v = ptVel[i];
-      // occasional burst
-      if (frame === v.burst) {
-        const ba = Math.random() * Math.PI * 2;
-        const bs = Math.random() * 0.06 + 0.02;
-        v.x = Math.cos(ba) * bs;
-        v.y = Math.sin(ba) * bs;
-        v.burst = frame + Math.floor(Math.random() * 180) + 60;
+      [bandY1, bandY2].forEach((by, idx) => {
+        const bh = H * 0.18;
+        const bg = ctx.createLinearGradient(0, by - bh, 0, by + bh);
+        bg.addColorStop(0,   "rgba(26,100,255,0)");
+        bg.addColorStop(0.5, `rgba(26,100,255,${0.022 + idx * 0.008})`);
+        bg.addColorStop(1,   "rgba(26,100,255,0)");
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, by - bh, W, bh * 2);
+      });
+
+      // Twinkling stars on top
+      stars.forEach((s) => {
+        s.o = Math.max(0.05, Math.min(0.65, s.o + s.tw));
+        if (Math.random() < 0.002) s.tw *= -1;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(180,210,255,${s.o})`;
+        ctx.fill();
+      });
+
+      // Very faint scanline overlay
+      ctx.fillStyle = "rgba(0,4,14,0.08)";
+      for (let y = 0; y < H; y += 4) {
+        ctx.fillRect(0, y, W, 1);
       }
-      p[i*3]   += v.x + nmx * 0.0012;
-      p[i*3+1] += v.y + nmy * 0.0012;
-      if (p[i*3]   >  20) p[i*3]   = -20;
-      if (p[i*3]   < -20) p[i*3]   =  20;
-      if (p[i*3+1] >  14) p[i*3+1] = -14;
-      if (p[i*3+1] < -14) p[i*3+1] =  14;
-    }
-    ptGeo.attributes.position.needsUpdate = true;
+    };
 
-    // dense lines
-    let lIdx = 0;
-    const lp = lineGeo.attributes.position.array;
-    for (let i = 0; i < COUNT && lIdx < lp.length - 5; i++) {
-      for (let j = i + 1; j < COUNT && lIdx < lp.length - 5; j++) {
-        const dx = p[i*3]-p[j*3], dy = p[i*3+1]-p[j*3+1];
-        if (Math.sqrt(dx*dx + dy*dy) < 5.5) {
-          lp[lIdx++]=p[i*3]; lp[lIdx++]=p[i*3+1]; lp[lIdx++]=p[i*3+2];
-          lp[lIdx++]=p[j*3]; lp[lIdx++]=p[j*3+1]; lp[lIdx++]=p[j*3+2];
-        }
-      }
-    }
-    lineGeo.attributes.position.needsUpdate = true;
-    lineGeo.setDrawRange(0, lIdx / 3);
+    draw();
 
-    // close bright lines
-    let lIdx2 = 0;
-    const lp2 = lineGeo2.attributes.position.array;
-    for (let i = 0; i < COUNT && lIdx2 < lp2.length - 5; i++) {
-      for (let j = i + 1; j < COUNT && lIdx2 < lp2.length - 5; j++) {
-        const dx = p[i*3]-p[j*3], dy = p[i*3+1]-p[j*3+1];
-        if (Math.sqrt(dx*dx + dy*dy) < 1.8) {
-          lp2[lIdx2++]=p[i*3]; lp2[lIdx2++]=p[i*3+1]; lp2[lIdx2++]=p[i*3+2];
-          lp2[lIdx2++]=p[j*3]; lp2[lIdx2++]=p[j*3+1]; lp2[lIdx2++]=p[j*3+2];
-        }
-      }
-    }
-    lineGeo2.attributes.position.needsUpdate = true;
-    lineGeo2.setDrawRange(0, lIdx2 / 3);
+    const onResize = () => {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+      stars.forEach(s => { s.x = Math.random() * W; s.y = Math.random() * H; });
+    };
+    window.addEventListener("resize", onResize);
+    return () => { cancelAnimationFrame(animId); window.removeEventListener("resize", onResize); };
+  }, []);
 
-    pointLight.position.x  = Math.sin(frame * 0.009) * 12;
-    pointLight.position.z  = Math.cos(frame * 0.007) * 9;
-    pointLight2.position.x = Math.cos(frame * 0.006) * 10;
-    pointLight2.position.y = Math.sin(frame * 0.011) * 7 - 3;
-    camera.position.x += (nmx * 1.2 - camera.position.x) * 0.018;
-    camera.position.y += (nmy * 0.8 + 2 - camera.position.y) * 0.018;
-    camera.lookAt(0, 0, 0);
-    renderer.render(scene, camera);
-  };
-  loop();
-
-  const onResize = () => {
-    W = window.innerWidth; H = window.innerHeight;
-    renderer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix();
-  };
-  window.addEventListener("resize", onResize);
-  return () => {
-    cancelAnimationFrame(animId);
-    document.removeEventListener("mousemove", onMove);
-    window.removeEventListener("resize", onResize);
-  };
-}, []);
-
-  // ── SUBMIT HANDLER ──
+  // ── SUBMIT HANDLER — role based routing ──
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!studentId.trim()) { setErrorMsg("Please enter your Student ID."); return; }
-    if (!password.trim())  { setErrorMsg("Please enter your password.");   return; }
+    const isStudent = activeTab === "student";
+    const isTeacher = activeTab === "teacher";
+
+    if (!userId.trim()) {
+      setErrorMsg(`Please enter your ${isStudent ? "Student" : "Faculty"} ID.`);
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMsg("Please enter your password.");
+      return;
+    }
 
     setLoading(true);
-    // Simulate API call — replace with real axios call later
     await new Promise((res) => setTimeout(res, 1400));
-
-    // No current backend failsefe check
     setLoading(false);
-    navigate("/student/dashboard");
+
+    if (isStudent) navigate("/student/dashboard");
+    if (isTeacher) navigate("/teacher/dashboard");
   };
 
   return (
     <>
-
       {/* Overlays */}
       <div className="lp-scanlines" />
       <div className="lp-vignette"  />
@@ -393,10 +254,10 @@ export default function LoginPage() {
       <div className="lp-corner bl" />
       <div className="lp-corner br" />
 
-      {/* Three.js canvas */}
-      <canvas id="lp-webgl" ref={webglRef} />
+      {/* Aurora background canvas */}
+      <canvas id="lp-aurora" ref={auroraCanvasRef} />
 
-      {/* Intro */}
+      {/* Intro (UNTOUCHED) */}
       <div id="lp-intro" ref={introRef}>
         <canvas id="lp-intro-canvas" ref={introCanvasRef} />
         <div id="lp-intro-line"  />
@@ -417,7 +278,9 @@ export default function LoginPage() {
             <div className="lp-logo-box hov-target">A</div>
             <div className="lp-brand-text">
               <div className="lp-brand-name">ARCH</div>
-              <div className="lp-brand-tagline">Student Portal · FAST-NUCES</div>
+              <div className="lp-brand-tagline">
+                {activeTab === "student" ? "Student Portal" : activeTab === "teacher" ? "Faculty Portal" : "Admin Panel"} · FAST-NUCES
+              </div>
             </div>
           </div>
 
@@ -431,7 +294,7 @@ export default function LoginPage() {
               <button
                 key={t.key}
                 className={`lp-tab hov-target${activeTab === t.key ? " active" : ""}`}
-                onClick={() => { setActiveTab(t.key); setErrorMsg(""); }}
+                onClick={() => { setActiveTab(t.key); setErrorMsg(""); setUserId(""); setPassword(""); }}
               >
                 <span className="lp-tab-icon">{t.icon}</span>
                 {t.label}
@@ -439,12 +302,18 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Student Form */}
-          {activeTab === "student" && (
+          {/* Student + Teacher share the same form — content changes dynamically */}
+          {(activeTab === "student" || activeTab === "teacher") && (
             <>
               <div className="lp-form-head">
-                <div className="lp-form-title">Welcome back, <span>Scholar</span></div>
-                <div className="lp-form-sub">Sign in to access your academic portal</div>
+                <div className="lp-form-title">
+                  Welcome back, <span>{activeTab === "student" ? "Scholar" : "Professor"}</span>
+                </div>
+                <div className="lp-form-sub">
+                  {activeTab === "student"
+                    ? "Sign in to access your academic portal"
+                    : "Sign in to access your faculty dashboard"}
+                </div>
               </div>
 
               {errorMsg && (
@@ -454,18 +323,22 @@ export default function LoginPage() {
               )}
 
               <form onSubmit={handleSubmit} autoComplete="off">
-                {/* Student ID */}
+                {/* ID Field */}
                 <div className="lp-field">
-                  <label className="lp-label" htmlFor="sid">Student ID</label>
+                  <label className="lp-label" htmlFor="uid">
+                    {activeTab === "student" ? "Student ID" : "Faculty ID"}
+                  </label>
                   <div className="lp-input-wrap">
-                    <span className="lp-input-icon">🪪</span>
+                    <span className="lp-input-icon">
+                      {activeTab === "student" ? "🪪" : "🏛️"}
+                    </span>
                     <input
-                      id="sid"
-                      className={`lp-input hov-target${errorMsg && !studentId ? " error" : ""}`}
+                      id="uid"
+                      className={`lp-input hov-target${errorMsg && !userId ? " error" : ""}`}
                       type="text"
-                      placeholder="e.g. 21K-3210"
-                      value={studentId}
-                      onChange={(e) => setStudentId(e.target.value)}
+                      placeholder={activeTab === "student" ? "e.g. 21K-3210" : "e.g. FAC-092"}
+                      value={userId}
+                      onChange={(e) => setUserId(e.target.value)}
                       autoComplete="off"
                       spellCheck={false}
                     />
@@ -513,13 +386,11 @@ export default function LoginPage() {
             </>
           )}
 
-          {/* Teacher / Admin — coming soon */}
-          {(activeTab === "teacher" || activeTab === "admin") && (
+          {/* Admin — still coming soon */}
+          {activeTab === "admin" && (
             <div className="lp-coming-soon">
-              <div className="lp-cs-icon">{activeTab === "teacher" ? "📖" : "⚙️"}</div>
-              <div className="lp-cs-title">
-                {activeTab === "teacher" ? "Teacher Portal" : "Admin Panel"} — Coming Soon
-              </div>
+              <div className="lp-cs-icon">⚙️</div>
+              <div className="lp-cs-title">Admin Panel — Coming Soon</div>
               <div className="lp-cs-sub">This module is under development.</div>
             </div>
           )}
