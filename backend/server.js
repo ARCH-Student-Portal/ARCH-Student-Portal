@@ -11,10 +11,12 @@ const teacherAuthRoutes = require('./routes/auth.teacher.routes');
 const adminAuthRoutes = require('./routes/auth.admin.routes');
 const studentRoutes = require('./routes/student.routes');
 const teacherRoutes = require('./routes/teacher.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/api/admin', adminRoutes);
 
 app.get('/', (req, res) => {
     res.send('Arch Academic Portal API is running');
@@ -28,6 +30,7 @@ app.use('/api/auth/admin', adminAuthRoutes);
 // Feature routes
 app.use('/api/student', studentRoutes);
 app.use('/api/teacher', teacherRoutes);
+app.use('/api/admin', adminRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
