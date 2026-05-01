@@ -8,7 +8,14 @@ const studentSchema = new mongoose.Schema({
     department: {type: String, required: true },
     program: {type: String, required: true},
     semester: {type: String, required: true},
-    role: {type: String, default: 'student'}    
+    role: {type: String, default: 'student'},
+    address: { type: String, default: null },
+    cnic: { type: String, default: null },
+    phone: { type: String, default: null },
+    dob: { type: Date, default: null },
+    section: { type: String, default: null },
+    totalCreditsRequired: { type: Number, default: 130 },
+    totalSemesters: { type: Number, default: 8 }  
 })
 
 const Student = mongoose.model('Student', studentSchema);

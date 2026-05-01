@@ -29,6 +29,7 @@ const courseSchema = new mongoose.Schema({
     creditHours: {type: Number, required: true},
     department: {type: String, required: true},
     prerequisites: [{type: mongoose.Schema.Types.ObjectId,ref: 'Course' }],
+    fee: {type:Number, required: true},
     // cuz diff assesments have diff weightages
     weightage: [{
         type: { type: String, required: true },   // "quiz", "mid", "final", "project"
