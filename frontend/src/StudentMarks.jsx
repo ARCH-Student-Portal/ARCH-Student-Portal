@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
+import { gsap } from "gsap";
 import { AnimatePresence, motion } from "framer-motion";
 import "./StudentMarks.css";
 import { useCourses, MARKS_DATA } from "./CourseContext";
 
-// ── Section icons ────────────────────────────────────────────────────────────
-const SECTION_ICONS = {
+const si = {
   "Quizzes":    "◈",
   "Assignments":"▦",
   "Mid Exam":   "◎",
@@ -15,8 +15,7 @@ const SECTION_ICONS = {
   "Lab Work":   "⬡",
 };
 
-// ── Grade thresholds ─────────────────────────────────────────────────────────
-const GRADE_THRESHOLDS = {
+const gt = {
   A: { min: 90, label: "A", color: "#1a78ff", glow: "rgba(26,120,255,.22)"  },
   B: { min: 80, label: "B", color: "#10b981", glow: "rgba(16,185,129,.22)"  },
   C: { min: 70, label: "C", color: "#f59e0b", glow: "rgba(245,158,11,.22)"  },
@@ -24,7 +23,7 @@ const GRADE_THRESHOLDS = {
   F: { min: 0,  label: "F", color: "#ef4444", glow: "rgba(239,68,68,.22)"   },
 };
 
-const GRADE_VARIANTS = {
+const gv = {
   A: [
     { label: "A+", min: 97, desc: "Outstanding"  },
     { label: "A",  min: 93, desc: "Excellent"    },
@@ -47,441 +46,1263 @@ const GRADE_VARIANTS = {
   ],
 };
 
-const GRADE_ORDER = ["A", "B", "C", "D", "F"];
+const go = ["A", "B", "C", "D", "F"];
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-const getSections = (code) => {
-  const data = MARKS_DATA[code];
-  return data ? Object.keys(data.sections) : [];
-};
-
-function computeScore(marksData) {
-  if (!marksData?.sections) return null;
-  const secs = Object.values(marksData.sections);
-  if (!secs.length) return null;
-  let totalMax = 0, totalScore = 0;
-  for (const sec of secs) {
-    totalScore += sec.entries.reduce((s, e) => s + e.marks, 0);
-    totalMax   += sec.total;
+function gs(c) {
+  let d = MARKS_DATA[c];
+  if (d) {
+    return Object.keys(d.sections);
+  } else {
+    return [];
   }
-  return totalMax === 0 ? null : Math.round((totalScore / totalMax) * 100);
 }
 
-function getLetterGrade(pct) {
-  if (pct === null || pct === undefined) return null;
-  if (pct >= 97) return "A+";
-  if (pct >= 93) return "A";
-  if (pct >= 90) return "A−";
-  if (pct >= 87) return "B+";
-  if (pct >= 83) return "B";
-  if (pct >= 80) return "B−";
-  if (pct >= 77) return "C+";
-  if (pct >= 73) return "C";
-  if (pct >= 70) return "C−";
-  if (pct >= 67) return "D+";
-  if (pct >= 63) return "D";
-  if (pct >= 60) return "D−";
+function cs(md) {
+  if (!md) {
+    return null;
+  }
+  if (!md.sections) {
+    return null;
+  }
+  let s = Object.values(md.sections);
+  if (s.length === 0) {
+    return null;
+  }
+  let tm = 0;
+  let ts = 0;
+  for (let i = 0; i < s.length; i++) {
+    let sec = s[i];
+    for (let j = 0; j < sec.entries.length; j++) {
+      let en = sec.entries[j];
+      ts = ts + en.marks;
+    }
+    tm = tm + sec.total;
+  }
+  if (tm === 0) {
+    return null;
+  } else {
+    return Math.round((ts / tm) * 100);
+  }
+}
+
+function glg(p) {
+  if (p === null) {
+    return null;
+  }
+  if (p === undefined) {
+    return null;
+  }
+  if (p >= 97) {
+    return "A+";
+  }
+  if (p >= 93) {
+    return "A";
+  }
+  if (p >= 90) {
+    return "A−";
+  }
+  if (p >= 87) {
+    return "B+";
+  }
+  if (p >= 83) {
+    return "B";
+  }
+  if (p >= 80) {
+    return "B−";
+  }
+  if (p >= 77) {
+    return "C+";
+  }
+  if (p >= 73) {
+    return "C";
+  }
+  if (p >= 70) {
+    return "C−";
+  }
+  if (p >= 67) {
+    return "D+";
+  }
+  if (p >= 63) {
+    return "D";
+  }
+  if (p >= 60) {
+    return "D−";
+  }
   return "F";
 }
 
-// ── Grade Distribution ───────────────────────────────────────────────────────
-function GradeDistribution({ marksMeta, selectedCourse, courseColor }) {
-  const [popup, setPopup] = useState(null);
+function GradeDistribution(props) {
+  let mm = props.marksMeta;
+  let sc = props.selectedCourse;
+  let cc = props.courseColor;
 
-  const pct         = marksMeta ? computeScore(marksMeta) : null;
-  const letterGrade = getLetterGrade(pct);
-  const closePopup  = () => setPopup(null);
+  const [pu, spu] = useState(null);
+  let p = null;
+  if (mm) {
+    p = cs(mm);
+  }
+  let lg = glg(p);
 
-  return (
-    <div className="gd-card">
-      <div className="mrk-card-hd">
-        <div className="mrk-card-title-wrap">
-          <div
-            className="mrk-card-bar"
-            style={{ background: selectedCourse
-              ? `linear-gradient(180deg,${courseColor},${courseColor}55)`
-              : "linear-gradient(180deg,#10b981,#34d399)"
-            }}
-          />
-          <div>
-            <div className="mrk-card-title">Grade Distribution</div>
-            <div className="mrk-card-sub">{selectedCourse ? selectedCourse.name : "Select a course above"}</div>
-          </div>
-        </div>
-        {pct !== null && (
-          <div
-            className="gd-score-pill"
-            style={{
-              background:  GRADE_THRESHOLDS[letterGrade?.[0] || "F"].glow,
-              borderColor: GRADE_THRESHOLDS[letterGrade?.[0] || "F"].color,
-              color:       GRADE_THRESHOLDS[letterGrade?.[0] || "F"].color,
-            }}
-          >
-            {pct}%
-          </div>
-        )}
+  function cp() {
+    spu(null);
+  }
+
+  let sub = "Select a course above";
+  if (sc) {
+    sub = sc.name;
+  }
+
+  let barsty = { background: "linear-gradient(180deg,#10b981,#34d399)" };
+  if (sc) {
+    barsty.background = "linear-gradient(180deg," + cc + "," + cc + "55)";
+  }
+
+  let pill = null;
+  if (p !== null) {
+    let t = "F";
+    if (lg) {
+      t = lg[0];
+    }
+    let st = {
+      background: gt[t].glow,
+      borderColor: gt[t].color,
+      color: gt[t].color
+    };
+    pill = (
+      <div className="gd-score-pill" style={st}>
+        {p}%
       </div>
+    );
+  }
 
-      {!selectedCourse ? (
-        <div className="mrk-card-body">
-          <span className="mrk-placeholder">// select a course to view grades</span>
+  let bod = null;
+  if (!sc) {
+    bod = (
+      <div className="mrk-card-body">
+        <span className="mrk-placeholder">{"// select a course to view grades"}</span>
+      </div>
+    );
+  } else {
+    if (p === null) {
+      bod = (
+        <div className="mrk-card-body" style={{ flexDirection: "column", gap: 12 }}>
+          <span style={{ fontSize: 32 }}>📋</span>
+          <span className="mrk-placeholder">{"// no marks uploaded yet"}</span>
         </div>
-      ) : pct === null ? (
-        <div className="mrk-card-body" style={{ flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 22 }}>📋</span>
-          <span className="mrk-placeholder">// no marks uploaded yet</span>
-        </div>
-      ) : (
+      );
+    } else {
+      let tz = [];
+      for (let i = 0; i < go.length; i++) {
+        let g = go[i];
+        let t = gt[g];
+        let nxt = go[i + 1];
+        let nxm = 0;
+        if (nxt) {
+          nxm = gt[nxt].min;
+        }
+        let w = t.min - nxm;
+        let br = "none";
+        if (i < 4) {
+          br = "1px solid " + t.color + "44";
+        }
+        tz.push(
+          <div key={g} className="gd-zone" style={{ width: w + "%", background: t.color + "22", borderRight: br }} />
+        );
+      }
+
+      let tl = "F";
+      if (lg) {
+        tl = lg[0];
+      }
+      
+      let ts = [];
+      for (let i = 0; i < go.length; i++) {
+        let g = go[i];
+        let t = gt[g];
+        let isf = false;
+        if (g === "F") {
+          isf = true;
+        }
+        let isc = false;
+        if (lg) {
+          if (lg.startsWith(g)) {
+            isc = true;
+          }
+        }
+        let ach = false;
+        if (p >= t.min) {
+          ach = true;
+        }
+        let pn = t.min - p;
+        if (pn < 0) {
+          pn = 0;
+        }
+
+        let cls = "gd-tile";
+        if (isc) {
+          cls = cls + " gd-tile--current";
+        }
+        if (ach) {
+          cls = cls + " gd-tile--achieved";
+        }
+        if (!isf) {
+          cls = cls + " gd-tile--clickable";
+        }
+
+        let sty = { "--tile-color": t.color, "--tile-glow": t.glow };
+        if (isc) {
+          sty.borderColor = t.color;
+          sty.background = t.color + "11";
+        }
+
+        let hint = null;
+        if (!isf) {
+          hint = <div className="gd-tile-hint">tap for variants</div>;
+        }
+
+        let badg = null;
+        if (isc) {
+          badg = <div className="gd-tile-badge" style={{ background: t.color }}>Current</div>;
+        } else {
+          if (pn > 0) {
+            badg = <div className="gd-tile-gap">+{pn}% needed</div>;
+          } else {
+            badg = <div className="gd-tile-gap gd-tile-gap--achieved">✓ achieved</div>;
+          }
+        }
+
+        let txt = "≥ " + t.min;
+        if (isf) {
+          txt = "< 60";
+        }
+
+        function hc() {
+          if (!isf) {
+            spu(g);
+          }
+        }
+
+        ts.push(
+          <div key={g} className={cls} style={sty} onClick={hc}>
+            <div className="gd-tile-letter" style={{ color: t.color }}>{g}</div>
+            <div className="gd-tile-min" style={{ color: t.color }}>
+              {txt}
+              <span className="gd-tile-unit">%</span>
+            </div>
+            {badg}
+            {hint}
+          </div>
+        );
+      }
+
+      let vars = [];
+      if (pu) {
+        let vlist = gv[pu];
+        for (let i = 0; i < vlist.length; i++) {
+          let v = vlist[i];
+          let del = v.min - p;
+          let cols = ["#1a78ff", "#10b981", "#f59e0b"];
+          let col = cols[i];
+          let ach = false;
+          if (p >= v.min) {
+            ach = true;
+          }
+          let vcls = "gd-variant";
+          if (ach) {
+            vcls = vcls + " gd-variant--achieved";
+          }
+          let w = (p / v.min) * 100;
+          if (w > 100) {
+            w = 100;
+          }
+
+          let rtxt = null;
+          if (ach) {
+            rtxt = <span className="gd-variant-ok">✓ Achieved — ≥ {v.min}%</span>;
+          } else {
+            rtxt = <span style={{ color: col }}>Need {del}% more · ≥ {v.min}%</span>;
+          }
+
+          vars.push(
+            <div key={v.label} className={vcls} style={{ "--vc": col }}>
+              <div className="gd-variant-label" style={{ color: col }}>{v.label}</div>
+              <div className="gd-variant-desc">{v.desc}</div>
+              <div className="gd-variant-bar-track">
+                <div className="gd-variant-bar" style={{ width: w + "%", background: col }} />
+              </div>
+              <div className="gd-variant-req">
+                {rtxt}
+              </div>
+            </div>
+          );
+        }
+      }
+
+      let pup = null;
+      if (pu) {
+        let pc = gt[pu].color;
+        pup = (
+          <>
+            <motion.div className="gd-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={cp} />
+            <motion.div className="gd-popup" initial={{ opacity: 0, scale: 0.88, y: 18 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.88, y: 12 }} transition={{ type: "spring", stiffness: 340, damping: 26 }}>
+              <div className="gd-popup-hd">
+                <span className="gd-popup-letter" style={{ color: pc }}>Grade {pu}</span>
+                <button className="gd-popup-close" onClick={cp}>✕</button>
+              </div>
+              <div className="gd-popup-sub">
+                Your score: <strong style={{ color: pc }}>{p}%</strong>
+              </div>
+              <div className="gd-popup-variants">
+                {vars}
+              </div>
+            </motion.div>
+          </>
+        );
+      }
+
+      bod = (
         <div className="gd-body">
-          {/* Progress bar */}
           <div className="gd-progress-wrap">
             <div className="gd-progress-track">
-              {GRADE_ORDER.map((g, i) => {
-                const th      = GRADE_THRESHOLDS[g];
-                const next    = GRADE_ORDER[i + 1];
-                const nextMin = next ? GRADE_THRESHOLDS[next].min : 0;
-                const width   = th.min - nextMin;
-                return (
-                  <div
-                    key={g}
-                    className="gd-zone"
-                    style={{
-                      width:       `${width}%`,
-                      background:  `${th.color}22`,
-                      borderRight: i < 4 ? `1px solid ${th.color}44` : "none",
-                    }}
-                  />
-                );
-              })}
-              <div
-                className="gd-needle"
-                style={{ left: `${pct}%`, background: GRADE_THRESHOLDS[letterGrade?.[0] || "F"].color }}
-              >
-                <div className="gd-needle-tip" style={{ borderTopColor: GRADE_THRESHOLDS[letterGrade?.[0] || "F"].color }} />
+              {tz}
+              <div className="gd-needle" style={{ left: p + "%", background: gt[tl].color }}>
+                <div className="gd-needle-tip" style={{ borderTopColor: gt[tl].color }} />
               </div>
             </div>
             <div className="gd-progress-labels">
               <span>0</span><span>60</span><span>70</span><span>80</span><span>90</span><span>100</span>
             </div>
           </div>
-
-          {/* Grade tiles */}
           <div className="gd-tiles">
-            {GRADE_ORDER.map(g => {
-              const th           = GRADE_THRESHOLDS[g];
-              const isF          = g === "F";
-              const isCurrent    = letterGrade?.startsWith(g);
-              const achieved     = pct >= th.min;
-              const pointsNeeded = Math.max(0, th.min - pct);
-              return (
-                <div
-                  key={g}
-                  className={`gd-tile${isCurrent ? " gd-tile--current" : ""}${achieved ? " gd-tile--achieved" : ""}${!isF ? " gd-tile--clickable" : ""}`}
-                  style={{
-                    "--tile-color": th.color,
-                    "--tile-glow":  th.glow,
-                    borderColor:    isCurrent ? th.color : undefined,
-                    background:     isCurrent ? `${th.color}11` : undefined,
-                  }}
-                  onClick={() => !isF && setPopup(g)}
-                >
-                  <div className="gd-tile-letter" style={{ color: th.color }}>{g}</div>
-                  <div className="gd-tile-min" style={{ color: th.color }}>
-                    {isF ? "< 60" : `≥ ${th.min}`}
-                    <span className="gd-tile-unit">%</span>
-                  </div>
-                  {isCurrent ? (
-                    <div className="gd-tile-badge" style={{ background: th.color }}>Current</div>
-                  ) : pointsNeeded > 0 ? (
-                    <div className="gd-tile-gap">+{pointsNeeded}% needed</div>
-                  ) : (
-                    <div className="gd-tile-gap gd-tile-gap--achieved">✓ achieved</div>
-                  )}
-                  {!isF && <div className="gd-tile-hint">tap for variants</div>}
-                </div>
-              );
-            })}
+            {ts}
           </div>
-
-          {/* Variants popup */}
           <AnimatePresence>
-            {popup && (
-              <>
-                <motion.div
-                  className="gd-overlay"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={closePopup}
-                />
-                <motion.div
-                  className="gd-popup"
-                  initial={{ opacity: 0, scale: 0.88, y: 18 }}
-                  animate={{ opacity: 1, scale: 1,    y: 0  }}
-                  exit={{ opacity: 0, scale: 0.88, y: 12 }}
-                  transition={{ type: "spring", stiffness: 340, damping: 26 }}
-                >
-                  <div className="gd-popup-hd">
-                    <span className="gd-popup-letter" style={{ color: GRADE_THRESHOLDS[popup].color }}>
-                      Grade {popup}
-                    </span>
-                    <button className="gd-popup-close" onClick={closePopup}>✕</button>
-                  </div>
-                  <div className="gd-popup-sub">
-                    Your score: <strong style={{ color: GRADE_THRESHOLDS[popup].color }}>{pct}%</strong>
-                  </div>
-                  <div className="gd-popup-variants">
-                    {GRADE_VARIANTS[popup].map((v, i) => {
-                      const delta     = v.min - pct;
-                      const varColors = ["#1a78ff", "#10b981", "#f59e0b"];
-                      const col       = varColors[i];
-                      const achieved  = pct >= v.min;
-                      return (
-                        <div
-                          key={v.label}
-                          className={`gd-variant${achieved ? " gd-variant--achieved" : ""}`}
-                          style={{ "--vc": col }}
-                        >
-                          <div className="gd-variant-label" style={{ color: col }}>{v.label}</div>
-                          <div className="gd-variant-desc">{v.desc}</div>
-                          <div className="gd-variant-bar-track">
-                            <div
-                              className="gd-variant-bar"
-                              style={{ width: `${Math.min(100, (pct / v.min) * 100)}%`, background: col }}
-                            />
-                          </div>
-                          <div className="gd-variant-req">
-                            {achieved
-                              ? <span className="gd-variant-ok">✓ Achieved — ≥ {v.min}%</span>
-                              : <span style={{ color: col }}>Need {delta}% more · ≥ {v.min}%</span>
-                            }
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              </>
-            )}
+            {pup}
           </AnimatePresence>
         </div>
-      )}
+      );
+    }
+  }
+
+  return (
+    <div className="gd-card">
+      <div className="mrk-card-hd">
+        <div className="mrk-card-title-wrap">
+          <div className="mrk-card-bar" style={barsty} />
+          <div>
+            <div className="mrk-card-title">Grade Distribution</div>
+            <div className="mrk-card-sub">{sub}</div>
+          </div>
+        </div>
+        {pill}
+      </div>
+      {bod}
     </div>
   );
 }
 
-// ── Final Grade ──────────────────────────────────────────────────────────────
-function FinalGrade({ marksMeta, selectedCourse, courseColor }) {
-  const pct         = marksMeta ? computeScore(marksMeta) : null;
-  const letterGrade = getLetterGrade(pct);
-  const baseGrade   = letterGrade?.[0] || null;
-  const threshColor = baseGrade ? GRADE_THRESHOLDS[baseGrade].color : courseColor;
-  const threshGlow  = baseGrade ? GRADE_THRESHOLDS[baseGrade].glow  : "rgba(26,120,255,.1)";
-  const hasData     = pct !== null;
+function FinalGrade(props) {
+  let mm = props.marksMeta;
+  let sc = props.selectedCourse;
+  let cc = props.courseColor;
+
+  let p = null;
+  if (mm) {
+    p = cs(mm);
+  }
+  let lg = glg(p);
+  let bg = null;
+  if (lg) {
+    bg = lg[0];
+  }
+  let tc = cc;
+  if (bg) {
+    tc = gt[bg].color;
+  }
+  let tgw = "rgba(26,120,255,.1)";
+  if (bg) {
+    tgw = gt[bg].glow;
+  }
+  let hd = false;
+  if (p !== null) {
+    hd = true;
+  }
+
+  let barsty = { background: "linear-gradient(180deg,#a78bfa,#c4b5fd)" };
+  if (sc) {
+    barsty.background = "linear-gradient(180deg," + tc + "," + tc + "55)";
+  }
+
+  let sub = "Select a course";
+  if (sc) {
+    sub = "Current standing";
+  }
+
+  let bod = null;
+  if (!sc) {
+    bod = (
+      <div className="fg-na">
+        <span className="fg-na-symbol">—</span>
+        <span className="fg-na-label">No course selected</span>
+      </div>
+    );
+  } else {
+    if (!hd) {
+      bod = (
+        <div className="fg-na">
+          <span className="fg-na-symbol">N/A</span>
+          <span className="fg-na-label">No marks yet</span>
+        </div>
+      );
+    } else {
+      let ge = "0.0";
+      if (p >= 97) {
+        ge = "4.0";
+      } else if (p >= 93) {
+        ge = "4.0";
+      } else if (p >= 90) {
+        ge = "3.7";
+      } else if (p >= 87) {
+        ge = "3.3";
+      } else if (p >= 83) {
+        ge = "3.0";
+      } else if (p >= 80) {
+        ge = "2.7";
+      } else if (p >= 77) {
+        ge = "2.3";
+      } else if (p >= 73) {
+        ge = "2.0";
+      } else if (p >= 70) {
+        ge = "1.7";
+      } else if (p >= 67) {
+        ge = "1.3";
+      } else if (p >= 63) {
+        ge = "1.0";
+      } else if (p >= 60) {
+        ge = "0.7";
+      }
+
+      bod = (
+        <div className="fg-display">
+          <div className="fg-ring" style={{ borderColor: tc + "44", boxShadow: "0 0 40px " + tgw }}>
+            <div className="fg-ring-inner" style={{ background: tc + "0d" }}>
+              <span className="fg-letter" style={{ color: tc }}>{lg}</span>
+            </div>
+          </div>
+          <div className="fg-pct" style={{ color: tc }}>{p}%</div>
+          <div className="fg-gpa-row">
+            <span className="fg-gpa-label">GPA equiv.</span>
+            <span className="fg-gpa-val" style={{ color: tc }}>{ge}</span>
+          </div>
+        </div>
+      );
+    }
+  }
 
   return (
     <div className="fg-card">
       <div className="mrk-card-hd">
         <div className="mrk-card-title-wrap">
-          <div
-            className="mrk-card-bar"
-            style={{ background: selectedCourse
-              ? `linear-gradient(180deg,${threshColor},${threshColor}55)`
-              : "linear-gradient(180deg,#a78bfa,#c4b5fd)"
-            }}
-          />
+          <div className="mrk-card-bar" style={barsty} />
           <div>
             <div className="mrk-card-title">Final Grade</div>
-            <div className="mrk-card-sub">{selectedCourse ? "Current standing" : "Select a course"}</div>
+            <div className="mrk-card-sub">{sub}</div>
           </div>
         </div>
       </div>
       <div className="fg-body">
-        {!selectedCourse ? (
-          <div className="fg-na">
-            <span className="fg-na-symbol">—</span>
-            <span className="fg-na-label">No course selected</span>
-          </div>
-        ) : !hasData ? (
-          <div className="fg-na">
-            <span className="fg-na-symbol">N/A</span>
-            <span className="fg-na-label">No marks yet</span>
-          </div>
-        ) : (
-          <div className="fg-display">
-            <div className="fg-ring" style={{ borderColor: `${threshColor}44`, boxShadow: `0 0 28px ${threshGlow}` }}>
-              <div className="fg-ring-inner" style={{ background: `${threshColor}0d` }}>
-                <span className="fg-letter" style={{ color: threshColor }}>{letterGrade}</span>
-              </div>
-            </div>
-            <div className="fg-pct" style={{ color: threshColor }}>{pct}%</div>
-            <div className="fg-gpa-row">
-              <span className="fg-gpa-label">GPA equiv.</span>
-              <span className="fg-gpa-val" style={{ color: threshColor }}>
-                {pct >= 97 ? "4.0" :
-                 pct >= 93 ? "4.0" :
-                 pct >= 90 ? "3.7" :
-                 pct >= 87 ? "3.3" :
-                 pct >= 83 ? "3.0" :
-                 pct >= 80 ? "2.7" :
-                 pct >= 77 ? "2.3" :
-                 pct >= 73 ? "2.0" :
-                 pct >= 70 ? "1.7" :
-                 pct >= 67 ? "1.3" :
-                 pct >= 63 ? "1.0" :
-                 pct >= 60 ? "0.7" : "0.0"}
-              </span>
-            </div>
-          </div>
-        )}
+        {bod}
       </div>
     </div>
   );
 }
 
-// ── Nav config ───────────────────────────────────────────────────────────────
-const NAV = [
+const nv = [
   ["Overview",      [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
   ["Courses",       [["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
   ["Communication", [["◉","Notices","/student/notices"]]],
   ["Account",       [["◌","Profile","/student/profile"]]],
 ];
 
-// ── Main page ────────────────────────────────────────────────────────────────
 export default function StudentMarks() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const webglRef = useRef(null);
+  const n = useNavigate();
+  const l = useLocation();
+  const wr = useRef(null);
+  const icr = useRef(null);
+  const ir = useRef(null);
+  const ar = useRef(null);
+  const sr = useRef(null);
+  const tr = useRef(null);
 
   const { enrolled } = useCourses();
 
-  const [collapse,         setCollapse]         = useState(false);
-  const [selectedCourse,   setSelectedCourse]   = useState(null);
-  const [expandedSections, setExpandedSections] = useState({});
+  const [c, scol] = useState(false);
+  const [sc, ssc] = useState(null);
+  const [es, ses] = useState({});
+  const [at, sat] = useState("raw");
 
-  // Deselect if course is unenrolled
   useEffect(() => {
-    if (selectedCourse && !enrolled.some(e => e.code === selectedCourse.code)) {
-      setSelectedCourse(null);
-      setExpandedSections({});
-    }
-  }, [enrolled, selectedCourse]);
-
-  const toggleSection = (sec) =>
-    setExpandedSections(p => ({ ...p, [sec]: !p[sec] }));
-
-  const handleCourseSelect = (course) => {
-    const active = selectedCourse?.code === course.code;
-    setSelectedCourse(active ? null : course);
-    setExpandedSections({});
-  };
-
-  // ── Three.js background ──────────────────────────────────────────────────
-  useEffect(() => {
-    const canvas = webglRef.current;
-    let W = window.innerWidth, H = window.innerHeight;
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0xf0f5ff, 1);
-    const scene  = new THREE.Scene();
-    scene.fog    = new THREE.FogExp2(0xdeeaff, 0.018);
-    const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
-    camera.position.set(0, 3, 12);
-    scene.add(new THREE.AmbientLight(0x1144cc, 0.6));
-    const sun = new THREE.DirectionalLight(0x6699ff, 1.4);
-    sun.position.set(-6, 12, 8); scene.add(sun);
-    const rimLight  = new THREE.PointLight(0x0055ff, 3, 40);
-    rimLight.position.set(0, 6, 0); scene.add(rimLight);
-    const fillLight = new THREE.PointLight(0x88ccff, 1.5, 25);
-    fillLight.position.set(-8, -2, 5); scene.add(fillLight);
-    const objects = [];
-    const mkIco = (x, y, z, r, color, opacity = 0.22) => {
-      const mesh = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(r, 1),
-        new THREE.MeshPhongMaterial({ color, wireframe: true, transparent: true, opacity, shininess: 120 })
-      );
-      mesh.position.set(x, y, z); scene.add(mesh);
-      objects.push({ mesh, bobSpeed: Math.random()*.008+.004, bobPhase: Math.random()*Math.PI*2, rotX: (Math.random()-.5)*.018, rotY: (Math.random()-.5)*.022, rotZ: (Math.random()-.5)*.014 });
-    };
-    mkIco(-7,2,-6,2.2,0x1a78ff,0.20); mkIco(7,-1,-7,2.8,0x0055dd,0.16);
-    mkIco(-2,4,-9,3.4,0x2266ee,0.13); mkIco(4,3,-4,1.6,0x4499ff,0.24);
-    mkIco(-5,-3,-5,1.8,0x0044bb,0.18);
-    const mkRing = (x, y, z, r, color) => {
-      const mesh = new THREE.Mesh(
-        new THREE.TorusGeometry(r, 0.04, 6, 60),
-        new THREE.MeshPhongMaterial({ color, transparent: true, opacity: 0.28, shininess: 180 })
-      );
-      mesh.rotation.x = Math.random() * Math.PI; mesh.position.set(x, y, z); scene.add(mesh);
-      objects.push({ mesh, bobSpeed: .007, bobPhase: Math.random()*Math.PI*2, rotX: (Math.random()-.5)*.016, rotY: (Math.random()-.5)*.018, rotZ: 0 });
-    };
-    mkRing(-6,4,-7,2.0,0x4499ff); mkRing(3,-1,-5,1.5,0x1166dd);
-    const COUNT = 200;
-    const ptPos = new Float32Array(COUNT * 3);
-    const ptCol = new Float32Array(COUNT * 3);
-    const ptVel = [];
-    for (let i = 0; i < COUNT; i++) {
-      ptPos[i*3]=(Math.random()-.5)*34; ptPos[i*3+1]=(Math.random()-.5)*22; ptPos[i*3+2]=(Math.random()-.5)*18-6;
-      ptVel.push({ x:(Math.random()-.5)*.010, y:(Math.random()-.5)*.008 });
-      const pick = Math.random();
-      if      (pick < .4) { ptCol[i*3]=.1; ptCol[i*3+1]=.4;  ptCol[i*3+2]=1.0; }
-      else if (pick < .7) { ptCol[i*3]=.4; ptCol[i*3+1]=.8;  ptCol[i*3+2]=1.0; }
-      else                { ptCol[i*3]=.9; ptCol[i*3+1]=.95; ptCol[i*3+2]=1.0; }
-    }
-    const ptGeo = new THREE.BufferGeometry();
-    ptGeo.setAttribute("position", new THREE.BufferAttribute(ptPos, 3));
-    ptGeo.setAttribute("color",    new THREE.BufferAttribute(ptCol, 3));
-    scene.add(new THREE.Points(ptGeo, new THREE.PointsMaterial({ size:.055, transparent:true, opacity:.65, vertexColors:true })));
-    const floor1 = new THREE.GridHelper(70, 28, 0x002288, 0x002288);
-    floor1.position.y = -5.5; floor1.material.transparent = true; floor1.material.opacity = 0.30;
-    scene.add(floor1);
-    let nmx = 0, nmy = 0;
-    const onMove = e => { nmx=(e.clientX/W)*2-1; nmy=-(e.clientY/H)*2+1; };
-    document.addEventListener("mousemove", onMove);
-    let t = 0, animId;
-    const loop = () => {
-      animId = requestAnimationFrame(loop); t += .012;
-      objects.forEach(o => {
-        o.mesh.position.y += Math.sin(t*o.bobSpeed*10+o.bobPhase)*.012;
-        o.mesh.rotation.x += o.rotX; o.mesh.rotation.y += o.rotY;
-        if (o.rotZ) o.mesh.rotation.z += o.rotZ;
-      });
-      const p = ptGeo.attributes.position.array;
-      for (let i=0; i<COUNT; i++) {
-        p[i*3]   += ptVel[i].x+nmx*.0018; p[i*3+1] += ptVel[i].y+nmy*.0018;
-        if(p[i*3]>17)   p[i*3]=-17;   if(p[i*3]<-17)   p[i*3]=17;
-        if(p[i*3+1]>11) p[i*3+1]=-11; if(p[i*3+1]<-11) p[i*3+1]=11;
+    if (sc) {
+      let fnd = false;
+      for (let i = 0; i < enrolled.length; i++) {
+        if (enrolled[i].code === sc.code) {
+          fnd = true;
+        }
       }
-      ptGeo.attributes.position.needsUpdate = true;
-      rimLight.position.x = Math.sin(t*.5)*12; rimLight.position.z = Math.cos(t*.35)*9;
-      floor1.position.z   = ((t*.8)%2.5)-1.25;
-      camera.position.x  += (nmx*1.2-camera.position.x)*.018;
-      camera.position.y  += (nmy*.8+3-camera.position.y)*.018;
-      camera.lookAt(0,0,0); renderer.render(scene,camera);
-    };
-    loop();
-    const onResize = () => { W=window.innerWidth; H=window.innerHeight; renderer.setSize(W,H); camera.aspect=W/H; camera.updateProjectionMatrix(); };
-    window.addEventListener("resize", onResize);
-    return () => { cancelAnimationFrame(animId); document.removeEventListener("mousemove",onMove); window.removeEventListener("resize",onResize); };
+      if (!fnd) {
+        ssc(null);
+        ses({});
+      }
+    }
+  }, [enrolled, sc]);
+
+  function ts(s) {
+    ses(function(p) {
+      let cur = false;
+      if (p[s]) {
+        cur = true;
+      }
+      return { ...p, [s]: !cur };
+    });
+  }
+
+  function hcs(co) {
+    let act = false;
+    if (sc) {
+      if (sc.code === co.code) {
+        act = true;
+      }
+    }
+    if (act) {
+      ssc(null);
+    } else {
+      ssc(co);
+    }
+    ses({});
+  }
+
+  useEffect(() => {
+    let hpi = sessionStorage.getItem("archIntroPlayed");
+    if (hpi) {
+      if (ir.current) { ir.current.style.display = "none"; }
+      if (ar.current) { ar.current.style.opacity = 1; }
+      if (sr.current) { sr.current.style.transform = "translateX(0)"; }
+      if (tr.current) { tr.current.style.opacity = 1; }
+      if (wr.current) {
+        wr.current.style.opacity = 0;
+        wr.current.style.display = "none";
+      }
+      return; 
+    }
+
+    let cvs = icr.current;
+    let ctx = cvs.getContext("2d");
+    cvs.width = window.innerWidth;
+    cvs.height = window.innerHeight;
+
+    let wds = ["MARKS","GRADES","EVALUATION","QUIZZES","ASSIGNMENTS","EXAMS"];
+    let pts = [];
+    for (let i = 0; i < 60; i++) {
+      let rh = "60,140,255";
+      if (Math.random() > 0.6) {
+        rh = "255,255,255";
+      }
+      pts.push({
+        x: Math.random() * cvs.width,
+        y: Math.random() * cvs.height,
+        word: wds[Math.floor(Math.random() * wds.length)],
+        opacity: Math.random() * 0.4 + 0.05,
+        speed: Math.random() * 0.8 + 0.2,
+        size: Math.floor(Math.random() * 10) + 10,
+        flicker: Math.random() * 0.025 + 0.005,
+        hue: rh,
+      });
+    }
+
+    let aid;
+    function drw() {
+      ctx.fillStyle = "rgba(0,4,14,0.18)";
+      ctx.fillRect(0, 0, cvs.width, cvs.height);
+      for (let i = 0; i < pts.length; i++) {
+        let p = pts[i];
+        p.y = p.y - p.speed * 0.4;
+        let d = -1;
+        if (Math.random() > 0.5) {
+          d = 1;
+        }
+        p.opacity = p.opacity + p.flicker * d;
+        if (p.opacity < 0.03) { p.opacity = 0.03; }
+        if (p.opacity > 0.55) { p.opacity = 0.55; }
+        if (p.y < -30) {
+          p.y = cvs.height + 20;
+          p.x = Math.random() * cvs.width;
+        }
+        ctx.font = p.size + "px 'Inter', sans-serif";
+        ctx.fillStyle = "rgba(" + p.hue + "," + p.opacity + ")";
+        ctx.fillText(p.word, p.x, p.y);
+      }
+      aid = requestAnimationFrame(drw);
+    }
+    drw();
+
+    function aft() {
+      cancelAnimationFrame(aid);
+      sessionStorage.setItem("archIntroPlayed", "true"); 
+
+      gsap.set(ir.current, { display: "none" });
+      gsap.to(ar.current, { opacity: 1, duration: 0.6 });
+      gsap.to(sr.current, { x: 0, duration: 1.2, ease: "expo.out" });
+      gsap.to(tr.current, { opacity: 1, duration: 0.7 });
+      
+      gsap.to(wr.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
+      setTimeout(() => {
+        if (wr.current) { wr.current.style.display = "none"; }
+      }, 3000);
+    }
+
+    let tl = gsap.timeline({ delay: 0.2, onComplete: aft });
+    tl.to("#intro-line", { scaleX: 1, duration: 0.8, ease: "power3.out" })
+      .to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.5)
+      .to("#intro-sub", { opacity: 1, y: 0, duration: 0.5 }, 1.1)
+      .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4)
+      .to("#intro-sub", { opacity: 0, duration: 0.3 }, 2.4)
+      .to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4)
+      .to("#intro-flash", { opacity: 1, duration: 0.08 }, 2.85)
+      .to("#intro-flash", { opacity: 0, duration: 0.4 }, 2.93)
+      .to(ir.current, { opacity: 0, duration: 0.35 }, 2.88);
+
+    return () => cancelAnimationFrame(aid);
   }, []);
 
-  // ── Derived state ────────────────────────────────────────────────────────
-  const marksMeta    = selectedCourse ? MARKS_DATA[selectedCourse.code] : null;
-  const sections     = selectedCourse ? getSections(selectedCourse.code) : [];
-  const courseColor  = marksMeta?.color  || "#1a78ff";
-  const courseBg     = marksMeta?.bg     || "rgba(26,120,255,.08)";
-  const courseBorder = marksMeta?.border || "rgba(26,120,255,.28)";
-  const TOTAL_CR     = enrolled.reduce((s, c) => s + c.credits, 0);
+  useEffect(() => {
+    let hpi = sessionStorage.getItem("archIntroPlayed");
+    if (hpi) {
+      return;
+    }
+
+    let cvs = wr.current;
+    if (!cvs) {
+      return;
+    }
+    let W = window.innerWidth;
+    let H = window.innerHeight;
+    let ren = new THREE.WebGLRenderer({ canvas: cvs, alpha: true, antialias: true });
+    ren.setSize(W, H);
+    ren.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    ren.setClearColor(0xf0f5ff, 1);
+    let scn  = new THREE.Scene();
+    scn.fog    = new THREE.FogExp2(0xdeeaff, 0.018);
+    let cam = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
+    cam.position.set(0, 3, 12);
+    scn.add(new THREE.AmbientLight(0x1144cc, 0.6));
+    let sun = new THREE.DirectionalLight(0x6699ff, 1.4);
+    sun.position.set(-6, 12, 8); 
+    scn.add(sun);
+    let rl  = new THREE.PointLight(0x0055ff, 3, 40);
+    rl.position.set(0, 6, 0); 
+    scn.add(rl);
+    let fl = new THREE.PointLight(0x88ccff, 1.5, 25);
+    fl.position.set(-8, -2, 5); 
+    scn.add(fl);
+    
+    let objs = [];
+    function mki(x, y, z, r, clr, opc = 0.22) {
+      let mat = new THREE.MeshPhongMaterial({ color: clr, wireframe: true, transparent: true, opacity: opc, shininess: 120 });
+      let geo = new THREE.IcosahedronGeometry(r, 1);
+      let msh = new THREE.Mesh(geo, mat);
+      msh.position.set(x, y, z); 
+      scn.add(msh);
+      objs.push({ mesh: msh, bs: Math.random()*.008+.004, bp: Math.random()*Math.PI*2, rx: (Math.random()-.5)*.018, ry: (Math.random()-.5)*.022, rz: (Math.random()-.5)*.014 });
+    }
+    mki(-7,2,-6,2.2,0x1a78ff,0.20); 
+    mki(7,-1,-7,2.8,0x0055dd,0.16);
+    mki(-2,4,-9,3.4,0x2266ee,0.13); 
+    mki(4,3,-4,1.6,0x4499ff,0.24);
+    mki(-5,-3,-5,1.8,0x0044bb,0.18);
+    
+    function mkr(x, y, z, r, clr) {
+      let geo = new THREE.TorusGeometry(r, 0.04, 6, 60);
+      let mat = new THREE.MeshPhongMaterial({ color: clr, transparent: true, opacity: 0.28, shininess: 180 });
+      let msh = new THREE.Mesh(geo, mat);
+      msh.rotation.x = Math.random() * Math.PI; 
+      msh.position.set(x, y, z); 
+      scn.add(msh);
+      objs.push({ mesh: msh, bs: .007, bp: Math.random()*Math.PI*2, rx: (Math.random()-.5)*.016, ry: (Math.random()-.5)*.018, rz: 0 });
+    }
+    mkr(-6,4,-7,2.0,0x4499ff); 
+    mkr(3,-1,-5,1.5,0x1166dd);
+    
+    let cnt = 200;
+    let ptp = new Float32Array(cnt * 3);
+    let ptc = new Float32Array(cnt * 3);
+    let ptv = [];
+    for (let i = 0; i < cnt; i++) {
+      ptp[i*3]=(Math.random()-.5)*34; 
+      ptp[i*3+1]=(Math.random()-.5)*22; 
+      ptp[i*3+2]=(Math.random()-.5)*18-6;
+      ptv.push({ x:(Math.random()-.5)*.010, y:(Math.random()-.5)*.008 });
+      let pck = Math.random();
+      if (pck < .4) { 
+        ptc[i*3]=.1; ptc[i*3+1]=.4; ptc[i*3+2]=1.0; 
+      } else if (pck < .7) { 
+        ptc[i*3]=.4; ptc[i*3+1]=.8; ptc[i*3+2]=1.0; 
+      } else { 
+        ptc[i*3]=.9; ptc[i*3+1]=.95; ptc[i*3+2]=1.0; 
+      }
+    }
+    let ptg = new THREE.BufferGeometry();
+    ptg.setAttribute("position", new THREE.BufferAttribute(ptp, 3));
+    ptg.setAttribute("color", new THREE.BufferAttribute(ptc, 3));
+    let pmat = new THREE.PointsMaterial({ size:.055, transparent:true, opacity:.65, vertexColors:true });
+    scn.add(new THREE.Points(ptg, pmat));
+    
+    let flr = new THREE.GridHelper(70, 28, 0x002288, 0x002288);
+    flr.position.y = -5.5; 
+    flr.material.transparent = true; 
+    flr.material.opacity = 0.30;
+    scn.add(flr);
+    
+    let nmx = 0;
+    let nmy = 0;
+    function omv(e) { 
+      nmx=(e.clientX/W)*2-1; 
+      nmy=-(e.clientY/H)*2+1; 
+    }
+    document.addEventListener("mousemove", omv);
+    
+    let t = 0;
+    let aid;
+    function lp() {
+      aid = requestAnimationFrame(lp); 
+      t = t + .012;
+      for (let i = 0; i < objs.length; i++) {
+        let o = objs[i];
+        o.mesh.position.y = o.mesh.position.y + Math.sin(t*o.bs*10+o.bp)*.012;
+        o.mesh.rotation.x = o.mesh.rotation.x + o.rx; 
+        o.mesh.rotation.y = o.mesh.rotation.y + o.ry;
+        if (o.rz) {
+          o.mesh.rotation.z = o.mesh.rotation.z + o.rz;
+        }
+      }
+      let arr = ptg.attributes.position.array;
+      for (let i = 0; i < cnt; i++) {
+        arr[i*3] = arr[i*3] + ptv[i].x+nmx*.0018; 
+        arr[i*3+1] = arr[i*3+1] + ptv[i].y+nmy*.0018;
+        if(arr[i*3]>17) { arr[i*3]=-17; }
+        if(arr[i*3]<-17) { arr[i*3]=17; }
+        if(arr[i*3+1]>11) { arr[i*3+1]=-11; }
+        if(arr[i*3+1]<-11) { arr[i*3+1]=11; }
+      }
+      ptg.attributes.position.needsUpdate = true;
+      rl.position.x = Math.sin(t*.5)*12; 
+      rl.position.z = Math.cos(t*.35)*9;
+      flr.position.z = ((t*.8)%2.5)-1.25;
+      cam.position.x = cam.position.x + (nmx*1.2-cam.position.x)*.018;
+      cam.position.y = cam.position.y + (nmy*.8+3-cam.position.y)*.018;
+      cam.lookAt(0,0,0); 
+      ren.render(scn,cam);
+    }
+    lp();
+    
+    function orz() { 
+      W=window.innerWidth; 
+      H=window.innerHeight; 
+      ren.setSize(W,H); 
+      cam.aspect=W/H; 
+      cam.updateProjectionMatrix(); 
+    }
+    window.addEventListener("resize", orz);
+    return () => { 
+      cancelAnimationFrame(aid); 
+      document.removeEventListener("mousemove", omv); 
+      window.removeEventListener("resize", orz); 
+    };
+  }, []);
+
+  let mm = null;
+  if (sc) {
+    mm = MARKS_DATA[sc.code];
+  }
+  let secs = [];
+  if (sc) {
+    secs = gs(sc.code);
+  }
+  let cc = "#1a78ff";
+  if (mm) {
+    if (mm.color) {
+      cc = mm.color;
+    }
+  }
+  let bgc = "rgba(26,120,255,.08)";
+  if (mm) {
+    if (mm.bg) {
+      bgc = mm.bg;
+    }
+  }
+  let bor = "rgba(26,120,255,.28)";
+  if (mm) {
+    if (mm.border) {
+      bor = mm.border;
+    }
+  }
+  let tcr = 0;
+  for (let i = 0; i < enrolled.length; i++) {
+    tcr = tcr + enrolled[i].credits;
+  }
+
+  let sidepts = [];
+  for (let i = 0; i < nv.length; i++) {
+    let s = nv[i][0];
+    let it = nv[i][1];
+    let dits = [];
+    for (let j = 0; j < it.length; j++) {
+      let i1 = it[j][0];
+      let l1 = it[j][1];
+      let p1 = it[j][2];
+      let cls1 = "ni";
+      if (l.pathname === p1) {
+        cls1 = cls1 + " active";
+      }
+      let bdg1 = null;
+      if (l1 === "Notices") {
+        bdg1 = <span className="nbadge">3</span>;
+      }
+      dits.push(
+        <div key={l1} className={cls1} onClick={() => n(p1)}>
+          <div className="ni-ic">{i1}</div>
+          {l1}
+          {bdg1}
+        </div>
+      );
+    }
+    sidepts.push(
+      <div key={s}>
+        <div className="nav-sec">{s}</div>
+        {dits}
+      </div>
+    );
+  }
+
+  let cbody = null;
+  if (enrolled.length === 0) {
+    cbody = (
+      <div className="mrk-card-body">
+        <span className="mrk-placeholder">{"// no courses enrolled — visit Registration"}</span>
+      </div>
+    );
+  } else {
+    let trk = [];
+    for (let i = 0; i < enrolled.length; i++) {
+      let crs = enrolled[i];
+      let mtd = MARKS_DATA[crs.code];
+      let clr = "#1a78ff";
+      let bgi = "rgba(26,120,255,.08)";
+      let brd = "rgba(26,120,255,.28)";
+      if (mtd) {
+        if (mtd.color) { clr = mtd.color; }
+        if (mtd.bg) { bgi = mtd.bg; }
+        if (mtd.border) { brd = mtd.border; }
+      }
+      let actv = false;
+      if (sc) {
+        if (sc.code === crs.code) {
+          actv = true;
+        }
+      }
+      let hlab = false;
+      if (mtd) {
+        let keys = Object.keys(mtd.sections);
+        if (keys.includes("Lab Work")) {
+          hlab = true;
+        }
+      }
+      let tid = crs.code.replace(/[^A-Z0-9]/gi, "").slice(0, 6).toUpperCase();
+      let ccls = "course-tile";
+      if (actv) {
+        ccls = ccls + " course-tile--active";
+      }
+      let csty = {};
+      if (actv) {
+        csty.background = bgi;
+        csty.borderColor = brd;
+      }
+
+      let lb = null;
+      if (hlab) {
+        lb = <span className="course-tile-lab" style={{ color: clr }}>LAB</span>;
+      }
+
+      trk.push(
+        <div key={crs.code} className={ccls} style={csty} onClick={() => hcs(crs)}>
+          <div className="course-tile-strip" style={{ background: clr }} />
+          <div className="course-tile-id" style={{ color: clr }}>{tid}</div>
+          <div className="course-tile-name">{crs.name}</div>
+          <div className="course-tile-foot">
+            <span className="course-tile-cr">{crs.credits} cr</span>
+            {lb}
+            <span className="course-tile-arrow" style={{ color: clr }}>›</span>
+          </div>
+        </div>
+      );
+    }
+    cbody = (
+      <div className="course-track">
+        {trk}
+      </div>
+    );
+  }
+
+  let rcls = "marks-tab";
+  if (at === 'raw') {
+    rcls = rcls + " active";
+  }
+  let pcls = "marks-tab";
+  if (at === 'perf') {
+    pcls = pcls + " active";
+  }
+  let dcls = "marks-tab";
+  if (at === 'dist') {
+    dcls = dcls + " active";
+  }
+
+  let bdg2 = null;
+  if (sc) {
+    if (secs.length > 0) {
+      let tot = 0;
+      for (let i = 0; i < secs.length; i++) {
+        let secdata = mm.sections[secs[i]];
+        if (secdata) {
+          let st = 0;
+          for (let j = 0; j < secdata.entries.length; j++) {
+            st = st + secdata.entries[j].marks;
+          }
+          tot = tot + st;
+        }
+      }
+      bdg2 = (
+        <div className="card2-total-badge" style={{ background: bgc, borderColor: bor, color: cc }}>
+          {tot}
+          <span>pts</span>
+        </div>
+      );
+    }
+  }
+
+  let rbod = null;
+  if (!sc) {
+    rbod = (
+      <div className="mrk-card-body">
+        <span className="mrk-placeholder">{"// select a course to view marks"}</span>
+      </div>
+    );
+  } else {
+    if (secs.length === 0) {
+      rbod = (
+        <div className="mrk-card-body" style={{ flexDirection:"column", gap:16 }}>
+          <span style={{ fontSize:42 }}>📭</span>
+          <span className="mrk-placeholder">{"// no marks recorded yet for "} {sc.code}</span>
+        </div>
+      );
+    } else {
+      let msecs = [];
+      for (let i = 0; i < secs.length; i++) {
+        let scn = secs[i];
+        let dta = mm.sections[scn];
+        if (dta) {
+          let s1 = 0;
+          for (let k = 0; k < dta.entries.length; k++) {
+            s1 = s1 + dta.entries[k].marks;
+          }
+          let mt1 = 0;
+          for (let k = 0; k < dta.entries.length; k++) {
+            mt1 = mt1 + dta.entries[k].max;
+          }
+          let pct1 = Math.round((s1 / mt1) * 100);
+          if (pct1 > 100) {
+            pct1 = 100;
+          }
+          let iso = false;
+          if (es[scn]) {
+            iso = true;
+          }
+          let scls = "marks-sec";
+          if (iso) {
+            scls = scls + " marks-sec--open";
+          }
+          let icn = "◆";
+          if (si[scn]) {
+            icn = si[scn];
+          }
+          let ccls = "marks-sec-chevron";
+          if (iso) {
+            ccls = ccls + " open";
+          }
+          
+          let tbd = null;
+          if (iso) {
+            let trs = [];
+            for (let j = 0; j < dta.entries.length; j++) {
+              let en = dta.entries[j];
+              let epc = (en.marks / en.max) * 100;
+              trs.push(
+                <tr key={en.label}>
+                  <td className="tbl-label">{en.label}</td>
+                  <td style={{ color: cc, fontWeight: 900 }}>{en.marks}</td>
+                  <td className="tbl-dim">{en.max}</td>
+                  <td>
+                    <div className="tbl-pct-wrap">
+                      <div className="tbl-pct-track">
+                        <div className="tbl-pct-bar" style={{ width: epc + "%", background: cc }} />
+                      </div>
+                      <span className="tbl-pct-num">{Math.round(epc)}%</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            }
+            tbd = (
+              <div className="marks-sec-body">
+                <table className="marks-tbl">
+                  <thead><tr><th>Item</th><th>Marks</th><th>Out of</th><th>Score</th></tr></thead>
+                  <tbody>{trs}</tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={4}>
+                        <div className="tbl-foot-row">
+                          <span className="tbl-foot-label">Class avg</span><span className="tbl-foot-val">{dta.avg}</span>
+                          <span className="tbl-foot-sep">·</span>
+                          <span className="tbl-foot-label">High</span><span className="tbl-foot-val tbl-foot-max">{dta.classMax}</span>
+                          <span className="tbl-foot-sep">·</span>
+                          <span className="tbl-foot-label">Low</span><span className="tbl-foot-val tbl-foot-min">{dta.classMin}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            );
+          }
+
+          msecs.push(
+            <div className={scls} key={scn}>
+              <div className="marks-sec-hd" onClick={() => ts(scn)}>
+                <div className="marks-sec-left">
+                  <span className="marks-sec-icon">{icn}</span>
+                  <span className="marks-sec-name">{scn}</span>
+                  <div className="marks-sec-pill">
+                    <div className="marks-sec-pill-fill" style={{ width: pct1 + "%", background: cc }} />
+                  </div>
+                  <span className="marks-sec-pct" style={{ color: cc }}>{pct1}%</span>
+                </div>
+                <div className="marks-sec-right">
+                  <span className="marks-sec-score" style={{ color: cc }}>{s1}</span>
+                  <span className="marks-sec-total">/{dta.total}</span>
+                  <span className={ccls}>›</span>
+                </div>
+              </div>
+              {tbd}
+            </div>
+          );
+        }
+      }
+      rbod = <div className="marks-sections">{msecs}</div>;
+    }
+  }
+
+  let pbod = null;
+  if (!sc) {
+    pbod = (
+      <div className="mrk-card-body">
+        <span className="mrk-placeholder">{"// select a course to view chart"}</span>
+      </div>
+    );
+  } else {
+    if (secs.length === 0) {
+      pbod = (
+        <div className="mrk-card-body" style={{ flexDirection:"column", gap:16 }}>
+          <span style={{ fontSize:42 }}>📊</span>
+          <span className="mrk-placeholder">{"// chart will populate once marks are uploaded"}</span>
+        </div>
+      );
+    } else {
+      let ccols = [];
+      for (let i = 0; i < secs.length; i++) {
+        let scn2 = secs[i];
+        let dta2 = mm.sections[scn2];
+        if (dta2) {
+          let s2 = 0;
+          for (let k = 0; k < dta2.entries.length; k++) {
+            s2 = s2 + dta2.entries[k].marks;
+          }
+          let cp = 88;
+          let yp = (s2 / dta2.classMax) * cp;
+          if (yp > cp) { yp = cp; }
+          let ap = (dta2.avg / dta2.classMax) * cp;
+          if (ap > cp) { ap = cp; }
+          let mp = (dta2.classMin / dta2.classMax) * cp;
+          if (mp > cp) { mp = cp; }
+          let slb = scn2.replace(" Exam","").replace("Assignments","Assign.");
+          
+          let aib = 0;
+          if (yp > 0) {
+            aib = (ap / yp) * 100;
+            if (aib > 100) { aib = 100; }
+          }
+          let mib = 0;
+          if (yp > 0) {
+            mib = (mp / yp) * 100;
+            if (mib > 100) { mib = 100; }
+          }
+          let bgr = cc;
+          if (yp > 0) {
+            let p1 = mib - .5;
+            let p2 = mib + .5;
+            let p3 = aib - .5;
+            let p4 = aib + .5;
+            bgr = "linear-gradient(to top, rgba(255,60,80,.35) 0%, rgba(255,60,80,.25) " + p1 + "%, " + cc + "55 " + p2 + "%, " + cc + "88 " + p3 + "%, " + cc + " " + p4 + "%, " + cc + " 100%)";
+          }
+
+          let gls = [];
+          let gs = [25, 50, 75];
+          for (let gidx = 0; gidx < gs.length; gidx++) {
+            let g = gs[gidx];
+            gls.push(<div key={g} className="chart-grid-line" style={{ bottom: (g * cp / 100) + "%" }} />);
+          }
+
+          ccols.push(
+            <div className="chart-col" key={scn2}>
+              <div className="chart-bar-area">
+                {gls}
+                <div className="chart-marker chart-marker--max" style={{ bottom: cp + "%" }}>
+                  <span className="marker-tip marker-tip--max">{dta2.classMax}</span>
+                </div>
+                <div className="chart-zone-tick chart-zone-tick--avg" style={{ bottom: ap + "%" }}>
+                  <span className="zone-tick-label">{dta2.avg}</span>
+                </div>
+                <div className="chart-zone-tick chart-zone-tick--min" style={{ bottom: mp + "%" }}>
+                  <span className="zone-tick-label">{dta2.classMin}</span>
+                </div>
+                <div className="chart-bar-wrap">
+                  <div className="chart-bar" style={{ height: yp + "%", background: bgr }}>
+                    <span className="chart-bar-val">{s2}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="chart-col-label">{slb}</div>
+              <div className="chart-col-total" style={{ color: cc }}>/{dta2.total}</div>
+            </div>
+          );
+        }
+      }
+
+      pbod = (
+        <div className="chart-wrap">
+          <div className="chart-legend">
+            <div className="leg-item"><span className="leg-swatch" style={{ background: cc }} /><span>Above avg</span></div>
+            <div className="leg-item"><span className="leg-swatch" style={{ background: cc + "66" }} /><span>Avg → Min</span></div>
+            <div className="leg-item"><span className="leg-swatch leg-swatch--red" /><span>Below min</span></div>
+            <div className="leg-item leg-item--max"><span className="leg-line-swatch leg-max" /><span>Max</span></div>
+          </div>
+          <div className="chart-bars">
+            {ccols}
+          </div>
+        </div>
+      );
+    }
+  }
+
+  let t1c = null;
+  if (at === 'raw') {
+    let hb2 = "linear-gradient(180deg,var(--blue),var(--blue2))";
+    if (sc) {
+      hb2 = "linear-gradient(180deg," + cc + "," + cc + "88)";
+    }
+    let sttl = "Select a course above";
+    if (sc) {
+      sttl = sc.name;
+    }
+    t1c = (
+      <motion.div key="raw" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+        <div className="mrk-card mrk-card--fullwidth">
+          <div className="mrk-card-hd">
+            <div className="mrk-card-title-wrap">
+              <div className="mrk-card-bar" style={{ background: hb2 }} />
+              <div>
+                <div className="mrk-card-title">Raw Marks</div>
+                <div className="mrk-card-sub">{sttl}</div>
+              </div>
+            </div>
+            {bdg2}
+          </div>
+          {rbod}
+        </div>
+      </motion.div>
+    );
+  }
+
+  let t2c = null;
+  if (at === 'perf') {
+    let hb3 = "linear-gradient(180deg,#7c3aed,#a78bfa)";
+    if (sc) {
+      hb3 = "linear-gradient(180deg," + cc + "," + cc + "55)";
+    }
+    let stt2 = "Select a course above";
+    if (sc) {
+      stt2 = sc.name;
+    }
+    t2c = (
+      <motion.div key="perf" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+        <div className="mrk-card mrk-card--tall mrk-card--fullwidth">
+          <div className="mrk-card-hd">
+            <div className="mrk-card-title-wrap">
+              <div className="mrk-card-bar" style={{ background: hb3 }} />
+              <div>
+                <div className="mrk-card-title">Performance Overview</div>
+                <div className="mrk-card-sub">{stt2}</div>
+              </div>
+            </div>
+          </div>
+          {pbod}
+        </div>
+      </motion.div>
+    );
+  }
+
+  let t3c = null;
+  if (at === 'dist') {
+    t3c = (
+      <motion.div key="dist" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+        <div className="mrk-bottom-row">
+          <GradeDistribution marksMeta={mm} selectedCourse={sc} courseColor={cc} />
+          <FinalGrade marksMeta={mm} selectedCourse={sc} courseColor={cc} />
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <>
-      <canvas id="mrk-webgl" ref={webglRef} />
-      <div id="mrk-app">
+      <div className="mesh-bg">
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
+      </div>
 
-        {/* ── Sidebar ── */}
-        <nav id="mrk-sidebar" className={collapse ? "collapse" : ""}>
+      <canvas id="mrk-webgl" ref={wr} />
+
+      <div id="intro" ref={ir}>
+        <canvas id="intro-canvas" ref={icr} />
+        <div id="intro-line" />
+        <div id="intro-logo">ARCH</div>
+        <div id="intro-sub">Academic Marks</div>
+        <div id="intro-flash" />
+      </div>
+
+      <div id="mrk-app" ref={ar}>
+
+        <nav id="mrk-sidebar" ref={sr} className={c ? "collapse" : ""}>
           <div className="sb-top-bar" />
-          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
+          <button className="sb-toggle" onClick={() => scol(function(p) { return !p; })}>
             <span /><span /><span />
           </button>
           <div className="sb-logo">
@@ -498,34 +1319,25 @@ export default function StudentMarks() {
               <div className="uid">21K-3210</div>
             </div>
           </div>
-          {NAV.map(([sec, items]) => (
-            <div key={sec}>
-              <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div
-                  key={label}
-                  className={`ni${location.pathname === path ? " active" : ""}`}
-                  onClick={() => navigate(path)}
-                >
-                  <div className="ni-ic">{ic}</div>{label}
-                  {label === "Notices" && <span className="nbadge">3</span>}
-                </div>
-              ))}
-            </div>
-          ))}
+          {sidepts}
           <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
         </nav>
 
-        {/* ── Main ── */}
         <div id="mrk-main">
-          <div id="mrk-topbar">
-            <div className="pg-title">Marks</div>
-            <div className="tb-r"><div className="sem-chip">Spring 2025</div></div>
+          <div id="mrk-topbar" ref={tr}>
+            <div className="tb-glow" />
+            <div className="pg-title"><span>Marks</span></div>
+            <div className="tb-r">
+              <div className="sem-chip">SPRING 2025</div>
+              <div className="nb-btn hov-target">
+                🔔
+                <div className="nb-pip" />
+              </div>
+            </div>
           </div>
 
           <div id="mrk-scroll">
 
-            {/* ── Card 1 — Enrolled Courses ── */}
             <div className="mrk-card" id="mrk-card1">
               <div className="mrk-card-hd">
                 <div className="mrk-card-title-wrap">
@@ -536,44 +1348,9 @@ export default function StudentMarks() {
                   </div>
                 </div>
               </div>
-
-              {enrolled.length === 0 ? (
-                <div className="mrk-card-body">
-                  <span className="mrk-placeholder">// no courses enrolled — visit Registration</span>
-                </div>
-              ) : (
-                <div className="course-track">
-                  {enrolled.map(c => {
-                    const meta   = MARKS_DATA[c.code];
-                    const color  = meta?.color  || "#1a78ff";
-                    const bg     = meta?.bg     || "rgba(26,120,255,.08)";
-                    const border = meta?.border || "rgba(26,120,255,.28)";
-                    const active = selectedCourse?.code === c.code;
-                    const hasLab = meta && Object.keys(meta.sections).includes("Lab Work");
-                    const tileId = c.code.replace(/[^A-Z0-9]/gi, "").slice(0, 6).toUpperCase();
-                    return (
-                      <div
-                        key={c.id ?? c.code}
-                        className={`course-tile${active ? " course-tile--active" : ""}`}
-                        style={active ? { background: bg, borderColor: border } : {}}
-                        onClick={() => handleCourseSelect(c)}
-                      >
-                        <div className="course-tile-strip" style={{ background: color }} />
-                        <div className="course-tile-id"   style={{ color }}>{tileId}</div>
-                        <div className="course-tile-name">{c.name}</div>
-                        <div className="course-tile-foot">
-                          <span className="course-tile-cr">{c.credits} cr</span>
-                          {hasLab && <span className="course-tile-lab" style={{ color }}>LAB</span>}
-                          <span className="course-tile-arrow" style={{ color }}>›</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
+              {cbody}
               <div className="course-track-foot">
-                Total <strong>{TOTAL_CR}</strong>
+                Total <strong>{tcr}</strong>
                 <span className="cfoot-dot" />
                 credit hours
                 <span className="cfoot-dot" />
@@ -581,202 +1358,24 @@ export default function StudentMarks() {
               </div>
             </div>
 
-            {/* ── Cards 2 & 3 ── */}
-            <div className="mrk-grid">
-
-              {/* Card 2 — Raw Marks Accordion */}
-              <div className="mrk-card">
-                <div className="mrk-card-hd">
-                  <div className="mrk-card-title-wrap">
-                    <div className="mrk-card-bar" style={{ background: selectedCourse ? `linear-gradient(180deg,${courseColor},${courseColor}88)` : "linear-gradient(180deg,var(--blue),var(--blue2))" }} />
-                    <div>
-                      <div className="mrk-card-title">Raw Marks</div>
-                      <div className="mrk-card-sub">{selectedCourse ? selectedCourse.name : "Select a course above"}</div>
-                    </div>
-                  </div>
-                  {selectedCourse && sections.length > 0 && (
-                    <div className="card2-total-badge" style={{ background: courseBg, borderColor: courseBorder, color: courseColor }}>
-                      {sections.reduce((sum, sec) => {
-                        const d = marksMeta.sections[sec];
-                        return sum + (d ? d.entries.reduce((s, e) => s + e.marks, 0) : 0);
-                      }, 0)}
-                      <span>pts</span>
-                    </div>
-                  )}
-                </div>
-
-                {!selectedCourse ? (
-                  <div className="mrk-card-body">
-                    <span className="mrk-placeholder">// select a course to view marks</span>
-                  </div>
-                ) : sections.length === 0 ? (
-                  <div className="mrk-card-body" style={{ flexDirection:"column", gap:8 }}>
-                    <span style={{ fontSize:22 }}>📭</span>
-                    <span className="mrk-placeholder">// no marks recorded yet for {selectedCourse.code}</span>
-                    <span style={{ fontSize:10, color:"var(--dimmer)", opacity:.5, fontFamily:"'JetBrains Mono',monospace", letterSpacing:".05em" }}>
-                      marks will appear here once uploaded by your instructor
-                    </span>
-                  </div>
-                ) : (
-                  <div className="marks-sections">
-                    {sections.map(sec => {
-                      const data     = marksMeta.sections[sec];
-                      if (!data) return null;
-                      const scored   = data.entries.reduce((s, e) => s + e.marks, 0);
-                      const maxTotal = data.entries.reduce((s, e) => s + e.max,   0);
-                      const pct      = Math.min(100, Math.round((scored / maxTotal) * 100));
-                      const isOpen   = expandedSections[sec];
-                      return (
-                        <div className={`marks-sec${isOpen ? " marks-sec--open" : ""}`} key={sec}>
-                          <div className="marks-sec-hd" onClick={() => toggleSection(sec)}>
-                            <div className="marks-sec-left">
-                              <span className="marks-sec-icon">{SECTION_ICONS[sec] || "◆"}</span>
-                              <span className="marks-sec-name">{sec}</span>
-                              <div className="marks-sec-pill">
-                                <div className="marks-sec-pill-fill" style={{ width:`${pct}%`, background:courseColor }} />
-                              </div>
-                              <span className="marks-sec-pct" style={{ color:courseColor }}>{pct}%</span>
-                            </div>
-                            <div className="marks-sec-right">
-                              <span className="marks-sec-score" style={{ color:courseColor }}>{scored}</span>
-                              <span className="marks-sec-total">/{data.total}</span>
-                              <span className={`marks-sec-chevron${isOpen ? " open" : ""}`}>›</span>
-                            </div>
-                          </div>
-                          {isOpen && (
-                            <div className="marks-sec-body">
-                              <table className="marks-tbl">
-                                <thead><tr><th>Item</th><th>Marks</th><th>Out of</th><th>Score</th></tr></thead>
-                                <tbody>
-                                  {data.entries.map(e => {
-                                    const epct = (e.marks / e.max) * 100;
-                                    return (
-                                      <tr key={e.label}>
-                                        <td className="tbl-label">{e.label}</td>
-                                        <td style={{ color:courseColor, fontWeight:700 }}>{e.marks}</td>
-                                        <td className="tbl-dim">{e.max}</td>
-                                        <td>
-                                          <div className="tbl-pct-wrap">
-                                            <div className="tbl-pct-track">
-                                              <div className="tbl-pct-bar" style={{ width:`${epct}%`, background:courseColor }} />
-                                            </div>
-                                            <span className="tbl-pct-num">{Math.round(epct)}%</span>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                                <tfoot>
-                                  <tr>
-                                    <td colSpan={4}>
-                                      <div className="tbl-foot-row">
-                                        <span className="tbl-foot-label">Class avg</span><span className="tbl-foot-val">{data.avg}</span>
-                                        <span className="tbl-foot-sep">·</span>
-                                        <span className="tbl-foot-label">High</span><span className="tbl-foot-val tbl-foot-max">{data.classMax}</span>
-                                        <span className="tbl-foot-sep">·</span>
-                                        <span className="tbl-foot-label">Low</span><span className="tbl-foot-val tbl-foot-min">{data.classMin}</span>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                </tfoot>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Card 3 — Bar Chart */}
-              <div className="mrk-card mrk-card--tall">
-                <div className="mrk-card-hd">
-                  <div className="mrk-card-title-wrap">
-                    <div className="mrk-card-bar" style={{ background: selectedCourse ? `linear-gradient(180deg,${courseColor},${courseColor}55)` : "linear-gradient(180deg,#7c3aed,#a78bfa)" }} />
-                    <div>
-                      <div className="mrk-card-title">Performance Overview</div>
-                      <div className="mrk-card-sub">{selectedCourse ? selectedCourse.name : "Select a course above"}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {!selectedCourse ? (
-                  <div className="mrk-card-body">
-                    <span className="mrk-placeholder">// select a course to view chart</span>
-                  </div>
-                ) : sections.length === 0 ? (
-                  <div className="mrk-card-body" style={{ flexDirection:"column", gap:8 }}>
-                    <span style={{ fontSize:22 }}>📊</span>
-                    <span className="mrk-placeholder">// chart will populate once marks are uploaded</span>
-                  </div>
-                ) : (
-                  <div className="chart-wrap">
-                    <div className="chart-legend">
-                      <div className="leg-item"><span className="leg-swatch" style={{ background:courseColor }} /><span>Above avg</span></div>
-                      <div className="leg-item"><span className="leg-swatch" style={{ background:`${courseColor}66` }} /><span>Avg → Min</span></div>
-                      <div className="leg-item"><span className="leg-swatch leg-swatch--red" /><span>Below min</span></div>
-                      <div className="leg-item leg-item--max"><span className="leg-line-swatch leg-max" /><span>Max</span></div>
-                    </div>
-                    <div className="chart-bars">
-                      {sections.map(sec => {
-                        const data = marksMeta.sections[sec];
-                        if (!data) return null;
-                        const scored = data.entries.reduce((s, e) => s + e.marks, 0);
-                        const CAP    = 88;
-                        const youPct = Math.min(CAP, (scored        / data.classMax) * CAP);
-                        const avgPct = Math.min(CAP, (data.avg      / data.classMax) * CAP);
-                        const minPct = Math.min(CAP, (data.classMin / data.classMax) * CAP);
-                        const shortLabel = sec.replace(" Exam","").replace("Assignments","Assign.");
-                        const col        = courseColor;
-                        const avgInBar   = youPct > 0 ? Math.min(100, (avgPct / youPct) * 100) : 0;
-                        const minInBar   = youPct > 0 ? Math.min(100, (minPct / youPct) * 100) : 0;
-                        const barGradient = youPct > 0
-                          ? `linear-gradient(to top, rgba(255,60,80,.35) 0%, rgba(255,60,80,.25) ${minInBar-.5}%, ${col}55 ${minInBar+.5}%, ${col}88 ${avgInBar-.5}%, ${col} ${avgInBar+.5}%, ${col} 100%)`
-                          : col;
-                        return (
-                          <div className="chart-col" key={sec}>
-                            <div className="chart-bar-area">
-                              {[25,50,75].map(g => <div key={g} className="chart-grid-line" style={{ bottom:`${g*CAP/100}%` }} />)}
-                              <div className="chart-marker chart-marker--max" style={{ bottom:`${CAP}%` }}>
-                                <span className="marker-tip marker-tip--max">{data.classMax}</span>
-                              </div>
-                              <div className="chart-zone-tick chart-zone-tick--avg" style={{ bottom:`${avgPct}%` }}>
-                                <span className="zone-tick-label">{data.avg}</span>
-                              </div>
-                              <div className="chart-zone-tick chart-zone-tick--min" style={{ bottom:`${minPct}%` }}>
-                                <span className="zone-tick-label">{data.classMin}</span>
-                              </div>
-                              <div className="chart-bar-wrap">
-                                <div className="chart-bar" style={{ height:`${youPct}%`, background:barGradient }}>
-                                  <span className="chart-bar-val">{scored}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="chart-col-label">{shortLabel}</div>
-                            <div className="chart-col-total" style={{ color:col }}>/{data.total}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+            <div className="marks-tab-container">
+              <button className={rcls} onClick={() => sat('raw')}>
+                Raw Marks
+              </button>
+              <button className={pcls} onClick={() => sat('perf')}>
+                Performance Overview
+              </button>
+              <button className={dcls} onClick={() => sat('dist')}>
+                Grade Distribution
+              </button>
             </div>
 
-            {/* ── Cards 4 & 5 — 75/25 split ── */}
-            <div className="mrk-bottom-row">
-              <GradeDistribution
-                marksMeta={marksMeta}
-                selectedCourse={selectedCourse}
-                courseColor={courseColor}
-              />
-              <FinalGrade
-                marksMeta={marksMeta}
-                selectedCourse={selectedCourse}
-                courseColor={courseColor}
-              />
+            <div className="marks-tab-content">
+              <AnimatePresence mode="wait">
+                {t1c}
+                {t2c}
+                {t3c}
+              </AnimatePresence>
             </div>
 
           </div>
