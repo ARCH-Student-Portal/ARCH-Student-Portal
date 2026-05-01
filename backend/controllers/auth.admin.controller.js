@@ -1,26 +1,26 @@
-const Student = require('../models/Student');
+const Admin = require('../models/Admin');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const loginStudent = async (req, res) => {
+const loginAdmin = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // 1. Check if student exists
-        const student = await Student.findOne({ email });
-        if (!student) {
-            return res.status(404).json({ message: 'Student not found' });
+        // 1. Check if admin exists
+        const admin = await Admin.findOne({ email });
+        if (!admin) {
+            return res.status(404).json({ message: 'Admin not found' });
         }
 
         // 2. Compare password with hashed password in DB
-        const isMatch = await bcrypt.compare(password, student.password);
+        const isMatch = await bcrypt.compare(password, admin.password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         // 3. Sign a JWT token
         const token = jwt.sign(
-            { id: student._id, role: 'student' },
+            { id: admin._id, role: 'admin' },
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN }
         );
@@ -29,11 +29,11 @@ const loginStudent = async (req, res) => {
         res.status(200).json({
             message: 'Login successful',
             token,
-            student: {
-                id: student._id,
-                name: student.name,
-                email: student.email,
-                role: student.role
+            admin: {
+                id: admin._id,
+                name: admin.name,
+                email: admin.email,
+                role: admin.role
             }
         });
 
@@ -42,4 +42,4 @@ const loginStudent = async (req, res) => {
     }
 };
 
-module.exports = { loginStudent };
+module.exports = { loginAdmin };

@@ -2,32 +2,28 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken, authorizeRole } = require('../middleware/auth.middleware');
 const {
-    getMyProfile,
-    updateMyProfile,
-    getMyEnrollments,
-    getMyGPA,
-    getMyAttendance,
-    getMyTimetable
+    getProfile,
+    updateProfile,
+    getCourses,
+    getGrades,
+    getAttendance,
+    getGPA,
+    getAnnouncements,
+    getTranscript,
+    getTimetable
 } = require('../controllers/student.controller');
 
+// all routes protected — must be a logged in student
 router.use(verifyToken, authorizeRole('student'));
 
-// GET /api/students/me
-router.get('/me', getMyProfile);
-
-// PUT /api/students/me
-router.put('/me', updateMyProfile);
-
-// GET /api/students/me/enrollments
-router.get('/me/enrollments', getMyEnrollments);
-
-// GET /api/students/me/gpa
-router.get('/me/gpa', getMyGPA);
-
-// GET /api/students/me/attendance
-router.get('/me/attendance', getMyAttendance);
-
-// GET /api/students/me/timetable
-router.get('/me/timetable', getMyTimetable);
+router.get('/profile', getProfile);
+router.patch('/profile', updateProfile);
+router.get('/courses', getCourses);
+router.get('/grades', getGrades);
+router.get('/attendance', getAttendance);
+router.get('/gpa', getGPA);
+router.get('/announcements', getAnnouncements);
+router.get('/transcript', getTranscript);
+router.get('/timetable', getTimetable);
 
 module.exports = router;
