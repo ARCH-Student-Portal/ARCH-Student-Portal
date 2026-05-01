@@ -23,13 +23,9 @@ export default function StudentRegistrationV1() {
   // ── Pull live state from context ─────────────────────────────────────────
   const { enrolled: ctxEnrolled, availablePool: ctxAvailable, confirmRegistration } = useCourses();
 
-  // Local working copies — the student can freely add/drop without committing
-  // until they hit "Confirm Registration".
   const [enrolled,       setEnrolled]       = useState(ctxEnrolled);
   const [availableData,  setAvailableData]  = useState(ctxAvailable);
 
-  // Keep local copies in sync if the context ever resets externally
-  // (e.g. navigating away and back without confirming)
   const [synced, setSynced] = useState(false);
   useEffect(() => {
     if (!synced) {
@@ -41,18 +37,15 @@ export default function StudentRegistrationV1() {
 
   const mandatoryCourses = ["CS-3001", "CS-2012"];
 
-  // Dynamic ledger math
   const totalCredits = enrolled.reduce((acc, c) => acc + c.credits, 0);
   const totalTuition = enrolled.reduce((acc, c) => acc + c.price,   0);
   const minCredits = 12;
   const maxCredits = 18;
 
-  // Real-time status evaluation
   const [search, setSearch] = useState("");
 
   const available = availableData
     .map(course => {
-      // Clash = same time SLOT as any enrolled course
       const clashCourse = enrolled.find(e => e.slot === course.slot);
       let status    = course.seats >= course.maxSeats ? "full" : "open";
       let clashWith = null;
@@ -70,7 +63,6 @@ export default function StudentRegistrationV1() {
       );
     });
 
-  // ── Handlers (mutate local state only) ───────────────────────────────────
   const handleEnroll = (course) => {
     if (totalCredits + course.credits > maxCredits) {
       setModalConfig({ isOpen: true, title: "Credit Limit Exceeded", message: `You cannot exceed the maximum of ${maxCredits} credits.`, type: "error" });
@@ -89,7 +81,6 @@ export default function StudentRegistrationV1() {
     setModalConfig({ isOpen: true, title: "Shift Section", message: `Alternate sections for ${course.code} are currently being verified by the department.`, type: "info" });
   };
 
-  // ── Confirm: validate then COMMIT to context so Marks page sees the change ─
   const handleConfirm = () => {
     if (totalCredits < minCredits) {
       setModalConfig({ isOpen: true, title: "Minimum Credits Not Met", message: `You must enroll in at least ${minCredits} credits. You currently have ${totalCredits}.`, type: "error" });
@@ -106,7 +97,6 @@ export default function StudentRegistrationV1() {
       return;
     }
 
-    // ✅ All checks passed — push local working copies into shared context
     confirmRegistration(enrolled, availableData);
 
     setModalConfig({
@@ -117,13 +107,19 @@ export default function StudentRegistrationV1() {
     });
   };
 
-  // ── GSAP intro ───────────────────────────────────────────────────────────
+  // ── CINEMATIC INTRO & FOCUS MODE TRANSITION ──
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archIntroPlayed");
     if (hasPlayedIntro) {
       introRef.current.style.display = "none";
       appRef.current.style.opacity = 1;
       sidebarRef.current.style.transform = "translateX(0)";
+      
+      // INSTANTLY KILL 3D BACKGROUND FOR FOCUS MODE
+      if (webglRef.current) {
+        webglRef.current.style.opacity = 0;
+        webglRef.current.style.display = "none";
+      }
       return;
     }
     const canvas = introCanvasRef.current;
@@ -151,16 +147,27 @@ export default function StudentRegistrationV1() {
     draw();
     const afterIntro = () => {
       cancelAnimationFrame(animId); sessionStorage.setItem("archIntroPlayed", "true");
-      gsap.set(introRef.current, { display: "none" }); gsap.to(appRef.current, { opacity: 1, duration: 0.6 }); gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out" });
+      gsap.set(introRef.current, { display: "none" }); 
+      gsap.to(appRef.current, { opacity: 1, duration: 0.6 }); 
+      gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out" });
+
+      // FADE OUT 3D BACKGROUND FOR UX FOCUS
+      gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
+      setTimeout(() => {
+        if (webglRef.current) webglRef.current.style.display = "none";
+      }, 3000);
     };
     const tl = gsap.timeline({ delay: 0.2, onComplete: afterIntro });
     tl.to("#intro-line", { scaleX: 1, duration: 0.8, ease: "power3.out" }).to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.5).to("#intro-sub", { opacity: 1, y: 0, duration: 0.5 }, 1.1).to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4).to("#intro-sub", { opacity: 0, duration: 0.3 }, 2.4).to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4).to("#intro-flash", { opacity: 1, duration: 0.08 }, 2.85).to("#intro-flash", { opacity: 0, duration: 0.4 }, 2.93).to(introRef.current, { opacity: 0, duration: 0.35 }, 2.88);
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── 3-D background ───────────────────────────────────────────────────────
+  // ── 3-D BACKGROUND (Only runs during intro) ──
   useEffect(() => {
+    if (sessionStorage.getItem("archIntroPlayed")) return;
+
     const canvas = webglRef.current;
+    if (!canvas) return;
     let W = window.innerWidth, H = window.innerHeight;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setSize(W, H); renderer.setClearColor(0xf4f8ff, 1);
@@ -201,6 +208,13 @@ export default function StudentRegistrationV1() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── NEW APPLE/STRIPE FLUID MESH BACKGROUND ── */}
+      <div className="mesh-bg">
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
+      </div>
 
       <div id="cur-ring" /><div id="cur-dot" /><div className="scanlines" /><div className="vignette" /><div className="corner-tl" /><div className="corner-tr" /><div className="corner-bl" /><div className="corner-br" />
       <canvas id="webgl" ref={webglRef} />
@@ -277,7 +291,6 @@ export default function StudentRegistrationV1() {
                         <div>
                           {course.status === "open"   && <button className="btn-enroll" onClick={() => handleEnroll(course)}>Enroll Now</button>}
                           {course.status === "clash"  && (<span className="status-badge badge-clash" title={`Time slot ${course.slot} conflicts with ${course.clashWith}`}> ⚡ Clash · {course.slot} · {course.clashWith} </span> )}
-                          {course.status === "clash"  && <span className="status-badge badge-clash">Clash: {course.clashWith}</span>}
                           {course.status === "locked" && <span className="status-badge badge-lock">🔒 Req: {course.req}</span>}
                         </div>
                       </div>
@@ -292,40 +305,41 @@ export default function StudentRegistrationV1() {
                   <div className="ledger-row">
                     <div className="ledger-label">Total Registered Credits</div>
                     <div className={`ledger-val ${totalCredits < minCredits ? "warn" : ""}`}>
-                      {totalCredits} <span style={{ fontSize: "16px", color: "var(--dimmer)", fontFamily: "Inter" }}>hrs</span>
+                      {totalCredits} <span className="ledger-val-hrs">hrs</span>
                     </div>
                   </div>
                   <div className="credit-limit-bar">
                     <div className="limit-marker" />
                     <div className="limit-fill" style={{ width: `${(totalCredits / maxCredits) * 100}%`, background: totalCredits < minCredits ? "var(--amber)" : totalCredits === maxCredits ? "var(--green)" : "var(--blue)" }} />
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--dimmer)", marginTop: "6px", fontWeight: "700" }}>
+                  <div className="ledger-limit-text">
                     <span>0</span><span>Min: 12</span><span>Max: 18</span>
                   </div>
-                  <div className="ledger-row" style={{ marginTop: "24px", marginBottom: 0 }}>
+                  <div className="ledger-row" style={{ marginTop: "32px", marginBottom: 0 }}>
                     <div className="ledger-label">Est. Tuition Fee</div>
-                    <div className="ledger-val" style={{ fontSize: "28px" }}>Rs. {totalTuition.toLocaleString()}</div>
+                    <div className="ledger-val ledger-val--tuition">Rs. {totalTuition.toLocaleString()}</div>
                   </div>
                 </div>
 
-                <h2 className="ct" style={{ marginTop: "10px" }}><div className="ctbar"/>Active Schedule</h2>
+                <h2 className="ct" style={{ marginTop: "16px" }}><div className="ctbar"/>Active Schedule</h2>
 
                 <div className="enrolled-list">
                   <AnimatePresence>
                     {enrolled.map(course => (
-                      <motion.div key={course.id} layout initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }} className="course-card" style={{ padding: "16px" }}>
+                      <motion.div key={course.id} layout initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }} className="course-card">
                         <div className="cc-top">
                           <div className="cc-code-wrap">
-                            <span className="cc-code" style={{ fontSize: "11px" }}>{course.code}</span>
+                            <span className="cc-code">{course.code}</span>
                             {course.mandatory && <span className="badge-mandatory">Mandatory</span>}
                           </div>
                         </div>
-                        <div className="cc-name" style={{ fontSize: "15px", marginTop: "6px" }}>{course.name}</div>
-                        <div className="cc-mid" style={{ fontSize: "12px" }}>
+                        {/* STRIPPED OUT INLINE FONT SIZES */}
+                        <div className="cc-name">{course.name}</div>
+                        <div className="cc-mid">
                           <div className="cc-detail">⏰ {course.time}</div>
                           <div className="cc-detail">📚 {course.credits} Cr</div>
                         </div>
-                        <div className="cc-bot" style={{ paddingTop: "12px", marginTop: "8px" }}>
+                        <div className="cc-bot" style={{ paddingTop: "16px", marginTop: "10px" }}>
                           <button className="btn-shift" onClick={() => handleShift(course)}>Shift Section</button>
                           <button className="btn-drop"  onClick={() => handleDrop(course)}>Drop</button>
                         </div>

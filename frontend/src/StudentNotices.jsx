@@ -12,7 +12,6 @@ const CURRENT_WEEK = 7;
 const TODAY = new Date("2025-03-04");
 
 // ── DEADLINE STATUS ───────────────────────────────────────────────────────────
-// Returns: "done" | "urgent" | "upcoming" | null (no parseable date)
 function getDeadlineStatus(isoDate) {
   if (!isoDate) return null;
   const d = new Date(isoDate);
@@ -129,12 +128,10 @@ const NoticeRow = ({ n, pinned, onPin, onUnpin }) => {
   const status = getDeadlineStatus(n.isoDate);
   const sm     = STATUS_META[status] || null;
 
-  // Row-level tint based on deadline state
   const rowMod = status === "done"   ? " notice-row--done"
                : status === "urgent" ? " notice-row--urgent"
                : "";
 
-  // Left bar colour: override to green/red when done/urgent
   const barColor = status === "done"   ? "#16a34a"
                  : status === "urgent" ? "#dc2626"
                  : meta.color;
@@ -144,14 +141,12 @@ const NoticeRow = ({ n, pinned, onPin, onUnpin }) => {
       <div className="notice-row-bar" style={{ background: barColor }} />
       <div className="notice-row-body">
 
-        {/* Top meta row */}
         <div className="notice-row-top">
           <span className="notice-tag" style={{ color: meta.color, background: meta.bg, borderColor: meta.border }}>
             {meta.icon} {meta.label}
           </span>
           <span className="notice-course-chip">{n.course || n.from}</span>
 
-          {/* Deadline status badge — only shown when done or urgent */}
           {sm && sm.label && (
             <span className="deadline-badge" style={{ color: sm.color, background: sm.bg, borderColor: sm.border }}>
               {sm.icon} {sm.label}
@@ -160,7 +155,6 @@ const NoticeRow = ({ n, pinned, onPin, onUnpin }) => {
 
           <span className="notice-date-chip">{n.date}</span>
 
-          {/* Pin button — always visible, clear toggle state */}
           <button
             className={`pin-btn${pinned ? " pin-btn--active" : ""}`}
             onClick={(e) => { e.stopPropagation(); pinned ? onUnpin(n) : onPin(n); }}
@@ -172,7 +166,6 @@ const NoticeRow = ({ n, pinned, onPin, onUnpin }) => {
           </button>
         </div>
 
-        {/* Title — line-through when done */}
         <div className={`notice-title${status === "done" ? " notice-title--done" : ""}`}>
           {n.title}
         </div>
@@ -199,7 +192,6 @@ export default function StudentNotices() {
   const [pinnedItems,   setPinnedItems]   = useState(INITIAL_PINNED);
   const [dismissedPins, setDismissedPins] = useState(new Set());
 
-  // Visible pinned = all pinned minus those dismissed this session
   const visiblePinned = pinnedItems.filter(p => !dismissedPins.has(p.id));
 
   const pinNotice = (notice) => {
@@ -207,7 +199,6 @@ export default function StudentNotices() {
     const item = { ...notice, id };
     setPinnedItems(prev => [item, ...prev.filter(p => p.id !== id)]);
     setDismissedPins(prev => { const s = new Set(prev); s.delete(id); return s; });
-    // scroll to top so user sees it appear
     scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -221,14 +212,12 @@ export default function StudentNotices() {
 
   const isPinned = (notice) => pinnedItems.some(p => p.id === notice.id || p.title === notice.title);
 
-  // Build a flat notice id for week notices
   const makeNoticeId = (week, idx) => `w${week}-n${idx}`;
 
   const handleWeekClick = (w) => {
     setSelectedWeek(prev => prev === w ? null : w);
   };
 
-  // Animate lower slot in whenever it swaps
   useEffect(() => {
     if (panelRef.current) {
       gsap.fromTo(panelRef.current,
@@ -238,13 +227,19 @@ export default function StudentNotices() {
     }
   }, [selectedWeek]);
 
-  // ── INTRO ──
+  // ── CINEMATIC INTRO & FOCUS TRANSITION ──
   useEffect(() => {
     const hasPlayed = sessionStorage.getItem("archIntroPlayed");
     if (hasPlayed) {
       introRef.current.style.display = "none";
       appRef.current.style.opacity = 1;
       sidebarRef.current.style.transform = "translateX(0)";
+      
+      // INSTANTLY KILL 3D BACKGROUND FOR FOCUS MODE
+      if (webglRef.current) {
+        webglRef.current.style.opacity = 0;
+        webglRef.current.style.display = "none";
+      }
       return;
     }
     const canvas = introCanvasRef.current;
@@ -313,6 +308,11 @@ export default function StudentNotices() {
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out", delay: 0.05 });
+      
+      gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
+      setTimeout(() => {
+        if (webglRef.current) webglRef.current.style.display = "none";
+      }, 3000);
     };
 
     const tl = gsap.timeline({ delay: 0.4, onComplete: afterIntro });
@@ -329,8 +329,10 @@ export default function StudentNotices() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── THREE.JS BG ──
+  // ── THREE.JS BG (Only runs during intro) ──
   useEffect(() => {
+    if (sessionStorage.getItem("archIntroPlayed")) return;
+
     const canvas = webglRef.current;
     let W = window.innerWidth, H = window.innerHeight;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
@@ -344,7 +346,6 @@ export default function StudentNotices() {
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
     camera.position.set(0, 3, 12);
 
-    // Lighting — warmer, slightly more contrast
     scene.add(new THREE.AmbientLight(0x1144cc, 0.6));
     const sun = new THREE.DirectionalLight(0x6699ff, 1.4);
     sun.position.set(-6, 12, 8);
@@ -358,7 +359,6 @@ export default function StudentNotices() {
 
     const objects = [];
 
-    // ── Wireframe icosahedra ──
     const mkIco = (x, y, z, r, color, opacity = 0.22) => {
       const mesh = new THREE.Mesh(
         new THREE.IcosahedronGeometry(r, 1),
@@ -374,7 +374,6 @@ export default function StudentNotices() {
     mkIco( 4,  3, -4, 1.6, 0x4499ff, 0.24);
     mkIco(-5, -3, -5, 1.8, 0x0044bb, 0.18);
 
-    // ── Torus knots ──
     const mkKnot = (x, y, z, r, tube, p, q, color) => {
       const mesh = new THREE.Mesh(
         new THREE.TorusKnotGeometry(r, tube, 80, 12, p, q),
@@ -387,13 +386,11 @@ export default function StudentNotices() {
     mkKnot( 6,  1, -8, 1.4, 0.28, 2, 3, 0x3388ff);
     mkKnot(-4, -2, -7, 1.0, 0.22, 3, 4, 0x1155cc);
 
-    // ── Floating diamond planes (thin octahedra) ──
     const mkDiamond = (x, y, z, scale, color) => {
       const mesh = new THREE.Mesh(
         new THREE.OctahedronGeometry(scale, 0),
         new THREE.MeshPhongMaterial({ color, transparent: true, opacity: 0.12, shininess: 60, side: THREE.DoubleSide })
       );
-      // flatten to diamond silhouette
       mesh.scale.set(1, 1.6, 0.3);
       mesh.position.set(x, y, z);
       scene.add(mesh);
@@ -404,7 +401,6 @@ export default function StudentNotices() {
     mkDiamond( 2, -3, -4, 1.4, 0x88bbff);
     mkDiamond(-3,  6, -8, 2.6, 0x0066cc);
 
-    // ── Rings (thin tori) ──
     const mkRing = (x, y, z, r, color) => {
       const mesh = new THREE.Mesh(
         new THREE.TorusGeometry(r, 0.04, 6, 60),
@@ -420,7 +416,6 @@ export default function StudentNotices() {
     mkRing( 3, -1, -5, 1.5, 0x1166dd);
     mkRing( 8,  3, -9, 2.4, 0x0044aa);
 
-    // ── Particles — cross-shaped streaks ──
     const COUNT = 240;
     const ptPos = new Float32Array(COUNT * 3);
     const ptCol = new Float32Array(COUNT * 3);
@@ -430,14 +425,13 @@ export default function StudentNotices() {
       ptPos[i*3+1] = (Math.random()-0.5)*22;
       ptPos[i*3+2] = (Math.random()-0.5)*18 - 6;
       ptVel.push({ x: (Math.random()-0.5)*0.010, y: (Math.random()-0.5)*0.008 });
-      // Palette: deep blue, cyan, white
       const pick = Math.random();
       if (pick < 0.4) {
-        ptCol[i*3] = 0.1; ptCol[i*3+1] = 0.4; ptCol[i*3+2] = 1.0; // deep blue
+        ptCol[i*3] = 0.1; ptCol[i*3+1] = 0.4; ptCol[i*3+2] = 1.0; 
       } else if (pick < 0.7) {
-        ptCol[i*3] = 0.4; ptCol[i*3+1] = 0.8; ptCol[i*3+2] = 1.0; // cyan
+        ptCol[i*3] = 0.4; ptCol[i*3+1] = 0.8; ptCol[i*3+2] = 1.0; 
       } else {
-        ptCol[i*3] = 0.9; ptCol[i*3+1] = 0.95; ptCol[i*3+2] = 1.0; // near-white
+        ptCol[i*3] = 0.9; ptCol[i*3+1] = 0.95; ptCol[i*3+2] = 1.0; 
       }
     }
     const ptGeo = new THREE.BufferGeometry();
@@ -445,7 +439,6 @@ export default function StudentNotices() {
     ptGeo.setAttribute("color",    new THREE.BufferAttribute(ptCol, 3));
     scene.add(new THREE.Points(ptGeo, new THREE.PointsMaterial({ size: 0.055, transparent: true, opacity: 0.65, vertexColors: true })));
 
-    // ── Perspective hex-ish floor: two angled grids ──
     const mkAngleGrid = (rotX, y, opacity, color) => {
       const g = new THREE.GridHelper(70, 28, color, color);
       g.position.y = y;
@@ -456,9 +449,8 @@ export default function StudentNotices() {
       return g;
     };
     const floor1 = mkAngleGrid(0,        -5.5, 0.30, 0x002288);
-    const floor2 = mkAngleGrid(Math.PI/2, -5.5, 0.10, 0x003399); // vertical cross-hatch layer
+    const floor2 = mkAngleGrid(Math.PI/2, -5.5, 0.10, 0x003399); 
 
-    // ── Receding perspective lines ──
     const lineMat = new THREE.LineBasicMaterial({ color: 0x1144cc, transparent: true, opacity: 0.08 });
     for (let i = -5; i <= 5; i++) {
       const pts = [
@@ -478,9 +470,7 @@ export default function StudentNotices() {
       animId = requestAnimationFrame(loop);
       t += 0.012;
       objects.forEach(o => {
-        // vertical bob — bigger amplitude
         o.mesh.position.y += Math.sin(t * o.bobSpeed * 10 + o.bobPhase) * 0.012;
-        // slow lateral & depth drift using separate sinusoids per object
         if (o.driftX) o.mesh.position.x += Math.sin(t * o.bobSpeed * 7  + o.bobPhase * 1.3) * 0.006;
         if (o.driftZ) o.mesh.position.z += Math.cos(t * o.bobSpeed * 5  + o.bobPhase * 0.7) * 0.005;
         o.mesh.rotation.x += o.rotX;
@@ -525,6 +515,13 @@ export default function StudentNotices() {
 
   return (
     <>
+      {/* ── NEW APPLE/STRIPE FLUID MESH BACKGROUND ── */}
+      <div className="mesh-bg">
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
+      </div>
+
       <canvas id="ntc-webgl" ref={webglRef} />
 
       {/* INTRO */}
@@ -637,9 +634,12 @@ export default function StudentNotices() {
                       >
                         {isFire && (
                           <div className={`tl-fire${past ? " tl-fire--dim" : ""}`}>
-                            <div className="tl-flame tl-flame--1" />
-                            <div className="tl-flame tl-flame--2" />
-                            <div className="tl-flame tl-flame--3" />
+                            {/* ── HYPER-REALISTIC LAYERED FLAME INJECTED HERE ── */}
+                            <div className="tl-flame tl-flame--base" />
+                            <div className="tl-flame tl-flame--mid" />
+                            <div className="tl-flame tl-flame--core" />
+                            <div className="tl-spark" />
+                            <div className="tl-spark tl-spark--2" />
                           </div>
                         )}
                         {isCurrent && <div className="tl-pulse" />}

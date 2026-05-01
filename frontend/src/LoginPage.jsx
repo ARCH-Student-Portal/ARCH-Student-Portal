@@ -19,7 +19,7 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
 
-  // ── CINEMATIC INTRO (100% UNTOUCHED) ──
+  // ── CINEMATIC INTRO (UNTOUCHED EXCEPT UNIFIED FONT) ──
   useEffect(() => {
     const canvas = introCanvasRef.current;
     const ctx    = canvas.getContext("2d");
@@ -75,7 +75,7 @@ export default function LoginPage() {
           p.x = Math.random() * canvas.width;
           p.word = words[Math.floor(Math.random() * words.length)];
         }
-        ctx.font = `${p.size}px 'Space Grotesk', sans-serif`;
+        ctx.font = `${p.size}px 'Inter', sans-serif`; /* Unified Font */
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.fillText(p.word, p.x, p.y);
       });
@@ -117,7 +117,7 @@ export default function LoginPage() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── THREE.JS BACKGROUND: WIREFRAME RADAR SWEEP ──
+  // ── THREE.JS BACKGROUND: WIREFRAME RADAR SWEEP (100% UNTOUCHED) ──
   useEffect(() => {
     const canvas = webglRef.current;
     let W = window.innerWidth, H = window.innerHeight;
