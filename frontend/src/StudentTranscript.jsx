@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
+import { gsap } from "gsap";
+import { motion, AnimatePresence } from "framer-motion";
 import "./StudentTranscript.css";
 
-// ── TRANSCRIPT DATA ───────────────────────────────────────────────────────────
 const SEMESTERS = [
   {
-    id: "fall22",
-    name: "Fall 2022",
-    label: "F-22",
-    year: "1st Year",
+    id: "fall22", name: "Fall 2022", label: "F-22", year: "1st Year",
     courses: [
       { code: "CS-1001", name: "Programming Fundamentals",          cr: 3, grade: "B+", points: 3.3 },
       { code: "CS-1002", name: "Discrete Structures",               cr: 3, grade: "B",  points: 3.0 },
@@ -17,14 +15,10 @@ const SEMESTERS = [
       { code: "EE-1001", name: "Applied Physics",                   cr: 3, grade: "B-", points: 2.7 },
       { code: "HU-1001", name: "Islamic Studies / Ethics",          cr: 2, grade: "A",  points: 4.0 },
       { code: "HU-1002", name: "Functional English",                cr: 2, grade: "B+", points: 3.3 },
-    ],
-    gpa: 2.81,
+    ], gpa: 2.81,
   },
   {
-    id: "spr23",
-    name: "Spring 2023",
-    label: "S-23",
-    year: "1st Year",
+    id: "spr23", name: "Spring 2023", label: "S-23", year: "1st Year",
     courses: [
       { code: "CS-1003", name: "Object-Oriented Programming",       cr: 4, grade: "A-", points: 3.7 },
       { code: "CS-1004", name: "Digital Logic Design",              cr: 3, grade: "B+", points: 3.3 },
@@ -32,67 +26,48 @@ const SEMESTERS = [
       { code: "EE-1002", name: "Workshop Practice",                 cr: 1, grade: "A",  points: 4.0 },
       { code: "HU-1003", name: "Communication Skills",              cr: 2, grade: "A-", points: 3.7 },
       { code: "HU-1004", name: "Pakistan Studies",                  cr: 2, grade: "B+", points: 3.3 },
-    ],
-    gpa: 3.12,
+    ], gpa: 3.12,
   },
   {
-    id: "fall23",
-    name: "Fall 2023",
-    label: "F-23",
-    year: "2nd Year",
+    id: "fall23", name: "Fall 2023", label: "F-23", year: "2nd Year",
     courses: [
       { code: "CS-2001", name: "Data Structures & Algorithms",      cr: 4, grade: "A",  points: 4.0 },
       { code: "CS-2002", name: "Computer Organization",             cr: 3, grade: "A-", points: 3.7 },
       { code: "CS-2003", name: "Numerical Methods",                 cr: 3, grade: "B+", points: 3.3 },
       { code: "MT-2001", name: "Probability & Statistics",          cr: 3, grade: "B+", points: 3.3 },
       { code: "HU-2001", name: "Professional Ethics",               cr: 2, grade: "A",  points: 4.0 },
-    ],
-    gpa: 3.29,
+    ], gpa: 3.29,
   },
   {
-    id: "spr24",
-    name: "Spring 2024",
-    label: "S-24",
-    year: "2nd Year",
+    id: "spr24", name: "Spring 2024", label: "S-24", year: "2nd Year",
     courses: [
       { code: "CS-2012", name: "Database Systems",                  cr: 4, grade: "A",  points: 4.0 },
       { code: "CS-2011", name: "Operating Systems",                 cr: 4, grade: "A-", points: 3.7 },
       { code: "CS-2010", name: "Computer Networks",                 cr: 3, grade: "B+", points: 3.3 },
       { code: "MT-2005", name: "Differential Equations",            cr: 3, grade: "B+", points: 3.3 },
       { code: "HU-2002", name: "Technical Report Writing",          cr: 2, grade: "A",  points: 4.0 },
-    ],
-    gpa: 3.54,
+    ], gpa: 3.54,
   },
   {
-    id: "fall24",
-    name: "Fall 2024",
-    label: "F-24",
-    year: "3rd Year",
+    id: "fall24", name: "Fall 2024", label: "F-24", year: "3rd Year",
     courses: [
       { code: "CS-3001", name: "Object Oriented Analysis & Design", cr: 3, grade: "A",  points: 4.0 },
       { code: "CS-3004", name: "Artificial Intelligence",           cr: 4, grade: "A-", points: 3.7 },
       { code: "CS-3012", name: "Computer Networks",                 cr: 3, grade: "A",  points: 4.0 },
       { code: "CS-3015", name: "Operating Systems",                 cr: 3, grade: "A",  points: 4.0 },
       { code: "MT-3001", name: "Linear Algebra",                    cr: 3, grade: "A-", points: 3.7 },
-    ],
-    gpa: 3.75,
+    ], gpa: 3.75,
   },
   {
-    id: "spr25",
-    name: "Spring 2025",
-    label: "S-25",
-    year: "3rd Year",
+    id: "spr25", name: "Spring 2025", label: "S-25", year: "3rd Year",
     courses: [
       { code: "CS-3005", name: "Web Programming",                   cr: 3, grade: "A",  points: 4.0 },
       { code: "CS-2012", name: "Database Systems",                  cr: 4, grade: "A",  points: 4.0 },
       { code: "MT-2005", name: "Probability & Statistics",          cr: 3, grade: "A-", points: 3.7 },
-    ],
-    gpa: 3.82,
-    inProgress: true,
+    ], gpa: 3.82, inProgress: true,
   },
 ];
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
 function gpaClass(gpa) {
   if (gpa >= 3.5) return "gpa-excellent";
   if (gpa >= 3.0) return "gpa-good";
@@ -115,17 +90,12 @@ function accentClass(gpa) {
   return "gold";
 }
 
-// ── TRANSCRIPT CARD ───────────────────────────────────────────────────────────
-function TranscriptCard({ sem, position, onClick }) {
+function TranscriptCard({ sem }) {
   const totalCr  = sem.courses.reduce((s, c) => s + c.cr, 0);
   const totalQP  = sem.courses.reduce((s, c) => s + c.cr * c.points, 0);
 
   return (
-    <div
-      className={`tr-sem-card pos-${position} ${gpaClass(sem.gpa)}`}
-      onClick={position !== "center" ? onClick : undefined}
-      style={{ cursor: position !== "center" ? "pointer" : "default" }}
-    >
+    <div className={`tr-sem-card ${gpaClass(sem.gpa)}`}>
       <div className={`tr-card-accent ${accentClass(sem.gpa)}`} />
 
       <div className="tr-card-hd">
@@ -133,15 +103,7 @@ function TranscriptCard({ sem, position, onClick }) {
           <div className="tr-card-sem-name">
             {sem.name}
             {sem.inProgress && (
-              <span style={{
-                marginLeft: 10, fontSize: 10, fontWeight: 800,
-                padding: "2px 8px", borderRadius: 20,
-                background: "rgba(26,120,255,.12)",
-                color: "var(--blue)",
-                letterSpacing: ".08em",
-                textTransform: "uppercase",
-                verticalAlign: "middle",
-              }}>
+              <span className="in-progress-badge">
                 In Progress
               </span>
             )}
@@ -159,11 +121,11 @@ function TranscriptCard({ sem, position, onClick }) {
         <table className="tr-table">
           <thead>
             <tr>
-              <th style={{ width: "72px" }}>Code</th>
+              <th style={{ width: "100px" }}>Code</th>
               <th style={{ textAlign: "left" }}>Course</th>
-              <th style={{ width: "36px" }}>Cr</th>
-              <th style={{ width: "52px" }}>Grade</th>
-              <th style={{ width: "44px" }}>QP</th>
+              <th style={{ width: "60px" }}>Cr</th>
+              <th style={{ width: "100px" }}>Grade</th>
+              <th style={{ width: "80px" }}>QP</th>
             </tr>
           </thead>
           <tbody>
@@ -200,43 +162,27 @@ function TranscriptCard({ sem, position, onClick }) {
   );
 }
 
-// ── NAV ───────────────────────────────────────────────────────────────────────
-const NAV = [
-  ["Overview",      [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
-  ["Courses",       [["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
-  ["Communication", [["◉","Notices","/student/notices"]]],
-  ["Account",       [["◌","Profile","/student/profile"]]],
-];
-
-// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 export default function StudentTranscript() {
   const navigate = useNavigate();
   const location = useLocation();
   const webglRef = useRef(null);
+  const introCanvasRef = useRef(null);
+  const introRef = useRef(null);
+  const appRef = useRef(null);
+  const sidebarRef = useRef(null);
 
   const [collapse, setCollapse]   = useState(false);
-  const [activeIdx, setActiveIdx] = useState(SEMESTERS.length - 1); // start on latest
+  const [activeIdx, setActiveIdx] = useState(SEMESTERS.length - 1); 
 
-  // ── Carousel navigation ──────────────────────────────────────────────────
   const prev = () => setActiveIdx(i => Math.max(0, i - 1));
   const next = () => setActiveIdx(i => Math.min(SEMESTERS.length - 1, i + 1));
 
-  // Compute positions: center = activeIdx, left = activeIdx-1, right = activeIdx+1
-  const getPos = (i) => {
-    if (i === activeIdx)     return "center";
-    if (i === activeIdx - 1) return "left";
-    if (i === activeIdx + 1) return "right";
-    return "hidden";
-  };
-
-  // ── Cumulative GPA ───────────────────────────────────────────────────────
   const completedSems = SEMESTERS.filter(s => !s.inProgress);
   const totalCrDone   = completedSems.reduce((s, sem) => s + sem.courses.reduce((a, c) => a + c.cr, 0), 0);
   const totalQPDone   = completedSems.reduce((s, sem) => s + sem.courses.reduce((a, c) => a + c.cr * c.points, 0), 0);
   const cgpa          = totalCrDone > 0 ? (totalQPDone / totalCrDone).toFixed(2) : "—";
   const allCr         = SEMESTERS.reduce((s, sem) => s + sem.courses.reduce((a, c) => a + c.cr, 0), 0);
 
-  // ── Keyboard navigation ──────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
       if (e.key === "ArrowLeft")  prev();
@@ -246,89 +192,114 @@ export default function StudentTranscript() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // ── Three.js Background ──────────────────────────────────────────────────
   useEffect(() => {
+    const hasPlayedIntro = sessionStorage.getItem("archIntroPlayed");
+
+    if (hasPlayedIntro) {
+      introRef.current.style.display = "none";
+      appRef.current.style.opacity = 1;
+      sidebarRef.current.style.transform = "translateX(0)";
+      
+      if (webglRef.current) {
+        webglRef.current.style.opacity = 0;
+        webglRef.current.style.display = "none";
+      }
+      return; 
+    }
+
+    const canvas = introCanvasRef.current;
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const words = ["TRANSCRIPT","GRADES","CGPA","CREDITS","ACADEMICS","HONORS"];
+    const particles = Array.from({ length: 60 }, () => ({
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      word: words[Math.floor(Math.random() * words.length)],
+      opacity: Math.random() * 0.4 + 0.05, speed: Math.random() * 0.8 + 0.2,
+      size: Math.floor(Math.random() * 10) + 10, flicker: Math.random() * 0.025 + 0.005,
+      hue: Math.random() > 0.6 ? "255,255,255" : "60,140,255",
+    }));
+
+    let animId;
+    const draw = () => {
+      ctx.fillStyle = "rgba(0,4,14,0.18)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p) => {
+        p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
+        p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
+        if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; }
+        ctx.font = `${p.size}px 'Inter', sans-serif`; 
+        ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
+        ctx.fillText(p.word, p.x, p.y);
+      });
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
+    const afterIntro = () => {
+      cancelAnimationFrame(animId);
+      sessionStorage.setItem("archIntroPlayed", "true"); 
+      gsap.set(introRef.current, { display: "none" });
+      gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
+      gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out" });
+      
+      gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
+      setTimeout(() => {
+        if (webglRef.current) webglRef.current.style.display = "none";
+      }, 3000);
+    };
+
+    const tl = gsap.timeline({ delay: 0.2, onComplete: afterIntro });
+    tl.to("#intro-line", { scaleX: 1, duration: 0.8, ease: "power3.out" })
+      .to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.5)
+      .to("#intro-sub", { opacity: 1, y: 0, duration: 0.5 }, 1.1)
+      .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4)
+      .to("#intro-sub", { opacity: 0, duration: 0.3 }, 2.4)
+      .to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4)
+      .to("#intro-flash", { opacity: 1, duration: 0.08 }, 2.85)
+      .to("#intro-flash", { opacity: 0, duration: 0.4 }, 2.93)
+      .to(introRef.current, { opacity: 0, duration: 0.35 }, 2.88);
+
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("archIntroPlayed")) return;
+
     const canvas = webglRef.current;
+    if (!canvas) return;
     let W = window.innerWidth, H = window.innerHeight;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0xf0f5ff, 1);
-    const scene  = new THREE.Scene();
-    scene.fog    = new THREE.FogExp2(0xdeeaff, 0.018);
-    const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
-    camera.position.set(0, 3, 12);
-    scene.add(new THREE.AmbientLight(0x1144cc, 0.6));
-    const sun = new THREE.DirectionalLight(0x6699ff, 1.4);
-    sun.position.set(-6, 12, 8); scene.add(sun);
-    const rim = new THREE.PointLight(0x0055ff, 3, 40);
-    rim.position.set(0, 6, 0); scene.add(rim);
-    const objects = [];
-    const mkIco = (x, y, z, r, color) => {
-      const mesh = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(r, 1),
-        new THREE.MeshPhongMaterial({ color, wireframe: true, transparent: true, opacity: 0.18, shininess: 120 })
-      );
-      mesh.position.set(x, y, z); scene.add(mesh);
-      objects.push({ mesh, bob: Math.random()*0.008+0.004, phase: Math.random()*Math.PI*2, rx: (Math.random()-.5)*.018, ry: (Math.random()-.5)*.022 });
+    renderer.setSize(W, H); renderer.setClearColor(0xf4f8ff, 1);
+    const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200); camera.position.set(0, 2, 10);
+    scene.add(new THREE.AmbientLight(0x0033aa, 0.8));
+    let nmx = 0, nmy = 0; const onMove = (e) => { nmx = (e.clientX / W) * 2 - 1; nmy = -(e.clientY / H) * 2 + 1; }; document.addEventListener("mousemove", onMove);
+    let animId;
+    const loop = () => {
+      animId = requestAnimationFrame(loop); camera.position.x += (nmx * 0.6 - camera.position.x) * 0.015; camera.position.y += (nmy * 0.4 + 2 - camera.position.y) * 0.015; camera.lookAt(0, 0, 0); renderer.render(scene, camera);
     };
-    mkIco(-7,  2, -6, 2.4, 0x1a78ff);
-    mkIco( 7, -1, -7, 3.0, 0x0055dd);
-    mkIco(-2,  4, -9, 3.2, 0x2266ee);
-    mkIco( 4,  3, -4, 1.6, 0x4499ff);
-    mkIco(-5, -3, -5, 1.8, 0x0044bb);
-    const COUNT = 200;
-    const ptPos = new Float32Array(COUNT*3); const ptCol = new Float32Array(COUNT*3); const ptVel = [];
-    for (let i=0;i<COUNT;i++){
-      ptPos[i*3]=(Math.random()-.5)*34; ptPos[i*3+1]=(Math.random()-.5)*22; ptPos[i*3+2]=(Math.random()-.5)*18-6;
-      ptVel.push({x:(Math.random()-.5)*.010,y:(Math.random()-.5)*.008});
-      const p=Math.random();
-      if(p<.4){ptCol[i*3]=.1;ptCol[i*3+1]=.4;ptCol[i*3+2]=1;}
-      else if(p<.7){ptCol[i*3]=.4;ptCol[i*3+1]=.8;ptCol[i*3+2]=1;}
-      else{ptCol[i*3]=.9;ptCol[i*3+1]=.95;ptCol[i*3+2]=1;}
-    }
-    const ptGeo = new THREE.BufferGeometry();
-    ptGeo.setAttribute("position", new THREE.BufferAttribute(ptPos,3));
-    ptGeo.setAttribute("color",    new THREE.BufferAttribute(ptCol,3));
-    scene.add(new THREE.Points(ptGeo, new THREE.PointsMaterial({size:.055,transparent:true,opacity:.65,vertexColors:true})));
-    const floor = new THREE.GridHelper(70,28,0x002288,0x002288);
-    floor.position.y=-5.5; floor.material.transparent=true; floor.material.opacity=0.28; scene.add(floor);
-    let nmx=0,nmy=0;
-    const onMove=e=>{nmx=(e.clientX/W)*2-1;nmy=-(e.clientY/H)*2+1;};
-    document.addEventListener("mousemove",onMove);
-    let t=0,animId;
-    const loop=()=>{
-      animId=requestAnimationFrame(loop);t+=.012;
-      objects.forEach(o=>{
-        o.mesh.position.y+=Math.sin(t*o.bob*10+o.phase)*.012;
-        o.mesh.rotation.x+=o.rx; o.mesh.rotation.y+=o.ry;
-      });
-      const p=ptGeo.attributes.position.array;
-      for(let i=0;i<COUNT;i++){
-        p[i*3]+=ptVel[i].x+nmx*.0018;p[i*3+1]+=ptVel[i].y+nmy*.0018;
-        if(p[i*3]>17)p[i*3]=-17;if(p[i*3]<-17)p[i*3]=17;
-        if(p[i*3+1]>11)p[i*3+1]=-11;if(p[i*3+1]<-11)p[i*3+1]=11;
-      }
-      ptGeo.attributes.position.needsUpdate=true;
-      rim.position.x=Math.sin(t*.5)*12;rim.position.z=Math.cos(t*.35)*9;
-      floor.position.z=((t*.8)%2.5)-1.25;
-      camera.position.x+=(nmx*1.2-camera.position.x)*.018;
-      camera.position.y+=(nmy*.8+3-camera.position.y)*.018;
-      camera.lookAt(0,0,0);renderer.render(scene,camera);
-    };
-    loop();
-    const onResize=()=>{W=window.innerWidth;H=window.innerHeight;renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();};
-    window.addEventListener("resize",onResize);
-    return()=>{cancelAnimationFrame(animId);document.removeEventListener("mousemove",onMove);window.removeEventListener("resize",onResize);};
-  },[]);
+    loop(); return () => { cancelAnimationFrame(animId); document.removeEventListener("mousemove", onMove); };
+  }, []);
 
   return (
     <>
-      <canvas id="tr-webgl" ref={webglRef} />
-      <div id="tr-app">
+      <div className="mesh-bg">
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
+      </div>
 
-        {/* ── SIDEBAR ── */}
-        <nav id="tr-sidebar" className={collapse ? "collapse" : ""}>
+      <canvas id="webgl" ref={webglRef} />
+
+      <div id="intro" ref={introRef}>
+        <canvas id="intro-canvas" ref={introCanvasRef} />
+        <div id="intro-line" />
+        <div id="intro-logo">ARCH</div>
+        <div id="intro-sub">Academic Transcript</div>
+        <div id="intro-flash" />
+      </div>
+
+      <div id="app" ref={appRef}>
+
+        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
           <div className="sb-top-bar" />
           <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
             <span /><span /><span />
@@ -347,7 +318,12 @@ export default function StudentTranscript() {
               <div className="uid">21K-3210</div>
             </div>
           </div>
-          {NAV.map(([sec, items]) => (
+          {[
+            ["Overview",      [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
+            ["Courses",       [["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
+            ["Communication", [["◉","Notices","/student/notices"]]],
+            ["Account",       [["◌","Profile","/student/profile"]]],
+          ].map(([sec, items]) => (
             <div key={sec}>
               <div className="nav-sec">{sec}</div>
               {items.map(([ic, label, path]) => (
@@ -355,29 +331,26 @@ export default function StudentTranscript() {
                   key={label}
                   className={`ni${location.pathname === path ? " active" : ""}`}
                   onClick={() => navigate(path)}
+                  style={{cursor: 'pointer'}}
                 >
                   <div className="ni-ic">{ic}</div>{label}
-                  {label === "Notices" && <span className="nbadge">3</span>}
                 </div>
               ))}
             </div>
           ))}
-          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
         </nav>
 
-        {/* ── MAIN ── */}
-        <div id="tr-main">
-          <div id="tr-topbar">
+        <div id="main">
+          <div id="topbar">
             <div className="pg-title">Academic Transcript</div>
             <div className="tb-r">
               <div className="sem-chip">21K-3210 · BS-CS</div>
             </div>
           </div>
 
-          <div id="tr-scroll">
+          <div id="scroll">
             <div className="tr-stage">
 
-              {/* Stats bar */}
               <div className="tr-stats-bar">
                 <div className="tr-stat-item">
                   <div className="tr-stat-label">Cumulative GPA</div>
@@ -395,15 +368,14 @@ export default function StudentTranscript() {
                   <div className="tr-stat-label">Semesters Completed</div>
                   <div className="tr-stat-value">{completedSems.length}</div>
                 </div>
-                <div className="tr-stat-item">
+                <div className="tr-stat-item" style={{marginLeft: 'auto', borderRight: 'none', alignItems: 'flex-end', justifyContent: 'center'}}>
                   <div className="tr-stat-label">Program</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-main)", marginTop: 4 }}>BS Computer Science</div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-main)", marginTop: 4 }}>BS Computer Science</div>
                 </div>
               </div>
 
-              {/* Semester pill navigator */}
               <div className="tr-nav">
-                <span className="tr-nav-label">Semester</span>
+                <span className="tr-nav-label">Semester Timeline</span>
                 <div className="tr-pills">
                   {SEMESTERS.map((sem, i) => (
                     <button
@@ -421,32 +393,27 @@ export default function StudentTranscript() {
                 </div>
               </div>
 
-              {/* Carousel viewport */}
               <div className="tr-viewport">
                 <div className="tr-carousel">
-                  {SEMESTERS.map((sem, i) => {
-                    const pos = getPos(i);
-                    if (pos === "hidden") return null;
-                    return (
-                      <TranscriptCard
-                        key={sem.id}
-                        sem={sem}
-                        position={pos}
-                        onClick={() => setActiveIdx(i)}
-                      />
-                    );
-                  })}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeIdx}
+                      initial={{ opacity: 0, x: 40 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -40 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="tr-centered-wrapper"
+                    >
+                      <TranscriptCard sem={SEMESTERS[activeIdx]} />
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
 
-                {/* Click hint for side cards */}
-                {(activeIdx > 0 || activeIdx < SEMESTERS.length - 1) && (
-                  <div className="tr-hint">
-                    ← → arrow keys or click side cards to navigate
-                  </div>
-                )}
+                <div className="tr-hint">
+                  ← → use arrow keys to navigate semesters
+                </div>
               </div>
 
-              {/* Dot indicator */}
               <div className="tr-dots">
                 {SEMESTERS.map((_, i) => (
                   <div

@@ -43,9 +43,12 @@ export default function StudentProfileV1() {
       appRef.current.style.opacity = 1;
       sidebarRef.current.style.transform = "translateX(0)";
       topbarRef.current.style.opacity = 1;
-      document.querySelectorAll(".bp-anim").forEach((el, i) => {
-        gsap.to(el, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out", delay: i * 0.1 });
+      document.querySelectorAll(".sc").forEach((el, i) => {
+        gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.7)", delay: i * 0.1 });
       });
+      if (webglRef.current) {
+        webglRef.current.style.display = "none";
+      }
       return; 
     }
 
@@ -81,7 +84,7 @@ export default function StudentProfileV1() {
         p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
         p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
         if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; p.word = words[Math.floor(Math.random() * words.length)]; }
-        ctx.font = `${p.size}px 'Space Grotesk', sans-serif`;
+        ctx.font = `${p.size}px 'Inter', sans-serif`;
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.letterSpacing = "0.15em"; ctx.fillText(p.word, p.x, p.y);
       });
@@ -96,9 +99,13 @@ export default function StudentProfileV1() {
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out", delay: 0.05 });
       gsap.to(topbarRef.current, { opacity: 1, duration: 0.7, delay: 0.4 });
-      document.querySelectorAll(".bp-anim").forEach((el, i) => {
-        gsap.to(el, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out", delay: 0.8 + i * 0.1 });
+      document.querySelectorAll(".sc").forEach((el, i) => {
+        gsap.to(el, { opacity: 1, y: 0, duration: 0.8, ease: "back.out(1.4)", delay: 0.8 + i * 0.1 });
       });
+      gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
+      setTimeout(() => {
+        if (webglRef.current) webglRef.current.style.display = "none";
+      }, 3000);
     };
 
     const tl = gsap.timeline({ delay: 0.4, onComplete: afterIntro });
@@ -118,7 +125,9 @@ export default function StudentProfileV1() {
 
   // ── THREE.JS BACKGROUND ──
   useEffect(() => {
+    if (sessionStorage.getItem("archIntroPlayed")) return;
     const canvas = webglRef.current;
+    if (!canvas) return;
     let W = window.innerWidth, H = window.innerHeight;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -134,19 +143,6 @@ export default function StudentProfileV1() {
     const pointLight = new THREE.PointLight(0x0066ff, 2, 30); pointLight.position.set(0, 5, 0); scene.add(pointLight);
 
     const objects = [];
-    const mkBook = (x, y, z, scale, color) => {
-      const g = new THREE.Group();
-      const pageMat = new THREE.MeshPhongMaterial({ color, transparent: true, opacity: 0.18, shininess: 80, specular: 0x4488ff });
-      const p1 = new THREE.Mesh(new THREE.BoxGeometry(1.2 * scale, 0.05 * scale, 0.9 * scale), pageMat); p1.rotation.z = 0.3;
-      const p2 = new THREE.Mesh(new THREE.BoxGeometry(1.2 * scale, 0.05 * scale, 0.9 * scale), pageMat); p2.rotation.z = -0.3;
-      g.add(p1); g.add(p2);
-      const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * scale, 0.04 * scale, 0.9 * scale, 8), new THREE.MeshPhongMaterial({ color: 0x88bbff, transparent: true, opacity: 0.4 }));
-      spine.rotation.x = Math.PI / 2; g.add(spine);
-      g.position.set(x, y, z); scene.add(g);
-      objects.push({ mesh: g, type: "book", speed: Math.random() * 0.004 + 0.002, phase: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 0.008 });
-    };
-    mkBook(-6, 3, -5, 1.8, 0x1155cc); mkBook(6, 1, -6, 2.2, 0x0066ff); mkBook(0, -3, -6, 1.6, 0x3377ee);
-
     const mkAtom = (x, y, z, scale, color) => {
       const g = new THREE.Group();
       g.add(new THREE.Mesh(new THREE.SphereGeometry(0.2 * scale, 16, 16), new THREE.MeshPhongMaterial({ color: 0x66aaff, transparent: true, opacity: 0.5, emissive: 0x0033aa, emissiveIntensity: 0.5 })));
@@ -198,9 +194,14 @@ export default function StudentProfileV1() {
 
   return (
     <>
+      <div className="mesh-bg">
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
+      </div>
+
       <canvas id="webgl" ref={webglRef} />
 
-      {/* INTRO */}
       <div id="intro" ref={introRef}>
         <canvas id="intro-canvas" ref={introCanvasRef} />
         <div id="intro-line" />
@@ -209,10 +210,8 @@ export default function StudentProfileV1() {
         <div id="intro-flash" />
       </div>
 
-      {/* APP SHELL */}
       <div id="app" ref={appRef}>
         
-        {/* SIDEBAR */}
         <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
           <div className="sb-top-bar" />
           <button className="sb-toggle" onClick={() => setCollapse(c => !c)}><span/><span/><span/></button> 
@@ -236,7 +235,6 @@ export default function StudentProfileV1() {
               {items.map(([ic, label, path]) => (
                 <div className={`ni hov-target${location.pathname === path ? " active" : ""}`} key={label} onClick={() => navigate(path)} style={{cursor: 'pointer'}}>
                   <div className="ni-ic">{ic}</div>{label}
-                  {label === "Notices" && <span className="nbadge">3</span>}
                 </div>
               ))}
             </div>
@@ -244,121 +242,116 @@ export default function StudentProfileV1() {
           <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
         </nav>
 
-        {/* MAIN CONTENT */}
         <div id="main">
           <div id="topbar" ref={topbarRef}>
             <div className="tb-glow" />
             <div className="pg-title"><span>Student Profile</span></div>
             <div className="tb-r">
               <div className="sem-chip">Spring 2025</div>
+              <div className="nb-btn hov-target">
+                🔔
+                <div className="nb-pip" />
+              </div>
             </div>
           </div>
 
           <div id="scroll">
-            
-            {/* ── ARCHITECTURAL BLUEPRINT LAYOUT ── */}
-            <div className="bp-board">
+            <div className="profile-container">
               
-              {/* Millimeter Grid Overlay */}
-              <div className="bp-grid-layer" />
-
-              {/* Crosshairs & Borders */}
-              <div className="bp-crosshair top-left">+</div>
-              <div className="bp-crosshair top-right">+</div>
-              <div className="bp-crosshair bottom-left">+</div>
-              <div className="bp-crosshair bottom-right">+</div>
-
-              {/* Title Block (Standard Engineering Spec) */}
-              <div className="bp-title-block bp-anim">
-                <div className="bp-tb-row">
-                  <div className="bp-tb-cell">PROJECT: <span>ARCH TELEMETRY</span></div>
-                  <div className="bp-tb-cell">SCALE: <span>1:1</span></div>
-                  <div className="bp-tb-cell">DATE: <span>{new Date().toISOString().split('T')[0]}</span></div>
-                </div>
-                <div className="bp-tb-row">
-                  <div className="bp-tb-cell heavy">DWG NO: <span>{student.rollNo}</span></div>
-                  <div className="bp-tb-cell">REV: <span>A</span></div>
-                  <div className="bp-tb-cell">APVD: <span>SYS</span></div>
+              {/* HERO CARD */}
+              <div className="glass-card sc profile-hero-card">
+                <div className="hero-avatar">{student.initials}</div>
+                <div className="hero-details">
+                  <div className="hero-name">{student.name}</div>
+                  <div className="hero-roll">{student.rollNo}</div>
+                  <div className="hero-program">{student.program}</div>
                 </div>
               </div>
 
-              {/* Drawing Area */}
-              <div className="bp-drawing-area">
+              {/* INFO GRID */}
+              <div className="profile-grid">
                 
-                {/* 1. Identity Schematic */}
-                <div className="bp-zone bp-anim">
-                  <div className="bp-zone-title">SECTION A: IDENTITY MATRIX</div>
-                  
-                  <div className="bp-id-layout">
-                    {/* Architectural Avatar */}
-                    <div className="bp-avatar-schematic">
-                      <div className="bp-dim-top">Ø 120mm <span className="bp-line-h"></span></div>
-                      <div className="bp-avatar-circle">
-                        <div className="bp-center-cross">+</div>
-                        <div className="bp-ring-inner"></div>
-                        <div className="bp-ring-outer"></div>
-                        <span className="bp-av-txt">{student.initials}</span>
-                      </div>
-                      <div className="bp-dim-side"><span className="bp-line-v"></span> 120mm</div>
+                {/* ACADEMIC VECTOR */}
+                <div className="glass-card sc">
+                  <div className="card-header">
+                    <div className="ch-bar" />
+                    <div className="ch-title">Academic Details</div>
+                  </div>
+                  <div className="info-list">
+                    <div className="info-item">
+                      <span className="info-label">Program</span>
+                      <span className="info-val">{student.program}</span>
                     </div>
-
-                    {/* Raw Data */}
-                    <div className="bp-data-block">
-                      <div className="bp-data-line"><span className="bp-key">NAME_VAR</span> <span className="bp-val leader">{student.name}</span></div>
-                      <div className="bp-data-line"><span className="bp-key">ROLL_NUM</span> <span className="bp-val leader">{student.rollNo}</span></div>
-                      <div className="bp-data-line"><span className="bp-key">DOB_TME</span> <span className="bp-val leader">{student.dob}</span></div>
-                      <div className="bp-data-line"><span className="bp-key">NAT_IDN</span> <span className="bp-val leader">{student.cnic}</span></div>
+                    <div className="info-item">
+                      <span className="info-label">Department</span>
+                      <span className="info-val">{student.department}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Faculty</span>
+                      <span className="info-val">{student.faculty}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Batch</span>
+                      <span className="info-val">{student.batch}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Semester</span>
+                      <span className="info-val">{student.semester}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Section</span>
+                      <span className="info-val">{student.section}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bp-separator bp-anim"><div className="bp-sep-line"></div><span>X-AXIS DIVIDER</span><div className="bp-sep-line"></div></div>
-
-                {/* 2. Academic Vector */}
-                <div className="bp-zone bp-anim">
-                  <div className="bp-zone-title">SECTION B: ACADEMIC VECTOR</div>
-                  
-                  <div className="bp-grid-2">
-                    <div className="bp-data-block bracket-left">
-                      <div className="bp-coord">[X: 104, Y: 22]</div>
-                      <div className="bp-data-line"><span className="bp-key">PROGRAM_ID</span> <span className="bp-val">{student.program}</span></div>
-                      <div className="bp-data-line"><span className="bp-key">DEPT_LOC</span> <span className="bp-val">{student.department}</span></div>
-                      <div className="bp-data-line"><span className="bp-key">FAC_ZONE</span> <span className="bp-val">{student.faculty}</span></div>
+                {/* CONTACT & LOGISTICS */}
+                <div className="glass-card sc">
+                  <div className="card-header">
+                    <div className="ch-bar" />
+                    <div className="ch-title">Contact & Logistics</div>
+                  </div>
+                  <div className="info-list">
+                    <div className="info-item">
+                      <span className="info-label">University Email</span>
+                      <span className="info-val">{student.email}</span>
                     </div>
-                    
-                    <div className="bp-data-block bracket-left">
-                      <div className="bp-coord">[X: 208, Y: 22]</div>
-                      <div className="bp-data-line"><span className="bp-key">BATCH_YR</span> <span className="bp-val">{student.batch}</span></div>
-                      <div className="bp-data-line"><span className="bp-key">CUR_SEM</span> <span className="bp-val">{student.semester}</span></div>
-                      <div className="bp-data-line"><span className="bp-key">SEC_ALLOC</span> <span className="bp-val">{student.section}</span></div>
+                    <div className="info-item">
+                      <span className="info-label">Phone Number</span>
+                      <span className="info-val">{student.phone}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Residential Address</span>
+                      <span className="info-val wrap">{student.address}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bp-separator bp-anim"><div className="bp-sep-line"></div><span>Y-AXIS DIVIDER</span><div className="bp-sep-line"></div></div>
-
-                {/* 3. Logistics & Comms */}
-                <div className="bp-zone bp-anim">
-                  <div className="bp-zone-title">SECTION C: COMMS & LOGISTICS</div>
-                  
-                  <div className="bp-data-block bracket-bottom">
-                    <div className="bp-data-line"><span className="bp-key">UPLINK_MAIL</span> <span className="bp-val">{student.email}</span></div>
-                    <div className="bp-data-line"><span className="bp-key">SECURE_COMMS</span> <span className="bp-val">{student.phone}</span></div>
-                    <div className="bp-data-line"><span className="bp-key">GUARD_REL</span> <span className="bp-val">{student.guardian}</span></div>
-                    <div className="bp-data-line"><span className="bp-key">GEO_LOC</span> <span className="bp-val wrap">{student.address}</span></div>
+                {/* PERSONAL RECORD */}
+                <div className="glass-card sc">
+                  <div className="card-header">
+                    <div className="ch-bar" />
+                    <div className="ch-title">Personal Record</div>
+                  </div>
+                  <div className="info-list">
+                    <div className="info-item">
+                      <span className="info-label">Date of Birth</span>
+                      <span className="info-val">{student.dob}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">National ID (CNIC)</span>
+                      <span className="info-val">{student.cnic}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Guardian Name</span>
+                      <span className="info-val">{student.guardian}</span>
+                    </div>
                   </div>
                 </div>
 
               </div>
-
-              {/* Absolute Positioned Kill Switch */}
-              <button className="bp-kill-switch bp-anim" onClick={() => navigate('/')}>
-                <span className="bp-ks-icon">▲</span>
-                SYS.TERMINATE
-              </button>
 
             </div>
-
           </div>
         </div>
       </div>
