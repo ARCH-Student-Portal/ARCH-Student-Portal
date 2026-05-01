@@ -114,6 +114,95 @@ const getDashboard = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+// GET /api/teacher/sections
+const getSections = async (req, res) => {
+    try {
+        const courses = await Course.find({
+            'sections.teacher': req.user.id
+        });
+
+        const sections = [];
+
+        for (const course of courses) {
+            const teacherSections = course.sections.filter(
+                s => s.teacher.toString() === req.user.id
+            );
+
+            for (const section of teacherSections) {
+                const studentCount = await Enrollment.countDocuments({
+                    course: course._id,
+                    sectionId: section._id,
+                    isCompleted: false
+                });
+
+                sections.push({
+                    courseId: course._id,
+                    sectionId: section._id,
+                    courseCode: course.courseCode,
+                    courseName: course.name,
+                    creditHours: course.creditHours,
+                    department: course.department,
+                    sectionName: section.sectionName,
+                    totalSeats: section.totalSeats,
+                    seatsAvailable: section.seatsAvailable,
+                    schedule: section.schedule,
+                    studentCount
+                });
+            }
+        }
+
+        res.status(200).json({ sections });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// GET /api/teacher/sections/:sectionId/students
+const getSectionStudents = async (req, res) => {
+    try {
+        const { sectionId } = req.params;
+
+        const course = await Course.findOne({
+            'sections._id': sectionId,
+            'sections.teacher': req.user.id
+        });
+
+        if (!course) return res.status(403).json({ message: 'Access denied' });
+
+        const enrollments = await Enrollment.find({
+            course: course._id,
+            sectionId,
+            isCompleted: false
+        }).populate('student', 'name rollNumber email semester');
+
+        const students = enrollments.map(e => ({
+            enrollmentId: e._id,
+            studentId: e.student._id,
+            name: e.student.name,
+            rollNumber: e.student.rollNumber,
+            email: e.student.email,
+            semester: e.student.semester,
+            letterGrade: e.letterGrade,
+            gradePoints: e.gradePoints,
+            attendancePercentage: e.attendance.totalLectures > 0
+                ? parseFloat(((e.attendance.attendedLectures / e.attendance.totalLectures) * 100).toFixed(1))
+                : null
+        }));
+
+        const section = course.sections.id(sectionId);
+
+        res.status(200).json({
+            courseCode: course.courseCode,
+            courseName: course.name,
+            sectionName: section.sectionName,
+            totalStudents: students.length,
+            students
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
 
 // GET /api/teacher/sections/:sectionId/gradebook
 const getGradebook = async (req, res) => {
