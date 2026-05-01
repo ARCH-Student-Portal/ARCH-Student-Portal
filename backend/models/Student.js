@@ -14,6 +14,11 @@ const studentSchema = new mongoose.Schema({
     phone: { type: String, default: null },
     dob: { type: Date, default: null },
     section: { type: String, default: null },
+    batch: { type: String, default: null },          // e.g. "Fall 2021"
+    guardian: {
+        name: { type: String, default: null },
+        phone: { type: String, default: null }
+    },
     totalCreditsRequired: { type: Number, default: 130 },
     totalSemesters: { type: Number, default: 8 }  
 })

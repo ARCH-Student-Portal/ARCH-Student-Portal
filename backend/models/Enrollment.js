@@ -12,7 +12,12 @@ const assessmentSchema = new mongoose.Schema({
 const attendanceSchema = new mongoose.Schema({
     totalLectures: {type: Number, default: 0},
     attendedLectures: {type: Number, default: 0},
-    tardies: {type: Number, default: 0}
+    tardies: {type: Number, default: 0},
+    classLog: [{
+        date: { type: Date, required: true },
+        topic: { type: String, default: null },      // e.g. "Introduction to AI"
+        status: { type: String, enum: ['present', 'absent', 'tardy'], required: true }
+    }]
 });
 
 // main schema
