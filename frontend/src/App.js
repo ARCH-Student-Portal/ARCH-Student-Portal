@@ -27,6 +27,9 @@ import TeacherSchedule from "./TeacherSchedule";
 import AdminDashboard from "./AdminDashboard";
 import AdminStudents from "./AdminStudents";
 import AdminCourses from "./AdminCourses";
+import AdminTeachers from "./AdminTeachers";
+import AdminEnrollment from "./AdminEnrollment";
+import AdminAnnouncements from "./AdminAnnouncements";
 
 // Reusable page transition wrapper
 const Page = ({ children }) => (
@@ -73,6 +76,10 @@ function AnimatedRoutes() {
         <Route path="/admin/dashboard" element={<Page><AdminDashboard /></Page>} />
         <Route path="/admin/students"  element={<Page><AdminStudents /></Page>} />
         <Route path="/admin/courses"   element={<Page><AdminCourses /></Page>} />
+        <Route path="/admin/teachers"   element={<Page><AdminTeachers /></Page>} />
+        <Route path="/admin/teachers"       element={<Page><AdminTeachers /></Page>} />
+        <Route path="/admin/enrollment"     element={<Page><AdminEnrollment /></Page>} />
+        <Route path="/admin/announcements"  element={<Page><AdminAnnouncements /></Page>} />
       </Routes>
     </AnimatePresence>
   );
