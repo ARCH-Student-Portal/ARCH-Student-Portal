@@ -1,5 +1,5 @@
 const Student = require('../models/Student');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const loginStudent = async (req, res) => {
