@@ -23,6 +23,11 @@ import TeacherGradebook from "./TeacherGradebook";
 import TeacherAttendance from "./TeacherAttendance";
 import TeacherSchedule from "./TeacherSchedule";
 
+// ── ADMIN ──
+import AdminDashboard from "./AdminDashboard";
+import AdminStudents from "./AdminStudents";
+import AdminCourses from "./AdminCourses";
+
 // Reusable page transition wrapper
 const Page = ({ children }) => (
   <motion.div
@@ -47,23 +52,27 @@ function AnimatedRoutes() {
         <Route path="/login" element={<LoginPage />} />
 
         {/* ── STUDENT ROUTES ── */}
-        <Route path="/student/dashboard" element={<Page><StudentDashV1 /></Page>} />
-        <Route path="/student/academic" element={<Page><StudentAcademicV1 /></Page>} />
+        <Route path="/student/dashboard"    element={<Page><StudentDashV1 /></Page>} />
+        <Route path="/student/academic"     element={<Page><StudentAcademicV1 /></Page>} />
         <Route path="/student/registration" element={<Page><StudentRegistrationV1 /></Page>} />
-        <Route path="/student/attendance" element={<Page><StudentAttendance /></Page>} />
-        <Route path="/student/profile" element={<Page><StudentProfile /></Page>} />
-        <Route path="/student/notices" element={<Page><StudentNotices /></Page>} />
-        <Route path="/student/timetable" element={<Page><StudentTimetableV1 /></Page>} />
-        <Route path="/student/marks" element={<Page><StudentMarks /></Page>} />
-        <Route path="/student/transcript" element={<Page><StudentTranscript /></Page>} />
+        <Route path="/student/attendance"   element={<Page><StudentAttendance /></Page>} />
+        <Route path="/student/profile"      element={<Page><StudentProfile /></Page>} />
+        <Route path="/student/notices"      element={<Page><StudentNotices /></Page>} />
+        <Route path="/student/timetable"    element={<Page><StudentTimetableV1 /></Page>} />
+        <Route path="/student/marks"        element={<Page><StudentMarks /></Page>} />
+        <Route path="/student/transcript"   element={<Page><StudentTranscript /></Page>} />
 
         {/* ── TEACHER ROUTES ── */}
-        <Route path="/teacher/dashboard" element={<Page><TeacherDashboardV1 /></Page>} />
-        <Route path="/teacher/sections" element={<Page><TeacherSectionsV1 /></Page>} />
-        <Route path="/teacher/gradebook" element={<Page><TeacherGradebook /></Page>} />
+        <Route path="/teacher/dashboard"  element={<Page><TeacherDashboardV1 /></Page>} />
+        <Route path="/teacher/sections"   element={<Page><TeacherSectionsV1 /></Page>} />
+        <Route path="/teacher/gradebook"  element={<Page><TeacherGradebook /></Page>} />
         <Route path="/teacher/attendance" element={<Page><TeacherAttendance /></Page>} />
-        <Route path="/teacher/schedule" element={<Page><TeacherSchedule /></Page>} />
+        <Route path="/teacher/schedule"   element={<Page><TeacherSchedule /></Page>} />
 
+        {/* ── ADMIN ROUTES ── */}
+        <Route path="/admin/dashboard" element={<Page><AdminDashboard /></Page>} />
+        <Route path="/admin/students"  element={<Page><AdminStudents /></Page>} />
+        <Route path="/admin/courses"   element={<Page><AdminCourses /></Page>} />
       </Routes>
     </AnimatePresence>
   );
