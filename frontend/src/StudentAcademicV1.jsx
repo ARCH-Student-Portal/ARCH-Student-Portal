@@ -19,7 +19,7 @@ export default function StudentAcademicV1() {
   const [collapse, setCollapse] = useState(false);
   const [activeTab, setActiveTab] = useState("gpa");
 
-  // Expanded Mock Data - NOW WITH CREDITS FOR EACH COURSE!
+  // Expanded Mock Data
   const academicData = {
     cgpa: 3.82,
     credits: { done: 86, active: 15, remaining: 35, total: 136 },
@@ -33,38 +33,27 @@ export default function StudentAcademicV1() {
     ]
   };
 
-  // 🚀 DYNAMICALLY calculate the grade distribution based on CREDITS (Not just course count)
   const getGradeDistribution = () => {
     const counts = {};
     academicData.semesters.forEach(sem => {
       if (sem.courses) {
         sem.courses.forEach(course => {
-          // Add the course credits to the total for this grade (defaults to 3 if undefined)
           counts[course.grade] = (counts[course.grade] || 0) + (course.credits || 3);
         });
       }
     });
-
-    const colorMap = {
-      "A+": "#00b35c", "A": "#00e676", "A-": "#69f0ae",
-      "B+": "#1a78ff", "B": "#40a9ff", "B-": "#91d5ff",
-      "C+": "#ffab00", "C": "#ff9100", "C-": "#ffcc80",
-      "D": "#ff4d6a", "F": "#d32f2f"
-    };
 
     const gradeOrder = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"];
 
     return Object.keys(counts)
       .map(grade => ({
         name: grade,
-        value: counts[grade],
-        fill: colorMap[grade] || "#cbd5e1"
+        value: counts[grade]
       }))
       .sort((a, b) => gradeOrder.indexOf(a.name) - gradeOrder.indexOf(b.name));
   };
 
   const gradeDistribution = getGradeDistribution();
-
   const [selectedSem, setSelectedSem] = useState(academicData.semesters[academicData.semesters.length - 1]);
 
   const getStanding = (gpa) => {
@@ -74,7 +63,7 @@ export default function StudentAcademicV1() {
   };
   const standing = getStanding(academicData.cgpa);
 
-  // Session Storage Intro Logic
+  // ── CINEMATIC INTRO & FOCUS MODE TRANSITION ──
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archIntroPlayed");
 
@@ -83,6 +72,11 @@ export default function StudentAcademicV1() {
       appRef.current.style.opacity = 1;
       sidebarRef.current.style.transform = "translateX(0)";
       
+      if (webglRef.current) {
+        webglRef.current.style.opacity = 0;
+        webglRef.current.style.display = "none";
+      }
+
       document.querySelectorAll(".glass-card").forEach((el, i) => {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: i * 0.1 });
       });
@@ -109,7 +103,8 @@ export default function StudentAcademicV1() {
         p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
         p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
         if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; }
-        ctx.font = `${p.size}px 'Inter', sans-serif`; ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
+        ctx.font = `${p.size}px 'Inter', sans-serif`; 
+        ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.fillText(p.word, p.x, p.y);
       });
       animId = requestAnimationFrame(draw);
@@ -123,6 +118,11 @@ export default function StudentAcademicV1() {
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out" });
       
+      gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
+      setTimeout(() => {
+        if (webglRef.current) webglRef.current.style.display = "none";
+      }, 3000);
+
       document.querySelectorAll(".glass-card").forEach((el, i) => {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)", delay: 0.2 + i * 0.1 });
       });
@@ -143,9 +143,12 @@ export default function StudentAcademicV1() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // 3D Background
+  // 3D Background (Only runs during intro)
   useEffect(() => {
+    if (sessionStorage.getItem("archIntroPlayed")) return;
+
     const canvas = webglRef.current;
+    if (!canvas) return;
     let W = window.innerWidth, H = window.innerHeight;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setSize(W, H); renderer.setClearColor(0xf4f8ff, 1);
@@ -221,6 +224,12 @@ export default function StudentAcademicV1() {
 
   return (
     <>
+      <div className="mesh-bg">
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
+      </div>
+
       <canvas id="webgl" ref={webglRef} />
 
       <div id="intro" ref={introRef}>
@@ -295,9 +304,9 @@ export default function StudentAcademicV1() {
                     <div className="chart-wrapper">
                       <ResponsiveContainer width="100%" height={220}>
                         <BarChart data={academicData.semesters} barSize={32}>
-                          <XAxis dataKey="name" tick={{fill: '#145ec9', fontSize: 12}} axisLine={false} tickLine={false} />
-                          <YAxis domain={[0, 4]} tick={{fill: '#145ec9', fontSize: 12}} axisLine={false} tickLine={false} />
-                          <Tooltip cursor={{fill: 'rgba(20, 94, 201, 0.05)'}} />
+                          <XAxis dataKey="name" tick={{fill: '#1f4f99', fontSize: 18, fontWeight: 700, fontFamily: 'Inter, sans-serif'}} axisLine={false} tickLine={false} />
+                          <YAxis domain={[0, 4]} tick={{fill: '#1f4f99', fontSize: 18, fontWeight: 700, fontFamily: 'Inter, sans-serif'}} axisLine={false} tickLine={false} />
+                          <Tooltip cursor={{fill: 'rgba(20, 94, 201, 0.05)'}} contentStyle={{ borderRadius: '12px', border: '1px solid rgba(26,120,255,0.2)', boxShadow: '0 8px 20px rgba(0,0,0,0.1)', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '18px', color: '#145ec9' }} />
                           <Bar 
                             dataKey="gpa" 
                             radius={[6, 6, 0, 0]} 
@@ -329,9 +338,9 @@ export default function StudentAcademicV1() {
                       ))}
                     </div>
 
-                    <div className="ch" style={{marginBottom: '5px'}}>
-                      <div className="ct" style={{fontSize: '20px'}}><div className="ctbar"/>{selectedSem.name} Courses</div>
-                      <div className="sem-chip" style={{background: '#1a78ff22', color: '#1a78ff', fontSize: '14px'}}>{selectedSem.gpa} GPA</div>
+                    <div className="ch" style={{marginBottom: '10px'}}>
+                      <div className="ct"><div className="ctbar"/>{selectedSem.name} Courses</div>
+                      <div className="sem-chip">{selectedSem.gpa} GPA</div>
                     </div>
 
                     <div className="sem-list">
@@ -339,18 +348,18 @@ export default function StudentAcademicV1() {
                         <motion.div key={selectedSem.name} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                           {selectedSem.courses.map((course, i) => (
                             <div className="sem-row" key={i}>
-                              <div className="sem-name" style={{width: 'auto', flex: 1, fontSize: '15px'}}>
-                                {course.name} <span style={{fontSize: '11px', color: 'var(--dimmer)'}}>({course.credits} Cr)</span>
+                              <div className="sem-name">
+                                {course.name} <span style={{fontSize: '18px', color: '#1f4f99', fontWeight: '600'}}>({course.credits} Cr)</span>
                               </div>
-                              <div className="sem-gpa" style={{color: '#1a78ff', fontSize: '16px', fontWeight: '800'}}>{course.grade}</div>
+                              <div className="sem-gpa">{course.grade}</div>
                             </div>
                           ))}
                         </motion.div>
                       </AnimatePresence>
                     </div>
                   </div>
-                  </motion.div>
-                  )}
+                </motion.div>
+              )}
 
               {activeTab === 'credits' && (
                 <motion.div 
@@ -390,7 +399,6 @@ export default function StudentAcademicV1() {
                     </div>
                   </div>
 
-                  {/* RESTORED: The 3D Gel Grade Distribution Pie Chart */}
                   <div className="glass-card full-width-card" style={{opacity: 1, transform: 'none'}}>
                     <div className="ch">
                       <div className="ct"><div className="ctbar"/>Grade Distribution</div>
@@ -398,7 +406,7 @@ export default function StudentAcademicV1() {
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '380px', width: '100%'}}>
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          {/* INJECTING 3D EFFECTS: Gradients & Shadows */}
+                          {/* ── THE GRADIENT PANELS ARE FULLY RESTORED ── */}
                           <defs>
                             <linearGradient id="grad-A" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="#69f0ae" />
@@ -412,7 +420,6 @@ export default function StudentAcademicV1() {
                               <stop offset="0%" stopColor="#ffcc80" />
                               <stop offset="100%" stopColor="#ff9100" />
                             </linearGradient>
-                            {/* This drop shadow makes the entire ring pop off the card */}
                             <filter id="pie-shadow" x="-20%" y="-20%" width="140%" height="140%">
                               <feDropShadow dx="0" dy="8" stdDeviation="8" floodOpacity="0.15" />
                             </filter>
@@ -428,21 +435,22 @@ export default function StudentAcademicV1() {
                             outerRadius={120} 
                             paddingAngle={4}
                             stroke="none"
-                            style={{ filter: 'url(#pie-shadow)' }} 
-                            label={({name, value}) => `${name} (${value} Cr)`} /* explicitly states Cr so it's clear! */
+                            style={{ filter: 'url(#pie-shadow)', fontFamily: 'Inter', fontWeight: 800, fontSize: '18px', fill: '#145ec9' }} 
+                            label={({name, value}) => `${name} (${value} Cr)`} 
                             labelLine={{ stroke: '#1a78ff', strokeWidth: 1, opacity: 0.5 }}
                           >
+                            {/* ── MAPPING EACH GRADE TO ITS DISTINCT COLOR PANEL ── */}
                             {gradeDistribution.map((entry, index) => {
-                              let gradUrl = "url(#grad-B)";
-                              if (entry.name.includes("A")) gradUrl = "url(#grad-A)";
-                              if (entry.name.includes("C")) gradUrl = "url(#grad-C)";
+                              let gradUrl = "url(#grad-B)"; // Default to Blue for B's
+                              if (entry.name.includes("A")) gradUrl = "url(#grad-A)"; // Green for A's
+                              if (entry.name.includes("C")) gradUrl = "url(#grad-C)"; // Orange for C's
                               
                               return <Cell key={`cell-${index}`} fill={gradUrl} />;
                             })}
                           </Pie>
                           <Tooltip 
                             cursor={{fill: 'rgba(20, 94, 201, 0.05)'}} 
-                            contentStyle={{ borderRadius: '12px', border: '1px solid rgba(26,120,255,0.2)', boxShadow: '0 8px 20px rgba(0,0,0,0.1)' }}
+                            contentStyle={{ borderRadius: '12px', border: '1px solid rgba(26,120,255,0.2)', boxShadow: '0 8px 20px rgba(0,0,0,0.1)', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '18px', color: '#145ec9' }}
                           />
                         </PieChart>
                       </ResponsiveContainer>

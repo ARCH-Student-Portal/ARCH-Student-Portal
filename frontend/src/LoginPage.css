@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Bitcount+Grid+Double&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6,7 +6,7 @@ html, body {
   width: 100%; height: 100%;
   overflow: hidden;
   background: #010308;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Inter', sans-serif; /* UNIFIED FONT */
 }
 
 :root {
@@ -48,12 +48,12 @@ html, body {
 }
 #lp-intro-sub {
   position: relative; z-index: 2;
-  font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: var(--cyan); letter-spacing: .3em; text-transform: uppercase;
+  font-size: 18px; font-weight: 800; color: var(--cyan); letter-spacing: .3em; text-transform: uppercase;
   opacity: 0; transform: translateY(10px); margin-top: 12px;
 }
 #lp-intro-uni {
   position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%);
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dim);
+  font-size: 14px; font-weight: 700; color: var(--dim);
   letter-spacing: .2em; text-transform: uppercase; opacity: 0; z-index: 2;
 }
 #lp-intro-flash { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 4; pointer-events: none; }
@@ -62,8 +62,7 @@ html, body {
 #lp-app {
   position: relative; z-index: 10;
   width: 100vw; height: 100vh;
-  /* Instead of flex centering, we allow absolute positioning inside */
-  pointer-events: none; /* Let clicks pass through to 3D if needed, re-enable on HUD */
+  pointer-events: none;
 }
 
 /* PINNED BOTTOM LEFT TERMINAL */
@@ -71,69 +70,71 @@ html, body {
   position: absolute;
   bottom: 40px;
   left: 40px;
-  width: min(380px, 90vw);
+  width: min(460px, 90vw); /* Increased width to handle larger text */
   background: rgba(2, 5, 12, 0.7);
   border: 1px solid rgba(64,169,255,0.2);
   border-top: 2px solid var(--cyan);
-  padding: 24px;
+  padding: 32px 28px; /* Increased padding slightly */
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  pointer-events: auto; /* Re-enable clicks for the form */
+  pointer-events: auto;
   box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 30px var(--cyan-g);
 }
 
 /* Decorative top bar */
 .lp-hud-decor-top {
   display: flex; justify-content: space-between; align-items: center;
-  font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--cyan);
-  letter-spacing: .2em; margin-bottom: 20px;
+  font-size: 14px; font-weight: 700; color: var(--cyan); /* Bumped up */
+  letter-spacing: .2em; margin-bottom: 24px;
 }
 .lp-hud-blinker {
-  width: 6px; height: 6px; background: var(--cyan); border-radius: 50%;
+  width: 8px; height: 8px; background: var(--cyan); border-radius: 50%; /* Slightly larger blinker */
   animation: hudBlink 1s infinite;
 }
 @keyframes hudBlink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
 
 /* Header */
 .lp-hud-header h2 {
-  font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 800;
-  color: #fff; letter-spacing: .1em; margin-bottom: 4px;
+  font-size: 32px; font-weight: 900; /* Bumped up from 20px */
+  color: #fff; letter-spacing: .1em; margin-bottom: 6px;
 }
 .lp-hud-header p {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dim);
+  font-size: 15px; font-weight: 600; color: var(--dim); /* Bumped up from 10px */
   letter-spacing: .05em;
 }
 
 /* Tabs */
 .lp-hud-tabs {
-  display: flex; gap: 8px; margin: 24px 0;
-  border-bottom: 1px solid rgba(64,169,255,0.2); padding-bottom: 8px;
+  display: flex; gap: 12px; margin: 28px 0;
+  border-bottom: 1px solid rgba(64,169,255,0.2); padding-bottom: 12px;
 }
 .lp-hud-tab {
   background: transparent; border: none;
-  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px; font-weight: 800; /* Bumped up from 11px */
   color: var(--dim); cursor: pointer; transition: 0.2s;
-  letter-spacing: .05em;
+  letter-spacing: .05em; text-transform: uppercase;
 }
 .lp-hud-tab:hover { color: #fff; }
 .lp-hud-tab.active { color: var(--cyan); text-shadow: 0 0 8px var(--cyan); }
 
 /* Form Fields */
-.lp-hud-form { display: flex; flex-direction: column; gap: 20px; }
+.lp-hud-form { display: flex; flex-direction: column; gap: 24px; }
 
-.lp-hud-field { display: flex; flex-direction: column; gap: 6px; }
+.lp-hud-field { display: flex; flex-direction: column; gap: 8px; }
 .lp-hud-field label {
-  font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700;
-  color: var(--cyan); letter-spacing: .15em;
+  font-size: 14px; font-weight: 800; /* Bumped up from 9px */
+  color: var(--cyan); letter-spacing: .15em; text-transform: uppercase;
 }
 .lp-hud-field input {
-  width: 100%; padding: 10px 0;
+  width: 100%; padding: 12px 0;
   background: transparent;
   border: none;
   border-bottom: 1px solid rgba(255,255,255,0.2);
-  font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px; font-weight: 600; color: #fff; /* Bumped up from 14px */
   outline: none; transition: 0.2s; border-radius: 0;
 }
-.lp-hud-field input::placeholder { color: rgba(255,255,255,0.15); }
+.lp-hud-field input::placeholder { color: rgba(255,255,255,0.15); font-weight: 500; }
 .lp-hud-field input:focus { border-bottom-color: var(--cyan); box-shadow: 0 4px 10px -8px var(--cyan); }
 .lp-hud-field input.error { border-bottom-color: var(--red); }
 
@@ -141,23 +142,25 @@ html, body {
 .lp-hud-toggle {
   position: absolute; right: 0; top: 50%; transform: translateY(-50%);
   background: none; border: none; color: var(--dim);
-  font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 800;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px; font-weight: 900; /* Bumped up from 12px */
   cursor: pointer; transition: 0.2s;
 }
 .lp-hud-toggle:hover { color: var(--cyan); }
 
 /* Error & Button */
 .lp-hud-error {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--red);
-  background: rgba(255,77,106,0.1); padding: 8px; border-left: 2px solid var(--red);
+  font-size: 15px; font-weight: 700; color: var(--red); /* Bumped up from 10px */
+  background: rgba(255,77,106,0.1); padding: 12px; border-left: 3px solid var(--red);
 }
 
 .lp-hud-btn {
-  width: 100%; padding: 14px; margin-top: 10px;
+  width: 100%; padding: 18px; margin-top: 12px; /* Increased padding */
   background: rgba(64,169,255,0.1); color: var(--cyan);
   border: 1px solid var(--cyan);
-  font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 800;
-  letter-spacing: .15em; cursor: pointer; transition: 0.2s;
+  font-family: 'Inter', sans-serif;
+  font-size: 18px; font-weight: 900; /* Bumped up from 12px */
+  letter-spacing: .15em; cursor: pointer; transition: 0.2s; text-transform: uppercase;
 }
 .lp-hud-btn:hover:not(:disabled) {
   background: var(--cyan); color: #000; box-shadow: 0 0 15px var(--cyan-g);
@@ -166,17 +169,17 @@ html, body {
 
 /* Restricted */
 .lp-hud-restricted {
-  padding: 20px 0; border-top: 1px dashed var(--red); margin-top: 10px;
+  padding: 24px 0; border-top: 1px dashed var(--red); margin-top: 12px;
 }
 .lp-hud-restricted span {
-  display: block; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 800; color: var(--red); margin-bottom: 6px;
+  display: block; font-size: 18px; font-weight: 900; color: var(--red); margin-bottom: 8px; /* Bumped up from 12px */
 }
 .lp-hud-restricted p {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dim);
+  font-size: 15px; font-weight: 600; color: var(--dim); /* Bumped up from 10px */
 }
 
 /* Footer */
 .lp-hud-footer {
-  display: flex; justify-content: space-between; margin-top: 24px;
-  font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--dim);
+  display: flex; justify-content: space-between; margin-top: 32px;
+  font-size: 14px; font-weight: 700; color: var(--dim); /* Bumped up from 9px */
 }
