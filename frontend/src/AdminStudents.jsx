@@ -8,7 +8,10 @@ import "./AdminPortal.css";
 const NAV = [
   ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
   ["Management", [["👥", "Student Records", "/admin/students"],
-                  ["📚", "Course Catalog",  "/admin/courses"]]]
+                  ["🎓", "Teachers",        "/admin/teachers"],
+                  ["📚", "Course Catalog",  "/admin/courses"],
+                  ["📋", "Enrollment",      "/admin/enrollment"],
+                  ["📣", "Announcements",   "/admin/announcements"]]]
 ];
 
 const INITIAL_STUDENTS = [

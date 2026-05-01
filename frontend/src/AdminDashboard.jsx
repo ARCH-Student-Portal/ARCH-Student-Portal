@@ -5,9 +5,12 @@ import { gsap } from "gsap";
 import "./AdminPortal.css";
 
 const NAV = [
-  ["Overview",      [["⊞", "Dashboard",       "/admin/dashboard"]]],
-  ["Management",    [["👥", "Student Records", "/admin/students"],
-                     ["📚", "Course Catalog",  "/admin/courses"]]]
+  ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
+  ["Management", [["👥", "Student Records", "/admin/students"],
+                  ["🎓", "Teachers",        "/admin/teachers"],
+                  ["📚", "Course Catalog",  "/admin/courses"],
+                  ["📋", "Enrollment",      "/admin/enrollment"],
+                  ["📣", "Announcements",   "/admin/announcements"]]]
 ];
 
 const STATS = [
