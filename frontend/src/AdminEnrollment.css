@@ -1,0 +1,299 @@
+/* ════════════════════════════════════════════════════════════
+   ARCH Admin — Enrollment Management Stylesheet
+   AdminEnrollment.css  (import alongside AdminPortal.css)
+════════════════════════════════════════════════════════════ */
+
+/* ── LAYOUT ── */
+.enr-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ════════════════════════════════════════
+   STUDENT PICKER PANEL
+════════════════════════════════════════ */
+.enr-student-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.04);
+  position: sticky;
+  top: 0;
+}
+
+.enr-panel-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.enr-panel-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 20px; right: 20px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(124,58,237,.15), transparent);
+}
+
+.enr-panel-title {
+  font-size: 14px; font-weight: 800;
+  color: var(--text-main);
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px;
+}
+
+.enr-panel-search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px; border-radius: 11px;
+  border: 1.5px solid rgba(18,78,170,.1);
+  background: #f8fafc;
+  transition: border-color .2s, box-shadow .2s;
+}
+.enr-panel-search:focus-within {
+  border-color: rgba(124,58,237,.35);
+  box-shadow: 0 0 0 3px rgba(124,58,237,.08);
+  background: #fff;
+}
+.enr-panel-search input {
+  background: none; border: none; outline: none;
+  font-family: 'Inter', sans-serif; font-size: 13px;
+  color: var(--text-main); width: 100%;
+}
+.enr-panel-search input::placeholder { color: #94a3b8; }
+
+/* Student list scroll area */
+.enr-student-list {
+  overflow-y: auto;
+  max-height: calc(100vh - 260px);
+}
+.enr-student-list::-webkit-scrollbar { width: 3px; }
+.enr-student-list::-webkit-scrollbar-thumb { background: rgba(124,58,237,.2); border-radius: 2px; }
+
+/* Individual student row */
+.enr-student-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 20px; cursor: pointer;
+  border-bottom: 1px solid rgba(18,78,170,.06);
+  border-left: 3px solid transparent;
+  transition: background .15s, border-color .15s;
+}
+.enr-student-row:hover { background: rgba(124,58,237,.04); }
+.enr-student-row:last-child { border-bottom: none; }
+
+.enr-student-row.selected {
+  background: rgba(124,58,237,.07);
+  border-left-color: var(--purple);
+}
+
+.enr-student-avatar {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800;
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  color: #475569;
+  transition: background .2s, color .2s;
+}
+.enr-student-row.selected .enr-student-avatar {
+  background: linear-gradient(135deg, var(--purple), var(--purple2));
+  color: #fff;
+}
+
+.enr-student-info { flex: 1; min-width: 0; }
+.enr-student-name {
+  font-weight: 700; font-size: 14px;
+  color: var(--text-main);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: color .15s;
+}
+.enr-student-row.selected .enr-student-name { color: var(--purple); }
+.enr-student-meta {
+  font-size: 11px; color: var(--dimmer);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 1px;
+}
+
+.enr-student-stats { text-align: right; flex-shrink: 0; }
+.enr-student-count {
+  font-size: 12px; font-weight: 800;
+  color: var(--purple);
+  font-family: 'JetBrains Mono', monospace;
+}
+.enr-student-creds {
+  font-size: 11px; color: var(--dimmer);
+  margin-top: 1px;
+}
+
+/* ════════════════════════════════════════
+   RIGHT SIDE — EMPTY STATE
+════════════════════════════════════════ */
+.enr-empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 80px 32px;
+  text-align: center;
+}
+.enr-empty-icon {
+  font-size: 48px; margin-bottom: 16px;
+  opacity: .5;
+}
+.enr-empty-title {
+  font-size: 17px; font-weight: 800;
+  color: var(--text-main); margin-bottom: 8px;
+}
+.enr-empty-hint {
+  font-size: 13px; color: var(--dimmer);
+  max-width: 280px; line-height: 1.6;
+}
+
+/* ════════════════════════════════════════
+   SELECTED STUDENT HEADER CARD
+════════════════════════════════════════ */
+.enr-student-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.enr-student-hd-left { display: flex; align-items: center; gap: 14px; }
+
+.enr-student-hd-avatar {
+  width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--purple), var(--purple2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 800; color: #fff;
+  box-shadow: 0 4px 14px rgba(124,58,237,.28);
+}
+.enr-student-hd-name {
+  font-size: 18px; font-weight: 800; color: var(--text-main); margin-bottom: 3px;
+}
+.enr-student-hd-meta {
+  font-size: 12px; color: var(--dimmer);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.enr-hd-chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.enr-hd-chip {
+  padding: 8px 18px; border-radius: 20px;
+  background: #f8fafc; border: 1px solid var(--border);
+  font-size: 13px; font-weight: 700; color: var(--text-main);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ════════════════════════════════════════
+   COURSE SEARCH BAR
+════════════════════════════════════════ */
+.enr-course-search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 11px;
+  border: 1.5px solid rgba(18,78,170,.1);
+  background: #f8fafc;
+  transition: border-color .2s, box-shadow .2s;
+}
+.enr-course-search:focus-within {
+  border-color: rgba(124,58,237,.35);
+  box-shadow: 0 0 0 3px rgba(124,58,237,.08);
+  background: #fff;
+}
+.enr-course-search input {
+  background: none; border: none; outline: none;
+  font-family: 'Inter', sans-serif; font-size: 13px;
+  color: var(--text-main); width: 100%;
+}
+.enr-course-search input::placeholder { color: #94a3b8; }
+
+/* ════════════════════════════════════════
+   COURSE TABLE EXTRAS
+════════════════════════════════════════ */
+.enr-table-wrap {
+  border-radius: 18px;
+  border: 1px solid rgba(18,78,170,.1);
+  overflow: hidden;
+}
+
+/* Enrolled row highlight */
+.enr-row-enrolled { background: rgba(124,58,237,.03) !important; }
+.enr-row-enrolled:hover { background: rgba(124,58,237,.06) !important; }
+
+.enr-enrolled-badge {
+  font-size: 10px; font-weight: 800;
+  color: var(--purple);
+  letter-spacing: .06em; text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* Enroll button */
+.enr-btn-enroll {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--purple), var(--purple2));
+  color: #fff; border: none;
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  transition: all .2s;
+  box-shadow: 0 2px 8px rgba(124,58,237,.22);
+}
+.enr-btn-enroll:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(124,58,237,.35);
+}
+
+/* Drop button */
+.enr-btn-drop {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border-radius: 9px;
+  background: rgba(255,77,106,.08);
+  color: var(--red);
+  border: 1.5px solid rgba(255,77,106,.22);
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  transition: all .2s;
+}
+.enr-btn-drop:hover {
+  background: var(--red); color: #fff;
+  border-color: var(--red);
+  box-shadow: 0 4px 14px rgba(255,77,106,.3);
+}
+
+/* ════════════════════════════════════════
+   TOAST NOTIFICATION
+════════════════════════════════════════ */
+.enr-toast {
+  position: fixed;
+  top: 20px; left: 50%; transform: translateX(-50%);
+  z-index: 500;
+  padding: 12px 24px; border-radius: 12px;
+  color: #fff; font-weight: 700; font-size: 14px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.14);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.enr-toast-success { background: rgba(0,201,110,.95); }
+.enr-toast-warn    { background: rgba(255,171,0,.95);  }
+
+/* ════════════════════════════════════════
+   CONFIRM MODAL OVERRIDE
+════════════════════════════════════════ */
+.enr-confirm-modal {
+  width: min(400px, 90vw) !important;
+}
+.enr-confirm-body {
+  font-size: 14px; color: var(--dimmer); line-height: 1.7;
+}
+.enr-confirm-btn-drop {
+  background: linear-gradient(135deg, #ff4d6a, #e11d48) !important;
+  box-shadow: 0 4px 14px rgba(255,77,106,.3) !important;
+}
+
+/* ════════════════════════════════════════
+   DEPT TAGS
+════════════════════════════════════════ */
+.enr-dept-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 800;
+  padding: 3px 8px; border-radius: 6px;
+}

@@ -222,13 +222,20 @@ export default function StudentAttendance() {
   const [collapse,     setCollapse]     = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(attendanceData[0]);
 
-  // ── INTRO ──────────────────────────────────────────────────────────────────
+  // ── CINEMATIC INTRO & FOCUS MODE TRANSITION ──
   useEffect(() => {
     const hasPlayed = sessionStorage.getItem("archIntroPlayed");
     if (hasPlayed) {
       introRef.current.style.display = "none";
       appRef.current.style.opacity   = 1;
       sidebarRef.current.style.transform = "translateX(0)";
+      
+      // INSTANTLY KILL 3D BACKGROUND FOR FOCUS MODE
+      if (webglRef.current) {
+        webglRef.current.style.opacity = 0;
+        webglRef.current.style.display = "none";
+      }
+
       document.querySelectorAll(".glass-card").forEach((el, i) =>
         gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: i * 0.08 })
       );
@@ -256,7 +263,7 @@ export default function StudentAttendance() {
         p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
         p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
         if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; }
-        ctx.font = `${p.size}px 'Inter', sans-serif`;
+        ctx.font = `${p.size}px 'Inter', sans-serif`; /* Enforced UNIFIED FONT */
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.fillText(p.word, p.x, p.y);
       });
@@ -270,6 +277,13 @@ export default function StudentAttendance() {
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out" });
+      
+      // FADE OUT 3D BACKGROUND FOR UX FOCUS
+      gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
+      setTimeout(() => {
+        if (webglRef.current) webglRef.current.style.display = "none";
+      }, 3000);
+
       document.querySelectorAll(".glass-card").forEach((el, i) =>
         gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)", delay: 0.2 + i * 0.1 })
       );
@@ -289,9 +303,12 @@ export default function StudentAttendance() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── THREE.JS BACKGROUND ────────────────────────────────────────────────────
+  // ── THREE.JS BACKGROUND (Only runs during intro now) ──
   useEffect(() => {
+    if (sessionStorage.getItem("archIntroPlayed")) return;
+
     const canvas = webglRef.current;
+    if (!canvas) return;
     let W = window.innerWidth, H = window.innerHeight;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setSize(W, H); renderer.setClearColor(0xf4f8ff, 1);
@@ -350,6 +367,13 @@ export default function StudentAttendance() {
 
   return (
     <>
+      {/* ── NEW APPLE/STRIPE FLUID MESH BACKGROUND ── */}
+      <div className="mesh-bg">
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
+      </div>
+
       <canvas id="att-webgl" ref={webglRef} />
 
       {/* Intro */}
@@ -462,6 +486,7 @@ export default function StudentAttendance() {
                       <div className="att-dh-title">{selectedCourse.course}</div>
                       <div className="att-dh-meta">{selectedCourse.code} · {selectedCourse.credits} Credit Hours · Spring 2025</div>
                     </div>
+                    {/* ENFORCED HERO RETRO PIXEL FONT MASSIVE SIZING */}
                     <div className={`att-big-pct${atRisk ? " red" : " green"}`}>{pct}%</div>
                   </div>
 
