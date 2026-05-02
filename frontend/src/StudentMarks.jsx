@@ -158,10 +158,11 @@ export default function StudentMarks() {
   const ar = useRef(null);
   const sr = useRef(null);
   const tr = useRef(null);
+  const sidebarRef = useRef(null); 
 
   const { enrolled } = useCourses();
 
-  const [c, scol] = useState(false);
+  const [collapse, setCollapse] = useState(false);
   const [sc, ssc] = useState(null);
   const [es, ses] = useState({});
   const [at, sat] = useState("raw");
