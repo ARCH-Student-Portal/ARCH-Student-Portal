@@ -26,11 +26,12 @@ const seed = async () => {
 
     // create admin
     const admin = await Admin.create({
-        name: 'Super Admin',
-        email: 'admin@arch.com',
-        password: hashedPassword,
-        role: 'admin'
-    });
+    name: 'Super Admin',
+    email: 'admin@arch.com',
+    password: hashedPassword,
+    adminId: 'ADM-0001',
+    role: 'admin'
+});
 
     // create teachers
     const teacher1 = await Teacher.create({

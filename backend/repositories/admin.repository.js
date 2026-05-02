@@ -7,6 +7,9 @@ class AdminRepository {
     async findByEmail(email) {
         return Admin.findOne({ email });
     }
+    async findByAdminId(adminId) {
+        return Admin.findOne({ adminId });
+    }
     async create(data) {
         return Admin.create(data);
     }

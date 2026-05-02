@@ -58,7 +58,8 @@ class UserFactory {
         return AdminRepo.create({
             name: data.name,
             email: data.email,
-            password: data.password
+            password: data.password,
+            adminId: data.adminId
         });
     }
 }

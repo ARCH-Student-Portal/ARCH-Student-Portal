@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
 import { countUp, setText } from "./Utilities/domAnimation";
 import "./StudentDashV1.css";
@@ -7,7 +7,6 @@ import { courses, notices, attendances } from "./data/StudentDashData";
 
 export default function StudentDashV1() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const introCanvasRef = useRef(null);
   const introRef = useRef(null);
@@ -315,22 +314,30 @@ export default function StudentDashV1() {
 
                 {courses.map((c,i) => (
                   <div className="crow hov-target" key={i}>
-                    <div className="cdot" style={{background:c.color,boxShadow:`0 0 10px ${c.color}88`}}/>
-                    <div className="cinfo"><div className="cname">{c.name}</div><div className="cmeta">{c.code}</div></div>
-                    <div className={`gbadge ${c.gc}`}>{c.grade}</div>
+                    <div className="cdot" style={{ background: '#1a78ff', boxShadow: '0 0 10px #1a78ff88' }}/>
+                    <div className="cinfo">
+                      <div className="cname">{c.name}</div>
+                      <div className="cmeta">{c.courseCode} · {c.creditHours} Cr · Sec {c.section}</div>
+                    </div>
+                    <div className="gbadge">{c.letterGrade ?? '—'}</div>
                   </div>
                 ))}
                 <div className="credit-wrap">
-                  <div className="credit-hd"><div className="credit-title">Credit Progress</div><div className="credit-count">86 / 136 hrs</div></div>
+                  <div className="credit-hd">
+                    <div className="credit-title">Credit Progress</div>
+                    <div className="credit-count">
+                      {dashData.gpa?.creditsCompleted ?? 0} / {dashData.gpa?.totalCreditsRequired ?? 130} hrs
+                    </div>
+                  </div>
                   <div className="credit-track">
                     <div className="cb-done" id="bar-done"/>
                     <div className="cb-active" id="bar-active"/>
                     <div className="cb-rem"/>
                   </div>
                   <div className="credit-leg">
-                    <div className="cl"><div className="cl-sw" style={{background:"#00e676"}}/>Done: 86</div>
-                    <div className="cl"><div className="cl-sw" style={{background:"#1a78ff"}}/>Active: 15</div>
-                    <div className="cl"><div className="cl-sw" style={{background:"rgba(255,255,255,.15)"}}/>Left: 35</div>
+                    <div className="cl"><div className="cl-sw" style={{background:"#00e676"}}/>Done: {dashData.gpa?.creditsCompleted ?? 0}</div>
+                    <div className="cl"><div className="cl-sw" style={{background:"#1a78ff"}}/>Active: {dashData.gpa?.creditsInProgress ?? 0}</div>
+                    <div className="cl"><div className="cl-sw" style={{background:"rgba(255,255,255,.15)"}}/>Left: {dashData.gpa?.creditsRemaining ?? 0}</div>
                   </div>
                 </div>
               </div>
@@ -342,7 +349,7 @@ export default function StudentDashV1() {
                     <div className="ct"><div className="ctbar"/>Latest Notices</div>
                     <div className="ca hov-target" onClick={() => navigate('/student/notices')} style={{cursor: 'pointer'}}>All →</div>
                   </div>
-                  {notices.map((n,i) => (
+                  {dashData.notices.map((n, i) => (
                     <div className="nitem hov-target" key={i}>
                       <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:5}}>
                         <span className={`ntag ${n.cls}`}>{n.tag}</span>
@@ -353,7 +360,7 @@ export default function StudentDashV1() {
                         )}
                       </div>
                       <div className="ntitle">{n.title}</div>
-                      <div className="ndate">{n.date}</div>
+                      <div className="ndate">{new Date(n.createdAt).toISOString().split('T')[0]}</div>
                     </div>
                   ))}
                 </div>

@@ -7,8 +7,8 @@ class StudentAuthController {
 
     async login(req, res) {
         try {
-            const { email, password } = req.body;
-            const { token, user } = await this.authTemplate.login(email, password);
+            const { identifier, password } = req.body;
+            const { token, user } = await this.authTemplate.login(identifier, password);
             res.status(200).json({ message: 'Login successful', token, student: user });
         } catch (error) {
             if (error.message === 'USER_NOT_FOUND') return res.status(404).json({ message: 'Student not found' });

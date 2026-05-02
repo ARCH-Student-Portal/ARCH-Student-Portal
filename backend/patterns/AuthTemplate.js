@@ -2,9 +2,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 class AuthTemplate {
-    // template method — defines the skeleton of the algorithm
-    async login(email, password) {
-        const user = await this.findUser(email);
+    async login(identifier, password) {
+        const user = await this.findUser(identifier);
         if (!user) throw new Error('USER_NOT_FOUND');
 
         const isMatch = await this.validatePassword(password, user.password);
@@ -16,17 +15,14 @@ class AuthTemplate {
         return { token, user: sanitized };
     }
 
-    // step 1 — subclasses must implement this
-    async findUser(email) {
+    async findUser(identifier) {
         throw new Error('findUser() must be implemented');
     }
 
-    // step 2 — shared implementation, can be overridden
     async validatePassword(plain, hashed) {
         return bcrypt.compare(plain, hashed);
     }
 
-    // step 3 — shared implementation, can be overridden
     generateToken(user) {
         return jwt.sign(
             { id: user._id, role: this.role },
@@ -35,7 +31,6 @@ class AuthTemplate {
         );
     }
 
-    // step 4 — subclasses must implement this
     sanitizeUser(user) {
         throw new Error('sanitizeUser() must be implemented');
     }
@@ -47,9 +42,9 @@ class StudentAuthTemplate extends AuthTemplate {
         this.role = 'student';
     }
 
-    async findUser(email) {
+    async findUser(identifier) {
         const Student = require('../models/Student');
-        return Student.findOne({ email });
+        return Student.findOne({ rollNumber: identifier });
     }
 
     sanitizeUser(user) {
@@ -64,9 +59,9 @@ class TeacherAuthTemplate extends AuthTemplate {
         this.role = 'teacher';
     }
 
-    async findUser(email) {
+    async findUser(identifier) {
         const Teacher = require('../models/Teacher');
-        return Teacher.findOne({ email });
+        return Teacher.findOne({ employeeId: identifier });
     }
 
     sanitizeUser(user) {
@@ -81,9 +76,9 @@ class AdminAuthTemplate extends AuthTemplate {
         this.role = 'admin';
     }
 
-    async findUser(email) {
+    async findUser(identifier) {
         const Admin = require('../models/Admin');
-        return Admin.findOne({ email });
+        return Admin.findOne({ adminId: identifier });
     }
 
     sanitizeUser(user) {

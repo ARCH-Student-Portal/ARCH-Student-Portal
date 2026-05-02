@@ -1,3 +1,6 @@
+import StudentApi from './config/studentApi';
+import TeacherApi from './config/teacherApi';
+import AdminApi from './config/adminApi';
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { gsap } from "gsap";
@@ -242,31 +245,52 @@ export default function LoginPage() {
   }, []);
 
   // ── SUBMIT HANDLER ──
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
 
-    const isStudent = activeTab === "student";
-    const isTeacher = activeTab === "teacher";
-    const isAdmin   = activeTab === "admin";
-
     if (!userId.trim()) {
-      setErrorMsg(`[ERR] Required: ${isStudent ? "Student" : isTeacher ? "Faculty" : "Admin"} ID`);
-      return;
+        setErrorMsg(`[ERR] Required: ${activeTab === "student" ? "Student" : activeTab === "teacher" ? "Faculty" : "Admin"} ID`);
+        return;
     }
     if (!password.trim()) {
-      setErrorMsg("[ERR] Required: Security Passcode");
-      return;
+        setErrorMsg("[ERR] Required: Security Passcode");
+        return;
     }
 
     setLoading(true);
-    await new Promise((res) => setTimeout(res, 1400));
-    setLoading(false);
 
-    if (isStudent) navigate("/student/dashboard");
-    if (isTeacher) navigate("/teacher/dashboard");
-    if (isAdmin)   navigate("/admin/dashboard");
-  };
+    try {
+        let response;
+
+        if (activeTab === "student") {
+            response = await StudentApi.login(userId, password);
+        } else if (activeTab === "teacher") {
+            response = await TeacherApi.login(userId, password);
+        } else if (activeTab === "admin") {
+            response = await AdminApi.login(userId, password);
+        }
+
+        if (response.token) {
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('role', activeTab);
+            localStorage.setItem('user', JSON.stringify(
+                response.student || response.teacher || response.admin
+            ));
+
+            if (activeTab === "student") navigate("/student/dashboard");
+            if (activeTab === "teacher") navigate("/teacher/dashboard");
+            if (activeTab === "admin")   navigate("/admin/dashboard");
+        } else {
+            setErrorMsg(`[ERR] ${response.message || 'Authentication failed'}`);
+        }
+
+    } catch (error) {
+        setErrorMsg("[ERR] Connection failed — check server status");
+    } finally {
+        setLoading(false);
+    }
+};
 
   return (
     <>
