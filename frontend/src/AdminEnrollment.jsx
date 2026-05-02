@@ -1,17 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { gsap } from "gsap";
+import Sidebar from "./Components/shared/Sidebar";
+import { ADMIN_NAV } from "./config/AdminNav";
 import { motion, AnimatePresence } from "framer-motion";
 import "./AdminEnrollment.css"; // 🔥 THE ONE AND ONLY CSS FILE
-
-const NAV = [
-  ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
-  ["Management", [["👥", "Student Records", "/admin/students"],
-                  ["🎓", "Teachers",        "/admin/teachers"],
-                  ["📚", "Course Catalog",  "/admin/courses"],
-                  ["📋", "Enrollment",      "/admin/enrollment"],
-                  ["📣", "Announcements",   "/admin/announcements"]]]
-];
 
 /* ── SEED DATA ─────────────────────────────────────────────────────────────── */
 const ALL_STUDENTS = [
@@ -208,31 +201,14 @@ export default function AdminEnrollment() {
       <div id="app" style={{ opacity: 1, zIndex: 10, position: 'relative' }}>
         
         {/* ── INLINE SIDEBAR ── */}
-        <nav id="sidebar" className={collapse ? "collapse" : ""} style={{ transform: "translateX(0)" }}>
-          <div className="sb-top-bar" />
-          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
-            <span /><span /><span />
-          </button>
-          <div className="sb-logo">
-            <div className="logo-box">A</div>
-            <div><div className="logo-name">ARCH</div><div className="logo-tagline">Admin Portal</div></div>
-          </div>
-          <div className="sb-user hov-target">
-            <div className="uav">SA</div>
-            <div><div className="uname">Super Admin</div><div className="uid">ADM-0001</div></div>
-          </div>
-          {NAV.map(([sec, items]) => (
-            <div key={sec}>
-              <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div key={label} className={`ni hov-target${location.pathname === path ? " active" : ""}`} onClick={() => navigate(path)}>
-                  <div className="ni-ic">{ic}</div>{label}
-                </div>
-              ))}
-            </div>
-          ))}
-          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
-        </nav>
+        <Sidebar
+          sections={ADMIN_NAV}
+          logoLabel="Admin Portal"
+          userName="Super Admin"
+          userId="ADM-0001"
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         {/* ── MAIN ── */}
         <div id="main">

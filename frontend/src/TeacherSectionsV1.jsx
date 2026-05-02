@@ -4,29 +4,13 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
+import AnimatedCounter from "./Utilities/AnimatedCounter";
 import { TEACHER_NAV } from "./config/TeacherNav";
 
 // IMPORT THE TEACHER SHELL CSS TO KEEP THE LAYOUT PERFECT
 import "./TeacherDashV1.css";
 // IMPORT THE SPECIFIC CSS FOR THE SECTIONS PAGE
 import "./TeacherSections.css";
-
-// ── CUSTOM SMOOTH COUNTER HOOK ──
-function AnimatedCounter({ value, decimals = 0, suffix = "", duration = 1.2, delay = 0 }) {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, (latest) => latest.toFixed(decimals) + suffix);
-
-  useEffect(() => {
-    const controls = animate(count, value, { 
-      duration: duration, 
-      delay: delay, 
-      ease: [0.34, 1.56, 0.64, 1] // Springy ease
-    });
-    return controls.stop;
-  }, [value, duration, delay, count]);
-
-  return <motion.span>{rounded}</motion.span>;
-}
 
 export default function TeacherSectionsV1() {
   const navigate = useNavigate();

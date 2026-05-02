@@ -1,36 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
-import AdminSidebar from "./Components/shared/AdminSidebar";
-import { ADMIN_NAV } from "./config/AdminNav";
 import { gsap } from "gsap";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import Sidebar from "./Components/shared/Sidebar";
+import { ADMIN_NAV } from "./config/AdminNav";
+import AnimatedCounter from "./Utilities/AnimatedCounter";
+import StatsGrid from "./data/StatsGrid";
 import "./AdminDashboardV1.css"; // 🔥 DEDICATED, ISOLATED CSS FILE
-
-// ── CUSTOM SMOOTH COUNTER HOOK ──
-function AnimatedCounter({ value, decimals = 0, suffix = "", prefix = "", duration = 1.2, delay = 0, useCommas = false }) {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, (latest) => {
-    let num = Number(latest);
-    if (isNaN(num)) num = 0;
-    let formattedStr = num.toFixed(decimals);
-    if (useCommas) formattedStr = parseFloat(formattedStr).toLocaleString('en-US');
-    return prefix + formattedStr + suffix;
-  });
-
-  useEffect(() => {
-    const safeValue = Number(value);
-    const finalValue = isNaN(safeValue) ? 0 : safeValue;
-    const controls = animate(count, finalValue, { 
-      duration: duration, 
-      delay: delay, 
-      ease: [0.34, 1.56, 0.64, 1] 
-    });
-    return () => controls.stop();
-  }, [value, duration, delay, count]);
-
-  return <motion.span>{rounded}</motion.span>;
-}
 
 // ── DATA ─────────────────────────────────────────────────────────────
 const DEPT_DATA = [
@@ -223,44 +200,14 @@ export default function AdminDashboardV1() {
       <div id="app" ref={appRef} style={{ opacity: hasPlayedIntro ? 1 : 0 }}>
         
         {/* ── SIDEBAR ── */}
-        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""} style={{ transform: hasPlayedIntro ? "translateX(0)" : "translateX(-100%)" }}>
-          <div className="sb-top-bar" />
-          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}> 
-            <span/><span/><span/>
-          </button> 
-          <div className="sb-logo">
-            <div className="logo-box">A</div>
-            <div><div className="logo-name">ARCH</div><div className="logo-tagline">Admin Portal</div></div>
-          </div>
-          <div className="sb-user hov-target">
-            <div className="uav">SA</div>
-            <div><div className="uname">Super Admin</div><div className="uid">ADM-0001</div></div>
-          </div>
-          
-          {[
-            ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
-            ["Management", [["👥", "Student Records", "/admin/students"],
-                            ["🎓", "Teachers",        "/admin/teachers"],
-                            ["📚", "Course Catalog",  "/admin/courses"],
-                            ["📋", "Enrollment",      "/admin/enrollment"],
-                            ["📣", "Announcements",   "/admin/announcements"]]]
-          ].map(([sec, items]) => (
-            <div key={sec}>
-              <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div 
-                  className={`ni hov-target${location.pathname === path ? " active" : ""}`} 
-                  key={label}
-                  onClick={() => navigate(path)}
-                >
-                  <div className="ni-ic">{ic}</div>{label}
-                </div>
-              ))}
-            </div>
-          ))}
-          
-          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
-        </nav>
+        <Sidebar
+          sections={ADMIN_NAV}
+          logoLabel="Admin Portal"
+          userName="Super Admin"
+          userId="ADM-0001"
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         {/* ── MAIN ── */}
         <div id="main">
@@ -279,37 +226,15 @@ export default function AdminDashboardV1() {
           <div id="scroll">
             
             {/* ── TOP STATS GRID ── */}
-            <div className="sgrid">
-              {[
-                { id:"sc1", cls:"sc-a", label:"Total Students", val:2847, did:"d1", ddcls:"d-up", delta:"↑ 142 this semester", special:"none", comma:true, suff:"" },
-                { id:"sc2", cls:"sc-b", label:"Active Courses", val:89, did:"d2", ddcls:"d-blue", delta:"↑ 6 new this term", special:"none", comma:false, suff:"" },
-                { id:"sc3", cls:"sc-c", label:"Faculty Members", val:124, did:"d3", ddcls:"d-up", delta:"Stable", special:"bubbles", comma:false, suff:"" },
-                { id:"sc4", cls:"sc-d", label:"Avg Attendance", val:94, did:"d4", ddcls:"d-warn", delta:"↓ 2% vs last sem", special:"fire", comma:false, suff:"%" },
-              ].map((c) => (
-                <div className={`sc ${c.cls} hov-target`} id={c.id} key={c.id} style={{ opacity: hasPlayedIntro ? 1 : 0, transform: hasPlayedIntro ? "translateY(0)" : "translateY(50px)" }}>
-                  <div className="sc-blob" /><div className="sc-deco" />
-                  <div className="sc-label">{c.label}</div>
-                  <div className="sc-val">
-                    {showStats ? <AnimatedCounter value={c.val} useCommas={c.comma} suffix={c.suff} /> : "0"}
-                  </div>
-                  <div className={`sc-delta ${c.ddcls}`}>{c.delta}</div>
-                  {c.special === "bubbles" && (
-                    <div className="bubbles">
-                      {[0,1,2,3,4,5,6].map(i => (
-                        <span key={i} className="bubble" style={{ left:`${5+i*13}%`, animationDelay:`${i*0.3}s`, animationDuration:`${2+i*0.22}s`, width:`${6+i%3*2}px`, height:`${6+i%3*2}px` }} />
-                      ))}
-                    </div>
-                  )}
-                  {c.special === "fire" && (
-                    <div className="card-fire">
-                      {[0,1,2,3,4].map(i => (
-                        <div key={i} className={`cflame cf${i+1}`} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            <StatsGrid
+              showStats={showStats}
+              cards={[
+                { cls: "sc-a", label: "Total Students",  value: 2847, special: "none", useCommas: true  },
+                { cls: "sc-b", label: "Active Courses",  value: 89,   special: "none" },
+                { cls: "sc-c", label: "Faculty Members", value: 124,  special: "bubbles" },
+                { cls: "sc-d", label: "Avg Attendance",  value: 94,   special: "fire",    suffix: "%"      },
+              ]}
+            />
 
             {/* ── MAIN CONTENT GRID ── */}
             <div className="cgrid adm-cgrid">

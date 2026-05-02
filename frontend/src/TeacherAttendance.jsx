@@ -2,31 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
-
+import AnimatedCounter from "./Utilities/AnimatedCounter";
 import "./TeacherDashV1.css"; // Core shell layout
 import "./TeacherAttendance.css"; // Specific attendance overrides
 
-// ── CUSTOM SMOOTH COUNTER HOOK ──
-function AnimatedCounter({ value, decimals = 0, suffix = "", duration = 1.2, delay = 0 }) {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, (latest) => {
-    const num = Number(latest);
-    return (isNaN(num) ? 0 : num).toFixed(decimals) + suffix;
-  });
-
-  useEffect(() => {
-    const safeValue = Number(value);
-    const finalValue = isNaN(safeValue) ? 0 : safeValue;
-    const controls = animate(count, finalValue, { 
-      duration: duration, 
-      delay: delay, 
-      ease: [0.34, 1.56, 0.64, 1] 
-    });
-    return () => controls.stop();
-  }, [value, duration, delay, count]);
-
-  return <motion.span>{rounded}</motion.span>;
-}
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const SECTIONS = {

@@ -3,38 +3,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import AnimatedCounter from "./Utilities/AnimatedCounter";
+import Sidebar from "./Components/shared/Sidebar";
+import { ADMIN_NAV } from "./config/AdminNav";
+import StatsGrid from "./data/StatsGrid";
 import "./AdminAnnouncements.css"; // 🔥 THE ONE AND ONLY CSS FILE
 
-// ── 1. CUSTOM SMOOTH COUNTER HOOK ──
-function AnimatedCounter({ value, decimals = 0, suffix = "", prefix = "", duration = 1.2, delay = 0, useCommas = false }) {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, (latest) => {
-    let num = Number(latest);
-    if (isNaN(num)) num = 0;
-    let formattedStr = num.toFixed(decimals);
-    if (useCommas) formattedStr = parseFloat(formattedStr).toLocaleString('en-US');
-    return prefix + formattedStr + suffix;
-  });
-
-  useEffect(() => {
-    const safeValue = Number(value);
-    const finalValue = isNaN(safeValue) ? 0 : safeValue;
-    const controls = animate(count, finalValue, { duration, delay, ease: [0.34, 1.56, 0.64, 1] });
-    return () => controls.stop();
-  }, [value, duration, delay, count]);
-
-  return <motion.span>{rounded}</motion.span>;
-}
-
 // ── 2. STATIC DATA ──
-const NAV = [
-  ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
-  ["Management", [["👥", "Student Records", "/admin/students"],
-                  ["🎓", "Teachers",        "/admin/teachers"],
-                  ["📚", "Course Catalog",  "/admin/courses"],
-                  ["📋", "Enrollment",      "/admin/enrollment"],
-                  ["📣", "Announcements",   "/admin/announcements"]]]
-];
+
 
 const TYPE_META = {
   announcement: { icon: "📣", label: "Announcement", color: "#1a78ff", bg: "rgba(26,120,255,.1)", border: "rgba(26,120,255,.3)" },
@@ -279,31 +255,14 @@ export default function AdminAnnouncements() {
       <div id="app" style={{ opacity: 1, zIndex: 10, position: 'relative' }}>
         
         {/* 🔥 INLINE SIDEBAR 🔥 */}
-        <nav id="sidebar" className={collapse ? "collapse" : ""} style={{ transform: "translateX(0)" }}>
-          <div className="sb-top-bar" />
-          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
-            <span /><span /><span />
-          </button>
-          <div className="sb-logo">
-            <div className="logo-box">A</div>
-            <div><div className="logo-name">ARCH</div><div className="logo-tagline">Admin Portal</div></div>
-          </div>
-          <div className="sb-user hov-target">
-            <div className="uav">SA</div>
-            <div><div className="uname">Super Admin</div><div className="uid">ADM-0001</div></div>
-          </div>
-          {NAV.map(([sec, items]) => (
-            <div key={sec}>
-              <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div key={label} className={`ni hov-target${location.pathname === path ? " active" : ""}`} onClick={() => navigate(path)}>
-                  <div className="ni-ic">{ic}</div>{label}
-                </div>
-              ))}
-            </div>
-          ))}
-          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
-        </nav>
+        <Sidebar
+          sections={ADMIN_NAV}
+          logoLabel="Admin Portal"
+          userName="Super Admin"
+          userId="ADM-0001"
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         {/* MAIN */}
         <div id="main">
@@ -320,37 +279,15 @@ export default function AdminAnnouncements() {
 
           <div id="scroll">
             {/* ── GODZILLA STATS GRID ── */}
-            <div className="sgrid">
-              {[
-                { id:"sc1", cls:"sc-a", label:"Pinned",        val: announcements.filter(a=>a.pinned).length,             did:"d1", special:"none" },
-                { id:"sc2", cls:"sc-b", label:"Announcements", val: announcements.filter(a=>a.type==="announcement").length, did:"d2", special:"none" },
-                { id:"sc3", cls:"sc-c", label:"Exams",         val: announcements.filter(a=>a.type==="exam").length,       did:"d3", special:"fire" },
-                { id:"sc4", cls:"sc-d", label:"Quizzes",       val: announcements.filter(a=>a.type==="quiz").length,       did:"d4", special:"bubbles" },
-              ].map((c) => (
-                <div className={`sc ${c.cls} hov-target`} id={c.id} key={c.id}>
-                  <div className="sc-blob" /><div className="sc-deco" />
-                  <div className="sc-label">{c.label}</div>
-                  <div className="sc-val">
-                    {showStats ? <AnimatedCounter value={c.val} useCommas={false} suffix="" /> : "0"}
-                  </div>
-                  
-                  {c.special === "bubbles" && (
-                    <div className="bubbles">
-                      {[0,1,2,3,4,5,6].map(i => (
-                        <span key={i} className="bubble" style={{ left:`${5+i*13}%`, animationDelay:`${i*0.3}s`, animationDuration:`${2+i*0.22}s`, width:`${6+i%3*2}px`, height:`${6+i%3*2}px` }} />
-                      ))}
-                    </div>
-                  )}
-                  {c.special === "fire" && (
-                    <div className="card-fire">
-                      {[0,1,2,3,4].map(i => (
-                        <div key={i} className={`cflame cf${i+1}`} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            <StatsGrid
+              showStats={showStats}
+              cards={[
+                { cls: "sc-a", label: "Pinned",        value: announcements.filter(a=>a.pinned).length,                special: "none"    },
+                { cls: "sc-b", label: "Announcements", value: announcements.filter(a=>a.type==="announcement").length, special: "none"    },
+                { cls: "sc-c", label: "Exams",         value: announcements.filter(a=>a.type==="exam").length,         special: "fire"    },
+                { cls: "sc-d", label: "Quizzes",       value: announcements.filter(a=>a.type==="quiz").length,         special: "bubbles" },
+              ]}
+            />
 
             {/* Filter bar - ANTI SQUASH CLASS APPLIED */}
             <div className="admin-isolated-card" style={{ marginBottom: 40, padding: "24px 32px" }}>
