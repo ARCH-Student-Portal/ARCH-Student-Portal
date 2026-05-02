@@ -60,20 +60,23 @@ export default function TeacherSectionsV1() {
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archTeacherIntroPlayed");
 
-    if (hasPlayedIntro) {
-      introRef.current.style.display = "none";
-      appRef.current.style.opacity = 1;
-      sidebarRef.current.style.transform = "translateX(0)";
-      topbarRef.current.style.opacity = 1;
-      
-      setShowStats(true);
+  if (hasPlayedIntro) {
+    // 1. Force React state to show the stats
+    setShowStats(true);
 
-      if (webglRef.current) {
-        webglRef.current.style.opacity = 0;
-        webglRef.current.style.display = "none";
-      }
-      return; 
+    // 2. Safely apply styles only if the elements exist in the DOM
+    if (introRef.current) introRef.current.style.display = "none";
+    if (appRef.current) appRef.current.style.opacity = 1;
+    if (sidebarRef.current) sidebarRef.current.style.transform = "translateX(0)";
+    if (topbarRef.current) topbarRef.current.style.opacity = 1;
+
+    // 3. Safely handle the WebGL background
+    if (webglRef.current) {
+      webglRef.current.style.opacity = 0;
+      webglRef.current.style.display = "none";
     }
+    return; 
+  }
 
     const canvas = introCanvasRef.current;
     const ctx = canvas.getContext("2d");
