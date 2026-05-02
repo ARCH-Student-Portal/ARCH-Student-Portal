@@ -19,7 +19,7 @@ export default function LoginPage() {
 
   const navigate = useNavigate();
 
-  // ── CINEMATIC INTRO (UNTOUCHED EXCEPT UNIFIED FONT) ──
+  // ── CINEMATIC INTRO ──
   useEffect(() => {
     const canvas = introCanvasRef.current;
     const ctx    = canvas.getContext("2d");
@@ -75,7 +75,7 @@ export default function LoginPage() {
           p.x = Math.random() * canvas.width;
           p.word = words[Math.floor(Math.random() * words.length)];
         }
-        ctx.font = `${p.size}px 'Inter', sans-serif`; /* Unified Font */
+        ctx.font = `${p.size}px 'Inter', sans-serif`;
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.fillText(p.word, p.x, p.y);
       });
@@ -117,7 +117,7 @@ export default function LoginPage() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── THREE.JS BACKGROUND: WIREFRAME RADAR SWEEP (100% UNTOUCHED) ──
+  // ── THREE.JS BACKGROUND ──
   useEffect(() => {
     const canvas = webglRef.current;
     let W = window.innerWidth, H = window.innerHeight;
@@ -129,36 +129,29 @@ export default function LoginPage() {
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x010308, 0.015);
     
-    // Position camera high and tilted down to see the terrain
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 300);
     camera.position.set(0, 15, 30);
     camera.lookAt(0, 0, 0);
 
-    // 1. Create the base grid geometry
     const segmentsX = 90;
     const segmentsZ = 60;
     const geo = new THREE.PlaneGeometry(180, 120, segmentsX, segmentsZ);
-    geo.rotateX(-Math.PI / 2); // Lay it flat on the floor
+    geo.rotateX(-Math.PI / 2);
 
     const pos = geo.attributes.position.array;
     const origY = new Float32Array(pos.length / 3);
     const colors = new Float32Array(pos.length);
 
-    // Generate natural base noise for the terrain
     for(let i=0; i<pos.length; i+=3) {
       let x = pos[i];
       let z = pos[i+2];
-      // Create hills and valleys
       let y = (Math.sin(x * 0.05) + Math.cos(z * 0.05)) * 2 + Math.sin(x*0.1 + z*0.1);
       pos[i+1] = y;
       origY[i/3] = y;
-      
-      // Default dim blue color
       colors[i] = 0.05; colors[i+1] = 0.15; colors[i+2] = 0.3;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    // 2. Wireframe Material (The Grid)
     const wireMat = new THREE.MeshBasicMaterial({ 
       wireframe: true, 
       color: 0x1a78ff, 
@@ -168,7 +161,6 @@ export default function LoginPage() {
     const mesh = new THREE.Mesh(geo, wireMat);
     scene.add(mesh);
 
-    // 3. Points Material (The glowing nodes at intersections)
     const ptsMat = new THREE.PointsMaterial({ 
       size: 0.25, 
       vertexColors: true, 
@@ -179,7 +171,6 @@ export default function LoginPage() {
     const pts = new THREE.Points(geo, ptsMat);
     scene.add(pts);
 
-    // Raycaster for mouse interaction
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2(-100, -100);
     const intersectPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -197,41 +188,32 @@ export default function LoginPage() {
       frame++;
       const time = frame * 0.02;
 
-      // Project mouse onto the 3D plane
       raycaster.setFromCamera(mouse, camera);
       raycaster.ray.intersectPlane(intersectPlane, mouseWorld);
 
-      // The sweeping radar line moving forward
       const sweepZ = (time * 12) % 180 - 90;
 
-      // Update terrain vertices dynamically
       for(let i=0; i<pos.length; i+=3) {
         let x = pos[i];
         let z = pos[i+2];
         let idx = i/3;
 
-        // Distance from cursor (Lidar Interaction)
         let dMouse = Math.hypot(x - mouseWorld.x, z - mouseWorld.z);
-        let mElev = Math.max(0, 15 - dMouse) * 0.4; // Spike height near mouse
+        let mElev = Math.max(0, 15 - dMouse) * 0.4;
 
-        // Distance from sweep line
         let dSweep = Math.abs(z - sweepZ);
-        let sElev = Math.max(0, 4 - dSweep) * 0.8; // Wave height of sweep
+        let sElev = Math.max(0, 4 - dSweep) * 0.8;
 
-        // Gentle breathing animation
         let breathe = Math.sin(time + x*0.1)*0.5;
 
-        // Apply new height
         pos[i+1] = origY[idx] + mElev + sElev + breathe;
 
-        // Apply new colors (Glow brightly near sweep line and mouse)
         if (dMouse < 15 || dSweep < 4) {
            let intensity = Math.max(0, 1 - (dMouse/15)) + Math.max(0, 1 - (dSweep/4));
            intensity = Math.min(1, intensity);
-           // Shift from dim blue to bright cyan/white
-           colors[i]   = 0.05 + 0.85 * intensity; // R
-           colors[i+1] = 0.15 + 0.85 * intensity; // G
-           colors[i+2] = 0.30 + 0.70 * intensity; // B
+           colors[i]   = 0.05 + 0.85 * intensity;
+           colors[i+1] = 0.15 + 0.85 * intensity;
+           colors[i+2] = 0.30 + 0.70 * intensity;
         } else {
            colors[i] = 0.02; colors[i+1] = 0.08; colors[i+2] = 0.2;
         }
@@ -240,7 +222,6 @@ export default function LoginPage() {
       geo.attributes.position.needsUpdate = true;
       geo.attributes.color.needsUpdate = true;
 
-      // Subtle camera pan based on mouse
       camera.position.x += (mouse.x * 5 - camera.position.x) * 0.02;
       camera.lookAt(0, 0, 0);
 
@@ -267,9 +248,16 @@ export default function LoginPage() {
 
     const isStudent = activeTab === "student";
     const isTeacher = activeTab === "teacher";
-    
-    if (!userId.trim()) { setErrorMsg(`[ERR] Required: ${isStudent ? 'Student' : 'Faculty'} ID`); return; }
-    if (!password.trim())  { setErrorMsg("[ERR] Required: Security Passcode"); return; }
+    const isAdmin   = activeTab === "admin";
+
+    if (!userId.trim()) {
+      setErrorMsg(`[ERR] Required: ${isStudent ? "Student" : isTeacher ? "Faculty" : "Admin"} ID`);
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMsg("[ERR] Required: Security Passcode");
+      return;
+    }
 
     setLoading(true);
     await new Promise((res) => setTimeout(res, 1400));
@@ -277,18 +265,16 @@ export default function LoginPage() {
 
     if (isStudent) navigate("/student/dashboard");
     if (isTeacher) navigate("/teacher/dashboard");
+    if (isAdmin)   navigate("/admin/dashboard");
   };
 
   return (
     <>
-      {/* Heavy technical scanlines and vignette */}
       <div className="lp-scanlines" />
       <div className="lp-vignette"  />
 
-      {/* THREE.JS BACKGROUND */}
       <canvas id="lp-webgl" ref={webglRef} />
 
-      {/* Intro Overlay */}
       <div id="lp-intro" ref={introRef}>
         <canvas id="lp-intro-canvas" ref={introCanvasRef} />
         <div id="lp-intro-line"  />
@@ -299,7 +285,6 @@ export default function LoginPage() {
       </div>
 
       <div id="lp-app" ref={appRef}>
-        {/* AEROSPACE HUD: PINNED BOTTOM LEFT */}
         <div className="lp-hud-terminal">
           
           <div className="lp-hud-decor-top">
@@ -312,7 +297,6 @@ export default function LoginPage() {
             <p>LAT: 31.4811 N // LON: 74.3030 E</p>
           </div>
 
-          {/* Brutalist Segmented Control */}
           <div className="lp-hud-tabs">
             {["student", "teacher", "admin"].map((tab) => (
               <button
@@ -326,55 +310,48 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Form */}
-          {(activeTab === "student" || activeTab === "teacher") && (
-            <form className="lp-hud-form" onSubmit={handleSubmit} autoComplete="off">
-              
-              {errorMsg && <div className="lp-hud-error">{errorMsg}</div>}
+          <form className="lp-hud-form" onSubmit={handleSubmit} autoComplete="off">
 
-              <div className="lp-hud-field">
-                <label htmlFor="uid">U/ID {activeTab === "student" ? "(STUDENT)" : "(FACULTY)"}</label>
-                <input
-                  id="uid"
-                  type="text"
-                  className={errorMsg && !userId ? "error" : ""}
-                  placeholder={activeTab === "student" ? "21K-3210" : "FAC-092"}
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </div>
+            {errorMsg && <div className="lp-hud-error">{errorMsg}</div>}
 
-              <div className="lp-hud-field">
-                <label htmlFor="pw">PASS_KEY</label>
-                <div className="lp-hud-pw-wrap">
-                  <input
-                    id="pw"
-                    type={showPw ? "text" : "password"}
-                    className={errorMsg && !password ? "error" : ""}
-                    placeholder="Enter decryption key"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button type="button" className="lp-hud-toggle" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
-                    {showPw ? "X" : "O"}
-                  </button>
-                </div>
-              </div>
-
-              <button type="submit" className="lp-hud-btn" disabled={loading}>
-                {loading ? "AUTHENTICATING..." : "INITIATE_UPLINK()"}
-              </button>
-            </form>
-          )}
-
-          {activeTab === "admin" && (
-            <div className="lp-hud-restricted">
-              <span>ACCESS DENIED</span>
-              <p>Maintenance override active.</p>
+            <div className="lp-hud-field">
+              <label htmlFor="uid">
+                U/ID {activeTab === "student" ? "(STUDENT)" : activeTab === "teacher" ? "(FACULTY)" : "(ADMIN)"}
+              </label>
+              <input
+                id="uid"
+                type="text"
+                className={errorMsg && !userId ? "error" : ""}
+                placeholder={activeTab === "student" ? "21K-3210" : activeTab === "teacher" ? "FAC-092" : "ADM-0001"}
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
             </div>
-          )}
+
+            <div className="lp-hud-field">
+              <label htmlFor="pw">PASS_KEY</label>
+              <div className="lp-hud-pw-wrap">
+                <input
+                  id="pw"
+                  type={showPw ? "text" : "password"}
+                  className={errorMsg && !password ? "error" : ""}
+                  placeholder="Enter decryption key"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button type="button" className="lp-hud-toggle" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
+                  {showPw ? "X" : "O"}
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" className="lp-hud-btn" disabled={loading}>
+              {loading ? "AUTHENTICATING..." : "INITIATE_UPLINK()"}
+            </button>
+
+          </form>
 
           <div className="lp-hud-footer">
             <span>v2.0.4</span>

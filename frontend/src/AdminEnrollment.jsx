@@ -6,7 +6,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import AdminSidebar from "./Components/shared/AdminSidebar";
 import { ADMIN_NAV } from "./config/AdminNav";
 import "./AdminPortal.css";
-import "./AdminEnrollment.css";
+import "./AdminEnrollment.css"; // 🔥 FULLY ISOLATED.
+
+const NAV = [
+  ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
+  ["Management", [["👥", "Student Records", "/admin/students"],
+                  ["🎓", "Teachers",        "/admin/teachers"],
+                  ["📚", "Course Catalog",  "/admin/courses"],
+                  ["📋", "Enrollment",      "/admin/enrollment"],
+                  ["📣", "Announcements",   "/admin/announcements"]]]
+];
 
 /* ── SEED DATA ─────────────────────────────────────────────────────────────── */
 const ALL_STUDENTS = [
@@ -35,7 +44,6 @@ const ALL_COURSES = [
   { id: "IS-2001", name: "Information Security",       dept: "IS", credits: 3, capacity: 45, instructor: "Dr. Usman Qureshi",   semester: "5th" },
 ];
 
-// Initial enrollment map: studentId -> Set of courseIds
 const INIT_ENROLLMENTS = {
   "24K-0001": new Set(["CS-1001","CS-1002","CS-1003"]),
   "24K-0002": new Set(["CS-1001","CS-1002"]),
@@ -60,22 +68,25 @@ function ConfirmModal({ action, student, course, onConfirm, onCancel }) {
   const isEnroll = action === "enroll";
   return (
     <div className="adm-modal-overlay" onClick={onCancel}>
-      <div className="adm-modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+      <div className="adm-modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
         <div className="adm-modal-hd">
-          <div className="adm-modal-title">{isEnroll ? "Confirm Enrollment" : "Confirm Drop"}</div>
+          <div className="adm-modal-title" style={{ fontSize: 22 }}>{isEnroll ? "Confirm Enrollment" : "Confirm Drop"}</div>
           <button className="adm-modal-close" onClick={onCancel}>✕</button>
         </div>
-        <div style={{ fontSize: 14, color: "var(--dimmer)", lineHeight: 1.7 }}>
+        <div style={{ fontSize: 16, color: "var(--dimmer)", lineHeight: 1.7 }}>
           {isEnroll
-            ? <>Enroll <strong style={{ color: "var(--text-main)" }}>{student.name}</strong> into <strong style={{ color: "var(--purple)" }}>{course.id}</strong> — {course.name}?</>
+            ? <>Enroll <strong style={{ color: "var(--text-main)" }}>{student.name}</strong> into <strong style={{ color: "var(--blue)" }}>{course.id}</strong> — {course.name}?</>
             : <>Drop <strong style={{ color: "var(--text-main)" }}>{student.name}</strong> from <strong style={{ color: "var(--red)" }}>{course.id}</strong> — {course.name}?</>
           }
         </div>
         <div className="adm-modal-footer">
-          <button className="adm-btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className="adm-btn-secondary" style={{ padding: "12px 24px", fontSize: 16 }} onClick={onCancel}>Cancel</button>
           <button
             className="adm-btn-primary"
-            style={!isEnroll ? { background: "linear-gradient(135deg,#ff4d6a,#e11d48)", boxShadow: "0 4px 14px rgba(255,77,106,.3)" } : {}}
+            style={{
+              padding: "12px 24px", fontSize: 16,
+              ...( !isEnroll ? { background: "linear-gradient(135deg,#ff4d6a,#e11d48)", boxShadow: "0 4px 14px rgba(255,77,106,.3)" } : {} )
+            }}
             onClick={onConfirm}
           >
             {isEnroll ? "Enroll" : "Drop Course"}
@@ -92,7 +103,7 @@ export default function AdminEnrollment() {
   const location = useLocation();
   const webglRef = useRef(null);
 
-  const [collapse,     setCollapse]     = useState(false);
+  const [collapse,      setCollapse]      = useState(false);
   const [enrollments,  setEnrollments]  = useState(() => {
     const copy = {};
     for (const [k, v] of Object.entries(INIT_ENROLLMENTS)) copy[k] = new Set(v);
@@ -101,8 +112,8 @@ export default function AdminEnrollment() {
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentSearch,   setStudentSearch]   = useState("");
-  const [courseSearch,    setCourseSearch]     = useState("");
-  const [confirm,         setConfirm]         = useState(null); // { action, student, course }
+  const [courseSearch,    setCourseSearch]      = useState("");
+  const [confirm,         setConfirm]         = useState(null); 
   const [toast,           setToast]           = useState(null);
 
   const showToast = (msg, type = "success") => {
@@ -110,8 +121,7 @@ export default function AdminEnrollment() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const studentEnrolled = (studentId, courseId) =>
-    enrollments[studentId]?.has(courseId) ?? false;
+  const studentEnrolled = (studentId, courseId) => enrollments[studentId]?.has(courseId) ?? false;
 
   const handleAction = (action, student, course) => {
     setConfirm({ action, student, course });
@@ -153,7 +163,7 @@ export default function AdminEnrollment() {
       return acc + (c?.credits ?? 0);
     }, 0);
 
-  /* Three.js bg */
+  /* Three.js bg - Blue Unified Theme */
   useEffect(() => {
     const canvas = webglRef.current;
     let W = window.innerWidth, H = window.innerHeight;
@@ -162,19 +172,24 @@ export default function AdminEnrollment() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
     camera.position.set(0, 3, 12);
-    scene.add(new THREE.AmbientLight(0x4400aa, 0.6));
-    const sun = new THREE.DirectionalLight(0x9966ff, 1.2); sun.position.set(-6, 12, 8); scene.add(sun);
+    
+    // Updated lights to pure ARCH Blue
+    scene.add(new THREE.AmbientLight(0x0033aa, 0.6));
+    const sun = new THREE.DirectionalLight(0x40a9ff, 1.2); sun.position.set(-6, 12, 8); scene.add(sun);
+    
     const COUNT = 140;
     const ptPos = new Float32Array(COUNT * 3), ptCol = new Float32Array(COUNT * 3), ptVel = [];
     for (let i = 0; i < COUNT; i++) {
       ptPos[i*3]=(Math.random()-.5)*34; ptPos[i*3+1]=(Math.random()-.5)*22; ptPos[i*3+2]=(Math.random()-.5)*18-6;
       ptVel.push({ x:(Math.random()-.5)*.008, y:(Math.random()-.5)*.006 });
-      ptCol[i*3]=.5; ptCol[i*3+1]=.3; ptCol[i*3+2]=1;
+      
+      // Blue particles
+      ptCol[i*3]=.1; ptCol[i*3+1]=.5; ptCol[i*3+2]=1;
     }
     const ptGeo = new THREE.BufferGeometry();
     ptGeo.setAttribute("position", new THREE.BufferAttribute(ptPos,3));
     ptGeo.setAttribute("color",    new THREE.BufferAttribute(ptCol,3));
-    scene.add(new THREE.Points(ptGeo, new THREE.PointsMaterial({size:.05,transparent:true,opacity:.5,vertexColors:true})));
+    scene.add(new THREE.Points(ptGeo, new THREE.PointsMaterial({size:.05,transparent:true,opacity:.6,vertexColors:true})));
     let nmx=0, nmy=0;
     const onMove=e=>{nmx=(e.clientX/W)*2-1;nmy=-(e.clientY/H)*2+1;};
     document.addEventListener("mousemove",onMove);
@@ -204,7 +219,7 @@ export default function AdminEnrollment() {
   }, [selectedStudent]);
 
   return (
-    <>
+    <div className="admin-enr-wrapper">
       <canvas id="adm-webgl" ref={webglRef} />
 
       {/* Toast */}
@@ -213,12 +228,12 @@ export default function AdminEnrollment() {
           <motion.div
             initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
             style={{
-              position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)",
-              zIndex: 500, padding: "12px 24px", borderRadius: 12,
+              position: "fixed", top: 30, left: "50%", transform: "translateX(-50%)",
+              zIndex: 500, padding: "16px 32px", borderRadius: 16,
               background: toast.type === "success" ? "rgba(0,201,110,.95)" : "rgba(255,171,0,.95)",
-              color: "#fff", fontWeight: 700, fontSize: 14,
-              boxShadow: "0 8px 24px rgba(0,0,0,.15)",
-              backdropFilter: "blur(8px)", whiteSpace: "nowrap"
+              color: "#fff", fontWeight: 800, fontSize: 16,
+              boxShadow: "0 12px 32px rgba(0,0,0,.15)",
+              backdropFilter: "blur(12px)", whiteSpace: "nowrap"
             }}
           >
             {toast.type === "success" ? "✓" : "⚠"} {toast.msg}
@@ -259,25 +274,26 @@ export default function AdminEnrollment() {
 
           <div id="adm-scroll">
 
-            {/* Two-column layout */}
-            <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 20, alignItems: "start" }}>
+            {/* SUPERSIZED Two-column layout */}
+            <div style={{ display: "grid", gridTemplateColumns: "400px 1fr", gap: 32, alignItems: "start" }}>
 
               {/* ── LEFT: Student Picker ── */}
               <div className="adm-card" style={{ padding: 0, overflow: "hidden" }}>
-                <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--border)" }}>
-                  <div className="adm-card-title" style={{ marginBottom: 12 }}>
+                <div style={{ padding: "24px 28px", borderBottom: "1px solid var(--border)" }}>
+                  <div className="adm-card-title" style={{ marginBottom: 16, fontSize: 20 }}>
                     <div className="adm-ctbar" />Select Student
                   </div>
-                  <div className="adm-filter-search" style={{ maxWidth: "100%" }}>
-                    <span style={{ color: "#94a3b8" }}>🔍</span>
+                  <div className="adm-filter-search" style={{ maxWidth: "100%", padding: "12px 16px" }}>
+                    <span style={{ color: "#94a3b8", fontSize: 18 }}>🔍</span>
                     <input
+                      style={{ fontSize: 16 }}
                       placeholder="Search by name or roll no…"
                       value={studentSearch}
                       onChange={e => setStudentSearch(e.target.value)}
                     />
                   </div>
                 </div>
-                <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 240px)" }}>
+                <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 280px)" }}>
                   {filteredStudents.map(s => {
                     const isSelected = selectedStudent?.id === s.id;
                     const count = enrolledCount(s.id);
@@ -287,29 +303,29 @@ export default function AdminEnrollment() {
                         key={s.id}
                         onClick={() => setSelectedStudent(s)}
                         style={{
-                          display: "flex", alignItems: "center", gap: 12,
-                          padding: "12px 20px", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 16,
+                          padding: "16px 24px", cursor: "pointer",
                           borderBottom: "1px solid rgba(18,78,170,.06)",
-                          background: isSelected ? "rgba(124,58,237,.07)" : "transparent",
-                          borderLeft: isSelected ? "3px solid var(--purple)" : "3px solid transparent",
+                          background: isSelected ? "rgba(26,120,255,.07)" : "transparent",
+                          borderLeft: isSelected ? "4px solid var(--blue)" : "4px solid transparent",
                           transition: "all .15s",
                         }}
                       >
                         <div style={{
-                          width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                          background: isSelected ? "linear-gradient(135deg,var(--purple),var(--purple2))" : "linear-gradient(135deg,#e2e8f0,#cbd5e1)",
+                          width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+                          background: isSelected ? "linear-gradient(135deg,var(--blue),var(--blue2))" : "linear-gradient(135deg,#e2e8f0,#cbd5e1)",
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 12, fontWeight: 800, color: isSelected ? "#fff" : "#475569",
+                          fontSize: 16, fontWeight: 800, color: isSelected ? "#fff" : "#475569",
                         }}>
                           {s.name.split(" ").map(n => n[0]).join("").slice(0,2)}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: isSelected ? "var(--purple)" : "var(--text-main)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-                          <div style={{ fontSize: 11, color: "var(--dimmer)", fontFamily: "'JetBrains Mono',monospace" }}>{s.id} · {s.prog}</div>
+                          <div style={{ fontWeight: 800, fontSize: 18, color: isSelected ? "var(--blue)" : "var(--text-main)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                          <div style={{ fontSize: 14, color: "var(--dimmer)", fontFamily: "'JetBrains Mono',monospace", marginTop: 4 }}>{s.id} · {s.prog}</div>
                         </div>
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--purple)", fontFamily: "'JetBrains Mono',monospace" }}>{count} courses</div>
-                          <div style={{ fontSize: 11, color: "var(--dimmer)" }}>{creds} cr</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--blue)", fontFamily: "'JetBrains Mono',monospace" }}>{count} courses</div>
+                          <div style={{ fontSize: 14, color: "var(--dimmer)", marginTop: 4 }}>{creds} cr</div>
                         </div>
                       </div>
                     );
@@ -320,44 +336,45 @@ export default function AdminEnrollment() {
               {/* ── RIGHT: Course Grid ── */}
               <div>
                 {!selectedStudent ? (
-                  <div className="adm-card" style={{ textAlign: "center", padding: "64px 32px" }}>
-                    <div style={{ fontSize: 40, marginBottom: 16 }}>👈</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-main)", marginBottom: 8 }}>Select a student</div>
-                    <div style={{ fontSize: 13, color: "var(--dimmer)" }}>Choose a student from the left panel to manage their course enrollments.</div>
+                  <div className="adm-card" style={{ textAlign: "center", padding: "100px 40px" }}>
+                    <div style={{ fontSize: 56, marginBottom: 24 }}>👈</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-main)", marginBottom: 12 }}>Select a student</div>
+                    <div style={{ fontSize: 16, color: "var(--dimmer)", lineHeight: 1.6 }}>Choose a student from the left panel to<br/>manage their course enrollments.</div>
                   </div>
                 ) : (
                   <>
                     {/* Student header */}
-                    <div className="adm-card" style={{ marginBottom: 16, padding: "16px 22px" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div className="adm-card" style={{ marginBottom: 24, padding: "24px 32px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
                           <div style={{
-                            width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                            background: "linear-gradient(135deg,var(--purple),var(--purple2))",
+                            width: 64, height: 64, borderRadius: 16, flexShrink: 0,
+                            background: "linear-gradient(135deg,var(--blue),var(--blue2))",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 15, fontWeight: 800, color: "#fff"
+                            fontSize: 22, fontWeight: 800, color: "#fff",
+                            boxShadow: "0 8px 24px rgba(26,120,255,.3)"
                           }}>
                             {selectedStudent.name.split(" ").map(n=>n[0]).join("").slice(0,2)}
                           </div>
                           <div>
-                            <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text-main)" }}>{selectedStudent.name}</div>
-                            <div style={{ fontSize: 12, color: "var(--dimmer)", fontFamily: "'JetBrains Mono',monospace" }}>
+                            <div style={{ fontSize: 26, fontWeight: 900, color: "var(--text-main)", marginBottom: 6 }}>{selectedStudent.name}</div>
+                            <div style={{ fontSize: 16, color: "var(--dimmer)", fontFamily: "'JetBrains Mono',monospace" }}>
                               {selectedStudent.id} · {selectedStudent.prog} · Sem {selectedStudent.sem}
                             </div>
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: 10 }}>
+                        <div style={{ display: "flex", gap: 12 }}>
                           {[
-                            { label: "Enrolled", val: enrolledCount(selectedStudent.id), color: "var(--purple)" },
-                            { label: "Credits",  val: totalCredits(selectedStudent.id),  color: "var(--blue)"   },
+                            { label: "Enrolled", val: enrolledCount(selectedStudent.id), color: "var(--blue)" },
+                            { label: "Credits",  val: totalCredits(selectedStudent.id),  color: "var(--dimmer)"   },
                           ].map(chip => (
                             <div key={chip.label} style={{
-                              padding: "8px 18px", borderRadius: 20,
+                              padding: "12px 24px", borderRadius: 24,
                               background: "#f8fafc", border: "1px solid var(--border)",
-                              fontSize: 13, fontWeight: 700, color: "var(--text-main)",
-                              display: "flex", alignItems: "center", gap: 8,
+                              fontSize: 16, fontWeight: 800, color: "var(--text-main)",
+                              display: "flex", alignItems: "center", gap: 10,
                             }}>
-                              {chip.label}: <strong style={{ fontFamily: "'JetBrains Mono',monospace", color: chip.color }}>{chip.val}</strong>
+                              {chip.label}: <strong style={{ fontFamily: "'JetBrains Mono',monospace", color: chip.color, fontSize: 18 }}>{chip.val}</strong>
                             </div>
                           ))}
                         </div>
@@ -365,10 +382,11 @@ export default function AdminEnrollment() {
                     </div>
 
                     {/* Course search */}
-                    <div className="adm-card" style={{ marginBottom: 16, padding: "12px 20px" }}>
-                      <div className="adm-filter-search" style={{ maxWidth: "100%" }}>
-                        <span style={{ color: "#94a3b8" }}>🔍</span>
+                    <div className="adm-card" style={{ marginBottom: 24, padding: "16px 24px" }}>
+                      <div className="adm-filter-search" style={{ maxWidth: "100%", padding: "14px 20px" }}>
+                        <span style={{ color: "#94a3b8", fontSize: 20 }}>🔍</span>
                         <input
+                          style={{ fontSize: 18 }}
                           placeholder="Search courses by code, name, or instructor…"
                           value={courseSearch}
                           onChange={e => setCourseSearch(e.target.value)}
@@ -378,7 +396,7 @@ export default function AdminEnrollment() {
 
                     {/* Course table */}
                     <div className="adm-card" style={{ padding: 0, overflow: "hidden" }}>
-                      <div className="adm-table-wrap" style={{ borderRadius: 18 }}>
+                      <div className="adm-table-wrap" style={{ borderRadius: 24 }}>
                         <table className="adm-table">
                           <thead>
                             <tr>
@@ -388,7 +406,7 @@ export default function AdminEnrollment() {
                               <th>Cr</th>
                               <th>Instructor</th>
                               <th>Sem</th>
-                              <th>Action</th>
+                              <th style={{ textAlign: 'right' }}>Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -396,31 +414,31 @@ export default function AdminEnrollment() {
                               const isEnrolled = studentEnrolled(selectedStudent.id, c.id);
                               const dc = DEPT_COLOR[c.dept] ?? DEPT_COLOR.CS;
                               return (
-                                <tr key={c.id} style={{ background: isEnrolled ? "rgba(124,58,237,.03)" : "transparent" }}>
+                                <tr key={c.id} style={{ background: isEnrolled ? "rgba(26,120,255,.04)" : "transparent" }}>
                                   <td className="td-mono">{c.id}</td>
                                   <td>
                                     <div className="td-bold">{c.name}</div>
                                     {isEnrolled && (
-                                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--purple)", letterSpacing: ".06em", textTransform: "uppercase", marginTop: 2 }}>
+                                      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--blue)", letterSpacing: ".06em", textTransform: "uppercase", marginTop: 6 }}>
                                         ✓ Enrolled
                                       </div>
                                     )}
                                   </td>
                                   <td>
-                                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, fontWeight: 800, padding: "3px 8px", borderRadius: 6, background: dc.bg, color: dc.text }}>
+                                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 800, padding: "6px 12px", borderRadius: 8, background: dc.bg, color: dc.text }}>
                                       {c.dept}
                                     </span>
                                   </td>
-                                  <td style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 800, color: "var(--purple)", textAlign: "center" }}>{c.credits}</td>
-                                  <td className="td-dim" style={{ fontSize: 12 }}>{c.instructor}</td>
+                                  <td style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 800, color: "var(--blue)", textAlign: "center", fontSize: 18 }}>{c.credits}</td>
+                                  <td className="td-dim" style={{ fontSize: 16 }}>{c.instructor}</td>
                                   <td className="td-dim">{c.semester}</td>
-                                  <td>
+                                  <td style={{ textAlign: 'right' }}>
                                     {isEnrolled ? (
                                       <button
-                                        className="adm-action-btn btn-delete"
+                                        className="adm-btn-secondary"
                                         title="Drop course"
                                         onClick={() => handleAction("drop", selectedStudent, c)}
-                                        style={{ width: "auto", padding: "5px 12px", fontSize: 12, fontWeight: 700 }}
+                                        style={{ color: "var(--red)", borderColor: "rgba(255,77,106,.3)", background: "rgba(255,77,106,.05)", padding: "10px 20px", fontSize: 15, fontWeight: 800 }}
                                       >
                                         Drop
                                       </button>
@@ -429,7 +447,7 @@ export default function AdminEnrollment() {
                                         className="adm-btn-primary"
                                         title="Enroll student"
                                         onClick={() => handleAction("enroll", selectedStudent, c)}
-                                        style={{ padding: "6px 14px", fontSize: 12, boxShadow: "none" }}
+                                        style={{ padding: "10px 20px", fontSize: 15, fontWeight: 800, background: "linear-gradient(135deg, var(--blue), var(--blue2))" }}
                                       >
                                         Enroll
                                       </button>
@@ -450,6 +468,6 @@ export default function AdminEnrollment() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
