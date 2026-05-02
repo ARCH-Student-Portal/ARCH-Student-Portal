@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { gsap } from "gsap";
+import { countUp, setText } from "./Utilities/domAnimation";
 import "./StudentDashV1.css";
+import { courses, notices, attendances } from "./data/StudentDashData";
 
 export default function StudentDashV1() {
   const navigate = useNavigate();
@@ -187,26 +189,6 @@ export default function StudentDashV1() {
 
     return () => cancelAnimationFrame(animId);
   }, []);
-
-  const courses = [
-    { color: "#1a78ff", name: "Object Oriented Analysis & Design", code: "CS-3001 · 3 Cr · Sec A", grade: "A", gc: "g-a" },
-    { color: "#40a9ff", name: "Data Structures & Algorithms", code: "CS-2010 · 3 Cr · Sec B", grade: "B+", gc: "g-b" },
-    { color: "#69c0ff", name: "Database Systems", code: "CS-2012 · 3 Cr · Sec A", grade: "A-", gc: "g-a" },
-    { color: "#91d5ff", name: "Calculus & Analytical Geometry", code: "MT-1001 · 3 Cr · Sec C", grade: "B", gc: "g-b" },
-    { color: "#ff4d6a", name: "Programming Fundamentals", code: "CS-1001 · 3 Cr · Sec D", grade: "C+", gc: "g-c" },
-  ];
-
-  const notices = [
-    { tag: "Urgent", cls: "nt-urg", title: "Mid-Term Examination Schedule Published", date: "2025-03-18", fire: true },
-    { tag: "Faculty", cls: "nt-fac", title: "OOAD Assignment 2 Deadline Extended", date: "2025-03-16 · Hamza Raheel", fire: false },
-    { tag: "University", cls: "nt-uni", title: "Campus Closure — Eid-ul-Fitr Holiday", date: "2025-03-14", fire: false },
-  ];
-
-  const attendances = [
-    { pct: "88%", label: "OOAD", good: true },
-    { pct: "72%", label: "DSA", good: false },
-    { pct: "92%", label: "DB Sys", good: true },
-  ];
 
   return (
     <>
@@ -411,17 +393,3 @@ export default function StudentDashV1() {
     </>
   );
 }
-
-function countUp(id, target, dec, suffix, duration) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const start = Date.now();
-  const tick = () => {
-    const p = Math.min((Date.now() - start) / duration, 1);
-    const ease = 1 - Math.pow(1 - p, 4);
-    el.textContent = (target * ease).toFixed(dec) + suffix;
-    if (p < 1) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-}
-function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
