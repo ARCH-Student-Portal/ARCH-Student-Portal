@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 
 // ── SHARED ──
 import LoginPage from "./LoginPage";
 import { CourseProvider } from "./CourseContext";
+import PageShell from "./Components/shared/PageShell";
 
 // ── STUDENT ──
 import StudentDashV1 from "./StudentDashV1";
@@ -33,19 +34,6 @@ import AdminTeachers from "./AdminTeachers";
 import AdminEnrollment from "./AdminEnrollment";
 import AdminAnnouncements from "./AdminAnnouncements";
 
-// ── ENTERPRISE PAGE TRANSITION WRAPPER ──
-const Page = ({ children }) => (
-  <motion.div
-    initial={{ x: 50, opacity: 0 }}
-    animate={{ x: 0, opacity: 1 }}
-    exit={{ x: -50, opacity: 0 }}
-    transition={{ duration: 0.4, ease: "easeInOut" }}
-    style={{ height: "100vh", width: "100vw", overflow: "hidden" }}
-  >
-    {children}
-  </motion.div>
-);
-
 function AnimatedRoutes() {
   const location = useLocation();
   
@@ -58,32 +46,32 @@ function AnimatedRoutes() {
         <Route path="/login" element={<LoginPage />} />
 
         {/* ── STUDENT ROUTES ── */}
-        <Route path="/student/dashboard"    element={<Page><StudentDashV1 /></Page>} />
-        <Route path="/student/academic"     element={<Page><StudentAcademicV1 /></Page>} />
-        <Route path="/student/registration" element={<Page><StudentRegistrationV1 /></Page>} />
-        <Route path="/student/attendance"   element={<Page><StudentAttendance /></Page>} />
-        <Route path="/student/profile"      element={<Page><StudentProfile /></Page>} />
-        <Route path="/student/notices"      element={<Page><StudentNotices /></Page>} />
-        <Route path="/student/timetable"    element={<Page><StudentTimetableV1 /></Page>} />
-        <Route path="/student/marks"        element={<Page><StudentMarks /></Page>} />
-        <Route path="/student/transcript"   element={<Page><StudentTranscript /></Page>} />
+        <Route path="/student/dashboard"    element={<PageShell><StudentDashV1 /></PageShell>} />
+        <Route path="/student/academic"     element={<PageShell><StudentAcademicV1 /></PageShell>} />
+        <Route path="/student/registration" element={<PageShell><StudentRegistrationV1 /></PageShell>} />
+        <Route path="/student/attendance"   element={<PageShell><StudentAttendance /></PageShell>} />
+        <Route path="/student/profile"      element={<PageShell><StudentProfile /></PageShell>} />
+        <Route path="/student/notices"      element={<PageShell><StudentNotices /></PageShell>} />
+        <Route path="/student/timetable"    element={<PageShell><StudentTimetableV1 /></PageShell>} />
+        <Route path="/student/marks"        element={<PageShell><StudentMarks /></PageShell>} />
+        <Route path="/student/transcript"   element={<PageShell><StudentTranscript /></PageShell>} />
 
         {/* ── TEACHER ROUTES ── */}
-        <Route path="/teacher/dashboard"  element={<Page><TeacherDashV1 /></Page>} />
-        <Route path="/teacher/sections"   element={<Page><TeacherSectionsV1 /></Page>} />
-        <Route path="/teacher/gradebook"  element={<Page><TeacherGradebook /></Page>} />
-        <Route path="/teacher/attendance" element={<Page><TeacherAttendance /></Page>} />
-        <Route path="/teacher/schedule"   element={<Page><TeacherSchedule /></Page>} />
-        <Route path="/teacher/alerts"     element={<Page><TeacherBroadcasts /></Page>} /> 
-        <Route path="/teacher/profile"    element={<Page><TeacherProfile /></Page>} /> 
+        <Route path="/teacher/dashboard"  element={<PageShell><TeacherDashV1 /></PageShell>} />
+        <Route path="/teacher/sections"   element={<PageShell><TeacherSectionsV1 /></PageShell>} />
+        <Route path="/teacher/gradebook"  element={<PageShell><TeacherGradebook /></PageShell>} />
+        <Route path="/teacher/attendance" element={<PageShell><TeacherAttendance /></PageShell>} />
+        <Route path="/teacher/schedule"   element={<PageShell><TeacherSchedule /></PageShell>} />
+        <Route path="/teacher/alerts"     element={<PageShell><TeacherBroadcasts /></PageShell>} /> 
+        <Route path="/teacher/profile"    element={<PageShell><TeacherProfile /></PageShell>} /> 
 
         {/* ── ADMIN ROUTES ── */}
-        <Route path="/admin/dashboard"      element={<Page><AdminDashboard /></Page>} />
-        <Route path="/admin/students"       element={<Page><AdminStudents /></Page>} />
-        <Route path="/admin/courses"        element={<Page><AdminCourses /></Page>} />
-        <Route path="/admin/teachers"       element={<Page><AdminTeachers /></Page>} />
-        <Route path="/admin/enrollment"     element={<Page><AdminEnrollment /></Page>} />
-        <Route path="/admin/announcements"  element={<Page><AdminAnnouncements /></Page>} />
+        <Route path="/admin/dashboard"      element={<PageShell><AdminDashboard /></PageShell>} />
+        <Route path="/admin/students"       element={<PageShell><AdminStudents /></PageShell>} />
+        <Route path="/admin/courses"        element={<PageShell><AdminCourses /></PageShell>} />
+        <Route path="/admin/teachers"       element={<PageShell><AdminTeachers /></PageShell>} />
+        <Route path="/admin/enrollment"     element={<PageShell><AdminEnrollment /></PageShell>} />
+        <Route path="/admin/announcements"  element={<PageShell><AdminAnnouncements /></PageShell>} />
         
       </Routes>
     </AnimatePresence>
