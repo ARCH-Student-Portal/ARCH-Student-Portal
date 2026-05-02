@@ -4,25 +4,10 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
 import "./TeacherDashV1.css";
+import AnimatedCounter from "./Utilities/AnimatedCounter";
 import Sidebar from "./Components/shared/Sidebar";
 import { TEACHER_NAV } from "./config/TeacherNav";
 
-// ── CUSTOM SMOOTH COUNTER HOOK ──
-function AnimatedCounter({ value, decimals = 0, suffix = "", duration = 1.2, delay = 0 }) {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, (latest) => latest.toFixed(decimals) + suffix);
-
-  useEffect(() => {
-    const controls = animate(count, value, { 
-      duration: duration, 
-      delay: delay, 
-      ease: [0.34, 1.56, 0.64, 1] // Springy ease
-    });
-    return controls.stop;
-  }, [value, duration, delay, count]);
-
-  return <motion.span>{rounded}</motion.span>;
-}
 
 export default function TeacherDashV1() {
   const navigate = useNavigate();

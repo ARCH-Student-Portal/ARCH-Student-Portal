@@ -5,30 +5,9 @@ import { gsap } from "gsap";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
 import { TEACHER_NAV } from "./config/TeacherNav";
+import AnimatedCounter from "./Utilities/AnimatedCounter";
 import "./TeacherDashV1.css"; // Core shell layout
 import "./TeacherSchedule.css"; // Specific schedule overrides
-
-// ── CUSTOM SMOOTH COUNTER HOOK ──
-function AnimatedCounter({ value, decimals = 0, suffix = "", duration = 1.2, delay = 0 }) {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, (latest) => {
-    const num = Number(latest);
-    return (isNaN(num) ? 0 : num).toFixed(decimals) + suffix;
-  });
-
-  useEffect(() => {
-    const safeValue = Number(value);
-    const finalValue = isNaN(safeValue) ? 0 : safeValue;
-    const controls = animate(count, finalValue, { 
-      duration: duration, 
-      delay: delay, 
-      ease: [0.34, 1.56, 0.64, 1] 
-    });
-    return () => controls.stop();
-  }, [value, duration, delay, count]);
-
-  return <motion.span>{rounded}</motion.span>;
-}
 
 // ── SCHEDULE DATA ─────────────────────────────────────────────────────────────
 const SCHEDULE = [
