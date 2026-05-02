@@ -22,7 +22,8 @@ import TeacherSectionsV1 from "./TeacherSectionsV1";
 import TeacherGradebook from "./TeacherGradebook";
 import TeacherAttendance from "./TeacherAttendance";
 import TeacherSchedule from "./TeacherSchedule";
-import TeacherBroadcasts from "./TeacherBroadcasts"; // 🚀 BOOM. IMPORTED.
+import TeacherBroadcasts from "./TeacherBroadcasts"; 
+import TeacherProfile from "./TeacherProfile"; // 🚀 BOOM. IMPORTED.
 
 // ── ADMIN ──
 import AdminDashboard from "./AdminDashboard";
@@ -72,7 +73,8 @@ function AnimatedRoutes() {
         <Route path="/teacher/gradebook"  element={<Page><TeacherGradebook /></Page>} />
         <Route path="/teacher/attendance" element={<Page><TeacherAttendance /></Page>} />
         <Route path="/teacher/schedule"   element={<Page><TeacherSchedule /></Page>} />
-        <Route path="/teacher/alerts"     element={<Page><TeacherBroadcasts /></Page>} /> {/* 🚀 BOOM. ROUTED. */}
+        <Route path="/teacher/alerts"     element={<Page><TeacherBroadcasts /></Page>} /> 
+        <Route path="/teacher/profile"    element={<Page><TeacherProfile /></Page>} /> {/* 🚀 BOOM. ROUTED. */}
 
         {/* ── ADMIN ROUTES ── */}
         <Route path="/admin/dashboard"      element={<Page><AdminDashboard /></Page>} />

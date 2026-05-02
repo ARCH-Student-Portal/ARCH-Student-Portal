@@ -1,0 +1,262 @@
+/* =========================================
+   TEACHER PROFILE — ARCH Enterprise Scale
+   Relies on TeacherDashV1.css for shell layout
+   ========================================= */
+
+/* ── LAYOUT ── */
+.tp-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 40px;
+  height: calc(100vh - 180px);
+  align-items: start;
+}
+
+/* Explicit Glass Classes (No .glass-card ghost CSS) */
+.tp-card {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(18,78,170,.22);
+  box-shadow: 0 12px 40px rgba(0,0,0,.12);
+  border-radius: 24px;
+}
+
+/* ── LEFT: IDENTITY CARD ── */
+.tp-sidebar-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 32px 32px;
+  height: 100%;
+}
+
+.tp-avatar-wrap {
+  position: relative;
+  margin-bottom: 24px;
+}
+.tp-avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 32px;
+  background: linear-gradient(135deg, var(--blue), var(--blue2));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  box-shadow: 0 16px 40px rgba(26,120,255,0.3);
+}
+.tp-status-dot {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 32px;
+  height: 32px;
+  background: #00c853;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0,200,83,0.4);
+}
+
+.tp-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--text-main);
+  margin-bottom: 8px;
+  text-align: center;
+  letter-spacing: -0.02em;
+}
+.tp-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+.tp-id-badge {
+  background: rgba(18,78,170,.06);
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--dimmer);
+  letter-spacing: 0.05em;
+  margin-bottom: 40px;
+}
+
+.tp-contact-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 40px;
+  padding-top: 32px;
+  border-top: 2px solid rgba(18,78,170,.08);
+}
+.tp-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.tp-ci-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(26,120,255,.08);
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.tp-ci-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Red Danger Logout Button */
+.tp-logout-btn {
+  margin-top: auto;
+  width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255,77,106,.05);
+  border: 2px solid rgba(255,77,106,.2);
+  color: var(--red);
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+.tp-logout-btn:hover {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+  box-shadow: 0 8px 24px rgba(255,77,106,.3);
+}
+
+/* ── RIGHT: DOSSIER CONTENT ── */
+.tp-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  height: 100%;
+}
+
+.tp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  flex-shrink: 0;
+}
+
+.tp-stat-box {
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.tp-stat-val {
+  font-family: 'Bitcount Grid Double', monospace;
+  font-size: 64px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.tp-stat-val.blue { color: var(--blue); text-shadow: 0 4px 16px rgba(26,120,255,.2); }
+.tp-stat-val.green { color: #00c853; text-shadow: 0 4px 16px rgba(0,200,83,.2); }
+.tp-stat-val.amber { color: #ff9100; text-shadow: 0 4px 16px rgba(255,145,0,.2); }
+
+.tp-stat-lbl {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--dimmer);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.tp-panel {
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tp-bio-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--dimmer);
+  line-height: 1.6;
+}
+
+.tp-pub-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.tp-pub-list::-webkit-scrollbar { width: 6px; }
+.tp-pub-list::-webkit-scrollbar-thumb { background: rgba(26,120,255,.2); border-radius: 3px; }
+
+.tp-pub-item {
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+  border-radius: 16px;
+  background: rgba(18,78,170,.03);
+  border: 1px solid rgba(18,78,170,.08);
+  transition: all 0.2s;
+}
+.tp-pub-item:hover {
+  background: #fff;
+  border-color: rgba(26,120,255,.3);
+  box-shadow: 0 4px 16px rgba(26,120,255,.1);
+  transform: translateX(4px);
+}
+
+.tp-pub-year {
+  font-family: 'Bitcount Grid Double', monospace;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--blue);
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+.tp-pub-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tp-pub-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text-main);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.tp-pub-journal {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dimmer);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
