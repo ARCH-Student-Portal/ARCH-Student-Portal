@@ -2,9 +2,38 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
 import "./AdminPortal.css";
 import "./AdminAnnouncements.css";
+import AnnCard from "./Components/Admin/AnnCard";
+import ComposeModal from "./Components/Admin/ComposeModal";
+import {
+  TYPE_META,
+  AUDIENCES,
+  EMPTY_FORM,
+  INITIAL_ANNOUNCEMENTS,
+} from "./data/AdminAnnouncementsData";
+
+// ── CUSTOM SMOOTH COUNTER HOOK ──
+function AnimatedCounter({ value, decimals = 0, suffix = "", prefix = "", duration = 1.2, delay = 0, useCommas = false }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => {
+    let num = Number(latest);
+    if (isNaN(num)) num = 0;
+    let formattedStr = num.toFixed(decimals);
+    if (useCommas) formattedStr = parseFloat(formattedStr).toLocaleString('en-US');
+    return prefix + formattedStr + suffix;
+  });
+
+  useEffect(() => {
+    const safeValue = Number(value);
+    const finalValue = isNaN(safeValue) ? 0 : safeValue;
+    const controls = animate(count, finalValue, { duration, delay, ease: [0.34, 1.56, 0.64, 1] });
+    return () => controls.stop();
+  }, [value, duration, delay, count]);
+
+  return <motion.span>{rounded}</motion.span>;
+}
 
 const NAV = [
   ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
@@ -15,233 +44,10 @@ const NAV = [
                   ["📣", "Announcements",   "/admin/announcements"]]]
 ];
 
-const TYPE_META = {
-  announcement: { icon: "📣", label: "Announcement", color: "#7c3aed", bg: "rgba(124,58,237,.1)", border: "rgba(124,58,237,.3)" },
-  exam:         { icon: "📝", label: "Exam",          color: "#ff4d6a", bg: "rgba(255,77,106,.1)", border: "rgba(255,77,106,.3)" },
-  assignment:   { icon: "📋", label: "Assignment",    color: "#ff9800", bg: "rgba(255,152,0,.1)",  border: "rgba(255,152,0,.3)"  },
-  quiz:         { icon: "✏️", label: "Quiz",          color: "#40a9ff", bg: "rgba(64,169,255,.1)", border: "rgba(64,169,255,.3)" },
-};
-
-const AUDIENCES = ["All Students", "BS-CS", "BS-EE", "BS-IS", "BS-MT", "BS-BBA", "Faculty", "1st Semester", "Final Year"];
-
-const INITIAL_ANNOUNCEMENTS = [
-  {
-    id: "ann-1", type: "announcement", title: "Mid-Term 2 Hall Allocation Published",
-    body: "Hall assignments for Mid 2 exams (Week 10) are now available on the LMS portal under 'Exam Schedule'. Students must carry their university ID cards. No entry will be permitted without a valid ID.",
-    from: "Exam Office", audience: "All Students", date: "Mar 18, 2025", pinned: true,
-  },
-  {
-    id: "ann-2", type: "announcement", title: "LMS Maintenance — Saturday 2–4 AM",
-    body: "The LMS portal will be unavailable for scheduled maintenance this Saturday between 2:00 AM and 4:00 AM. Please plan all assignment submissions accordingly. No deadline extensions will be granted for this maintenance window.",
-    from: "IT Department", audience: "All Students", date: "Mar 16, 2025", pinned: true,
-  },
-  {
-    id: "ann-3", type: "exam", title: "OOAD Assignment 2 — Groups of 3 Only",
-    body: "Reminder: Individual submissions for OOAD Assignment 2 will not be accepted. All groups must be registered on LMS before the submission date. Sequence and activity diagrams must be included.",
-    from: "Dr. Hamza Raheel", audience: "BS-CS", date: "Mar 14, 2025", pinned: false,
-  },
-  {
-    id: "ann-4", type: "announcement", title: "Spring 2025 Fee Challan Deadline",
-    body: "The last date to submit Spring 2025 fee challans is March 20, 2025. Students with outstanding dues will have their LMS access suspended. Please visit the accounts office or pay online via the NUST payment portal.",
-    from: "Accounts Office", audience: "All Students", date: "Mar 10, 2025", pinned: false,
-  },
-  {
-    id: "ann-5", type: "quiz", title: "DSA Quiz 2 — Scope Clarification",
-    body: "DSA Quiz 2 scheduled for Week 7 will cover Binary Search Trees, AVL Trees, and Introduction to Graph Traversal (BFS/DFS). The quiz will be 15 minutes, closed book, conducted in the lab.",
-    from: "Dr. Farhan Siddiqui", audience: "BS-CS", date: "Mar 3, 2025", pinned: false,
-  },
-  {
-    id: "ann-6", type: "announcement", title: "Faculty Research Seminar — AI in Education",
-    body: "A university-wide research seminar on 'AI in Education' will be held on March 25, 2025 in Auditorium Block C at 2:00 PM. Attendance is optional but strongly encouraged for final-year students.",
-    from: "Research Office", audience: "Faculty", date: "Mar 1, 2025", pinned: false,
-  },
-];
-
-const EMPTY_FORM = { type: "announcement", title: "", body: "", from: "Admin Office", audience: "All Students" };
-
 /* ── COMPOSE MODAL ──────────────────────────────────────────────────────────── */
-function ComposeModal({ existing, onClose, onSave }) {
-  const [form, setForm] = useState(existing ? { ...existing } : { ...EMPTY_FORM });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const isEdit = !!existing;
 
-  const canSave = form.title.trim() && form.body.trim() && form.from.trim();
-
-  return (
-    <div className="adm-modal-overlay" onClick={onClose}>
-      <div className="adm-modal" style={{ width: "min(640px,92vw)", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div className="adm-modal-hd">
-          <div className="adm-modal-title">{isEdit ? "Edit Announcement" : "Post Announcement"}</div>
-          <button className="adm-modal-close" onClick={onClose}>✕</button>
-        </div>
-
-        <div className="adm-form-grid">
-          {/* Type */}
-          <div className="adm-form-group">
-            <label className="adm-form-label">Type</label>
-            <select className="adm-form-select" value={form.type} onChange={e => set("type", e.target.value)}>
-              {Object.keys(TYPE_META).map(t => <option key={t} value={t}>{TYPE_META[t].icon} {TYPE_META[t].label}</option>)}
-            </select>
-          </div>
-          {/* Audience */}
-          <div className="adm-form-group">
-            <label className="adm-form-label">Audience</label>
-            <select className="adm-form-select" value={form.audience} onChange={e => set("audience", e.target.value)}>
-              {AUDIENCES.map(a => <option key={a}>{a}</option>)}
-            </select>
-          </div>
-          {/* Title */}
-          <div className="adm-form-group full">
-            <label className="adm-form-label">Title</label>
-            <input
-              className="adm-form-input"
-              value={form.title}
-              onChange={e => set("title", e.target.value)}
-              placeholder="Announcement headline…"
-            />
-          </div>
-          {/* Body */}
-          <div className="adm-form-group full">
-            <label className="adm-form-label">Body</label>
-            <textarea
-              className="adm-form-input"
-              rows={5}
-              value={form.body}
-              onChange={e => set("body", e.target.value)}
-              placeholder="Full announcement text…"
-              style={{ resize: "vertical", lineHeight: 1.6 }}
-            />
-          </div>
-          {/* From */}
-          <div className="adm-form-group">
-            <label className="adm-form-label">Posted By</label>
-            <input
-              className="adm-form-input"
-              value={form.from}
-              onChange={e => set("from", e.target.value)}
-              placeholder="Department / name"
-            />
-          </div>
-          {/* Pin */}
-          <div className="adm-form-group" style={{ justifyContent: "flex-end" }}>
-            <label className="adm-form-label">Pin to top</label>
-            <div
-              onClick={() => set("pinned", !form.pinned)}
-              style={{
-                display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
-                padding: "10px 14px", borderRadius: 10,
-                border: `1px solid ${form.pinned ? "rgba(124,58,237,.4)" : "var(--border)"}`,
-                background: form.pinned ? "rgba(124,58,237,.07)" : "#f8fafc",
-                transition: "all .2s",
-              }}
-            >
-              <div style={{
-                width: 18, height: 18, borderRadius: 5,
-                border: `2px solid ${form.pinned ? "var(--purple)" : "#cbd5e1"}`,
-                background: form.pinned ? "var(--purple)" : "transparent",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#fff", fontSize: 11, transition: "all .2s",
-              }}>
-                {form.pinned ? "✓" : ""}
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: form.pinned ? "var(--purple)" : "var(--dimmer)" }}>
-                📌 Pin announcement
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="adm-modal-footer">
-          <button className="adm-btn-secondary" onClick={onClose}>Cancel</button>
-          <button
-            className="adm-btn-primary"
-            onClick={() => canSave && onSave(form)}
-            style={{ opacity: canSave ? 1 : .5, cursor: canSave ? "pointer" : "not-allowed" }}
-          >
-            {isEdit ? "Save Changes" : "📣 Post Announcement"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ── ANNOUNCEMENT CARD ───────────────────────────────────────────────────────── */
-function AnnCard({ ann, onEdit, onDelete, onTogglePin }) {
-  const meta = TYPE_META[ann.type] ?? TYPE_META.announcement;
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: .95 }}
-      transition={{ duration: .28 }}
-      className="adm-card"
-      style={{ padding: 0, overflow: "hidden", marginBottom: 14 }}
-    >
-      {/* Colour stripe */}
-      <div style={{ height: 3, background: meta.color, borderRadius: "18px 18px 0 0" }} />
-      <div style={{ padding: "18px 22px" }}>
-        {/* Top row */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{
-              padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 800,
-              letterSpacing: ".06em", textTransform: "uppercase",
-              color: meta.color, background: meta.bg, border: `1px solid ${meta.border}`,
-            }}>
-              {meta.icon} {meta.label}
-            </span>
-            <span style={{
-              padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-              background: "rgba(26,120,255,.08)", color: "var(--blue)",
-              border: "1px solid rgba(26,120,255,.2)",
-            }}>
-              {ann.audience}
-            </span>
-            {ann.pinned && (
-              <span style={{
-                padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                background: "rgba(124,58,237,.1)", color: "var(--purple)",
-                border: "1px solid rgba(124,58,237,.25)",
-              }}>
-                📌 Pinned
-              </span>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-            <button
-              className="adm-action-btn"
-              title={ann.pinned ? "Unpin" : "Pin"}
-              onClick={() => onTogglePin(ann.id)}
-              style={{ color: ann.pinned ? "var(--purple)" : undefined }}
-            >
-              📌
-            </button>
-            <button className="adm-action-btn" title="Edit" onClick={() => onEdit(ann)}>✏️</button>
-            <button className="adm-action-btn btn-delete" title="Delete" onClick={() => onDelete(ann.id)}>🗑️</button>
-          </div>
-        </div>
-
-        {/* Title */}
-        <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", marginBottom: 8, lineHeight: 1.4 }}>
-          {ann.title}
-        </div>
-
-        {/* Body */}
-        <div style={{ fontSize: 13, color: "var(--dimmer)", lineHeight: 1.7, marginBottom: 14 }}>
-          {ann.body}
-        </div>
-
-        {/* Footer */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "var(--dimmer)", opacity: .75 }}>
-          <span style={{ fontFamily: "'JetBrains Mono',monospace" }}>🗓 {ann.date}</span>
-          <span>· Posted by <strong style={{ color: "var(--text-main)", opacity: 1 }}>{ann.from}</strong></span>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 /* ── MAIN COMPONENT ─────────────────────────────────────────────────────────── */
 export default function AdminAnnouncements() {
@@ -251,10 +57,11 @@ export default function AdminAnnouncements() {
 
   const [collapse,       setCollapse]       = useState(false);
   const [announcements,  setAnnouncements]  = useState(INITIAL_ANNOUNCEMENTS);
-  const [compose,        setCompose]        = useState(null); // null | "new" | ann object
+  const [compose,        setCompose]        = useState(null); 
   const [search,         setSearch]         = useState("");
   const [typeFilter,     setTypeFilter]     = useState("All");
   const [audienceFilter, setAudienceFilter] = useState("All");
+  const [showStats,      setShowStats]      = useState(false);
 
   const filtered = announcements.filter(a => {
     const q = search.toLowerCase();
@@ -264,7 +71,6 @@ export default function AdminAnnouncements() {
     return matchSearch && matchType && matchAudience;
   });
 
-  // Pinned first, then by recency (id order)
   const sorted = [...filtered].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1;
     if (!a.pinned && b.pinned) return  1;
@@ -288,9 +94,7 @@ export default function AdminAnnouncements() {
     }
   };
 
-  const handleTogglePin = (id) => {
-    setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, pinned: !a.pinned } : a));
-  };
+  const handleTogglePin = (id) => setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, pinned: !a.pinned } : a));
 
   /* Three.js bg */
   useEffect(() => {
@@ -301,19 +105,21 @@ export default function AdminAnnouncements() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
     camera.position.set(0, 3, 12);
-    scene.add(new THREE.AmbientLight(0x4400aa, 0.6));
-    const sun = new THREE.DirectionalLight(0x9966ff, 1.2); sun.position.set(-6, 12, 8); scene.add(sun);
+    
+    scene.add(new THREE.AmbientLight(0x0033aa, 0.6));
+    const sun = new THREE.DirectionalLight(0x40a9ff, 1.2); sun.position.set(-6, 12, 8); scene.add(sun);
+    
     const COUNT = 140;
     const ptPos = new Float32Array(COUNT*3), ptCol = new Float32Array(COUNT*3), ptVel = [];
     for (let i=0;i<COUNT;i++){
       ptPos[i*3]=(Math.random()-.5)*34;ptPos[i*3+1]=(Math.random()-.5)*22;ptPos[i*3+2]=(Math.random()-.5)*18-6;
       ptVel.push({x:(Math.random()-.5)*.008,y:(Math.random()-.5)*.006});
-      ptCol[i*3]=.5;ptCol[i*3+1]=.3;ptCol[i*3+2]=1;
+      ptCol[i*3]=.1; ptCol[i*3+1]=.5; ptCol[i*3+2]=1;
     }
     const ptGeo = new THREE.BufferGeometry();
     ptGeo.setAttribute("position",new THREE.BufferAttribute(ptPos,3));
     ptGeo.setAttribute("color",   new THREE.BufferAttribute(ptCol,3));
-    scene.add(new THREE.Points(ptGeo,new THREE.PointsMaterial({size:.05,transparent:true,opacity:.5,vertexColors:true})));
+    scene.add(new THREE.Points(ptGeo,new THREE.PointsMaterial({size:.05,transparent:true,opacity:.6,vertexColors:true})));
     let nmx=0,nmy=0;
     const onMove=e=>{nmx=(e.clientX/W)*2-1;nmy=-(e.clientY/H)*2+1;};
     document.addEventListener("mousemove",onMove);
@@ -332,13 +138,14 @@ export default function AdminAnnouncements() {
   }, []);
 
   useEffect(() => {
-    document.querySelectorAll(".adm-card").forEach((el,i)=>{
+    document.querySelectorAll(".sc, .adm-card").forEach((el,i)=>{
       gsap.fromTo(el,{opacity:0,y:24},{opacity:1,y:0,duration:.45,ease:"power2.out",delay:i*.06});
     });
+    setTimeout(() => setShowStats(true), 100);
   }, []);
 
   return (
-    <>
+    <div className="admin-ann-wrapper">
       <canvas id="adm-webgl" ref={webglRef} />
 
       <AnimatePresence>
@@ -351,100 +158,116 @@ export default function AdminAnnouncements() {
         )}
       </AnimatePresence>
 
-      <div id="adm-app">
-        {/* SIDEBAR */}
-        <nav id="adm-sidebar" className={collapse ? "collapse" : ""}>
-          <div className="adm-sb-top-bar" />
-          <button className="adm-sb-toggle" onClick={() => setCollapse(c => !c)}>
+      <div id="app" style={{ opacity: 1, zIndex: 10, position: 'relative' }}>
+        {/* 🔥 EXACT MATCH TO DASHBOARD: SIDEBAR 🔥 */}
+        <nav id="sidebar" className={collapse ? "collapse" : ""} style={{ transform: "translateX(0)" }}>
+          <div className="sb-top-bar" />
+          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
             <span /><span /><span />
           </button>
-          <div className="adm-sb-logo">
-            <div className="adm-logo-box">A</div>
-            <div><div className="adm-logo-name">ARCH</div><div className="adm-logo-tagline">Admin Panel</div></div>
+          <div className="sb-logo">
+            <div className="logo-box">A</div>
+            <div><div className="logo-name">ARCH</div><div className="logo-tagline">Admin Portal</div></div>
           </div>
-          <div className="adm-sb-user">
-            <div className="adm-uav">SA</div>
-            <div><div className="adm-uname">Super Admin</div><div className="adm-uid">ADM-0001</div></div>
+          <div className="sb-user hov-target">
+            <div className="uav">SA</div>
+            <div><div className="uname">Super Admin</div><div className="uid">ADM-0001</div></div>
           </div>
           {NAV.map(([sec, items]) => (
             <div key={sec}>
-              <div className="adm-nav-sec">{sec}</div>
+              <div className="nav-sec">{sec}</div>
               {items.map(([ic, label, path]) => (
-                <div key={label} className={`adm-ni${location.pathname === path ? " active" : ""}`} onClick={() => navigate(path)}>
-                  <div className="adm-ni-ic">{ic}</div>{label}
+                <div key={label} className={`ni hov-target${location.pathname === path ? " active" : ""}`} onClick={() => navigate(path)}>
+                  <div className="ni-ic">{ic}</div>{label}
                 </div>
               ))}
             </div>
           ))}
-          <div className="adm-sb-foot">Spring 2025 · FAST-NUCES</div>
+          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
         </nav>
 
-        {/* MAIN */}
-        <div id="adm-main">
-          <div id="adm-topbar">
-            <div className="adm-topbar-glow" />
-            <div className="adm-pg-title">Announcements</div>
-            <div className="adm-tb-r">
-              <div className="adm-sem-chip">{announcements.length} total</div>
-              <button className="adm-btn-primary" onClick={() => setCompose("new")}>
+        {/* 🔥 EXACT MATCH TO DASHBOARD: MAIN & TOPBAR 🔥 */}
+        <div id="main">
+          <div id="topbar" style={{ opacity: 1 }}>
+            <div className="tb-glow" />
+            <div className="pg-title"><span>Announcements</span></div>
+            <div className="tb-r">
+              <div className="sem-chip">{announcements.length} total</div>
+              <button className="adm-btn-primary" onClick={() => setCompose("new")} style={{ fontSize: 18, padding: "10px 24px", marginLeft: 12 }}>
                 📣 Post Announcement
               </button>
             </div>
           </div>
 
-          <div id="adm-scroll">
-
-            {/* Stat chips */}
-            <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+          <div id="scroll">
+            {/* ── GODZILLA STATS GRID (SGRID) ── */}
+            <div className="sgrid">
               {[
-                { label: "Pinned",        val: announcements.filter(a=>a.pinned).length,             color: "var(--purple)" },
-                { label: "Announcements", val: announcements.filter(a=>a.type==="announcement").length, color: "var(--blue)"   },
-                { label: "Exams",         val: announcements.filter(a=>a.type==="exam").length,       color: "var(--red)"    },
-                { label: "Quizzes",       val: announcements.filter(a=>a.type==="quiz").length,       color: "#40a9ff"       },
-              ].map(chip => (
-                <div key={chip.label} style={{
-                  padding: "8px 18px", borderRadius: 20,
-                  background: "#ffffff", border: "1px solid rgba(18,78,170,.14)",
-                  fontSize: 13, fontWeight: 700, color: "var(--text-main)",
-                  display: "flex", alignItems: "center", gap: 8,
-                  boxShadow: "0 2px 8px rgba(0,0,0,.04)"
-                }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: chip.color, display: "inline-block" }} />
-                  {chip.label}: <strong style={{ fontFamily: "'JetBrains Mono',monospace", color: chip.color }}>{chip.val}</strong>
+                { id:"sc1", cls:"sc-a", label:"Pinned",        val: announcements.filter(a=>a.pinned).length,             did:"d1", special:"none" },
+                { id:"sc2", cls:"sc-b", label:"Announcements", val: announcements.filter(a=>a.type==="announcement").length, did:"d2", special:"none" },
+                { id:"sc3", cls:"sc-c", label:"Exams",         val: announcements.filter(a=>a.type==="exam").length,       did:"d3", special:"fire" },
+                { id:"sc4", cls:"sc-d", label:"Quizzes",       val: announcements.filter(a=>a.type==="quiz").length,       did:"d4", special:"bubbles" },
+              ].map((c) => (
+                <div className={`sc ${c.cls} hov-target`} id={c.id} key={c.id}>
+                  <div className="sc-blob" /><div className="sc-deco" />
+                  <div className="sc-label">{c.label}</div>
+                  <div className="sc-val">
+                    {showStats ? <AnimatedCounter value={c.val} useCommas={false} suffix="" /> : "0"}
+                  </div>
+                  
+                  {c.special === "bubbles" && (
+                    <div className="bubbles">
+                      {[0,1,2,3,4,5,6].map(i => (
+                        <span key={i} className="bubble" style={{ left:`${5+i*13}%`, animationDelay:`${i*0.3}s`, animationDuration:`${2+i*0.22}s`, width:`${6+i%3*2}px`, height:`${6+i%3*2}px` }} />
+                      ))}
+                    </div>
+                  )}
+                  {c.special === "fire" && (
+                    <div className="card-fire">
+                      {[0,1,2,3,4].map(i => (
+                        <div key={i} className={`cflame cf${i+1}`} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
 
             {/* Filter bar */}
-            <div className="adm-card" style={{ marginBottom: 20, padding: "16px 22px" }}>
-              <div className="adm-filter-bar" style={{ marginBottom: 0 }}>
-                <div className="adm-filter-search">
-                  <span style={{ color: "#94a3b8" }}>🔍</span>
+            <div className="adm-card" style={{ marginBottom: 40, padding: "24px 32px" }}>
+              <div className="adm-filter-bar" style={{ marginBottom: 0, gap: 20 }}>
+                <div className="adm-filter-search" style={{ padding: "16px 20px", flex: 1, maxWidth: 600 }}>
+                  <span style={{ color: "#94a3b8", fontSize: 22 }}>🔍</span>
                   <input
+                    style={{ fontSize: 20 }}
                     placeholder="Search by title, body, or sender…"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                   />
                 </div>
-                <select className="adm-filter-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                <select className="adm-filter-select" style={{ fontSize: 18, padding: "16px 20px" }} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
                   <option value="All">All Types</option>
                   {Object.keys(TYPE_META).map(t => <option key={t} value={t}>{TYPE_META[t].icon} {TYPE_META[t].label}</option>)}
                 </select>
-                <select className="adm-filter-select" value={audienceFilter} onChange={e => setAudienceFilter(e.target.value)}>
+                <select className="adm-filter-select" style={{ fontSize: 18, padding: "16px 20px" }} value={audienceFilter} onChange={e => setAudienceFilter(e.target.value)}>
                   <option value="All">All Audiences</option>
                   {AUDIENCES.map(a => <option key={a}>{a}</option>)}
                 </select>
-                <div className="adm-filter-count">{sorted.length} result{sorted.length !== 1 ? "s" : ""}</div>
+                <div className="adm-filter-count" style={{ fontSize: 18, padding: "16px 24px" }}>
+                  {sorted.length} result{sorted.length !== 1 ? "s" : ""}
+                </div>
               </div>
             </div>
 
             {/* Announcement list */}
             {sorted.length === 0 ? (
-              <div className="adm-card" style={{ textAlign: "center", padding: "64px 32px" }}>
-                <div style={{ fontSize: 40, marginBottom: 16 }}>📭</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-main)", marginBottom: 8 }}>No announcements</div>
-                <div style={{ fontSize: 13, color: "var(--dimmer)", marginBottom: 20 }}>Nothing matches your filters. Post a new announcement above.</div>
-                <button className="adm-btn-primary" onClick={() => setCompose("new")}>📣 Post Announcement</button>
+              <div className="adm-card" style={{ textAlign: "center", padding: "100px 40px" }}>
+                <div style={{ fontSize: 64, marginBottom: 24 }}>📭</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: "var(--text-main)", marginBottom: 12 }}>No announcements</div>
+                <div style={{ fontSize: 20, color: "var(--dimmer)", marginBottom: 32 }}>Nothing matches your filters. Post a new announcement above.</div>
+                <button className="adm-btn-primary" onClick={() => setCompose("new")} style={{ fontSize: 20, padding: "16px 32px" }}>
+                  📣 Post Announcement
+                </button>
               </div>
             ) : (
               <AnimatePresence mode="popLayout">
@@ -463,6 +286,6 @@ export default function AdminAnnouncements() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

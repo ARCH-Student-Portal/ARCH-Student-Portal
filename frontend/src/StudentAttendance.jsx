@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, AnimatePresence } from "framer-motion";
+import Sidebar from "./Components/shared/Sidebar";
+import { STUDENT_NAV } from "./config/studentNav";
 import "./StudentAttendance.css";
 
 // ── MOCK DATA ──────────────────────────────────────────────────────────────────
@@ -388,35 +390,15 @@ export default function StudentAttendance() {
       <div id="app" ref={appRef}>
 
         {/* ── SIDEBAR ── */}
-        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
-          <div className="sb-top-bar" />
-          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
-            <span/><span/><span/>
-          </button>
-          <div className="sb-logo">
-            <div className="logo-box">A</div>
-            <div><div className="logo-name">ARCH</div><div className="logo-tagline">Student Portal</div></div>
-          </div>
-          <div className="sb-user">
-            <div className="uav">AB</div>
-            <div><div className="uname">Areeb Bucha</div><div className="uid">21K-3210</div></div>
-          </div>
-          {sidebarSections.map(([sec, items]) => (
-            <div key={sec}>
-              <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div
-                  key={label}
-                  className={`ni${location.pathname === path ? " active" : ""}`}
-                  onClick={() => navigate(path)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <div className="ni-ic">{ic}</div>{label}
-                </div>
-              ))}
-            </div>
-          ))}
-        </nav>
+        <Sidebar
+          ref={sidebarRef}  // <--- ADD THIS LINE
+          sections={STUDENT_NAV}
+          logoLabel="Student Portal"
+          userName="Areeb Bucha"
+          userId="21K-3210"
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         {/* ── MAIN ── */}
         <div id="main">

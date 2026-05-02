@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
-import { motion, AnimatePresence } from "framer-motion";
+import { gsap } from "gsap";
+import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
 
-import "./StudentDashV1.css";
-import "./TeacherGradebook.css";
+import "./TeacherDashV1.css"; // Core shell layout
+import "./TeacherGradebook.css"; // Gradebook specifics
 
 // ── DATA ────────────────────────────────────────────────────────────────────
 const SECTIONS_DATA = {
@@ -71,18 +72,38 @@ function gradeClass(g) {
   return "grade-" + g.replace("+", "-plus");
 }
 
+// ── CUSTOM SMOOTH COUNTER HOOK ──
+function AnimatedCounter({ value, decimals = 0, suffix = "", duration = 1.2, delay = 0 }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => latest.toFixed(decimals) + suffix);
+
+  useEffect(() => {
+    const controls = animate(count, value, { 
+      duration: duration, 
+      delay: delay, 
+      ease: [0.34, 1.56, 0.64, 1] 
+    });
+    return controls.stop;
+  }, [value, duration, delay, count]);
+
+  return <motion.span>{rounded}</motion.span>;
+}
+
 // ── COMPONENT ─────────────────────────────────────────────────────────────
 export default function TeacherGradebook() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const webglRef  = useRef(null);
+  const introCanvasRef = useRef(null);
+  const introRef  = useRef(null);
   const appRef    = useRef(null);
   const sidebarRef = useRef(null);
+  const topbarRef = useRef(null);
   const [collapse, setCollapse] = useState(false);
+  const [showStats, setShowStats] = useState(false);
 
   const [activeSection, setActiveSection] = useState("CS-3001");
   const [scores, setScores]  = useState(() => {
-    // Deep-clone scores so we can edit locally
     const out = {};
     Object.entries(SECTIONS_DATA).forEach(([sec, data]) => {
       out[sec] = {};
@@ -144,7 +165,7 @@ export default function TeacherGradebook() {
   const avgScore = (() => {
     if (!students.length) return 0;
     const sum = students.reduce((acc, s) => acc + computeTotal(scores[activeSection][s.id], assessments), 0);
-    return ((sum / students.length / maxPts) * 100).toFixed(1);
+    return ((sum / students.length / maxPts) * 100);
   })();
   const highestScore = (() => {
     if (!students.length) return 0;
@@ -158,66 +179,140 @@ export default function TeacherGradebook() {
     return pct >= 50;
   }).length;
 
-  // ── THREE.JS BACKGROUND ──
+  // ── CINEMATIC INTRO ──
   useEffect(() => {
-    const canvas = webglRef.current;
-    let W = window.innerWidth, H = window.innerHeight;
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(W, H);
-    renderer.setClearColor(0xf4f8ff, 1);
-    const scene  = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200);
-    camera.position.set(0, 2, 10);
-    scene.add(new THREE.AmbientLight(0x0033aa, 0.8));
+    const hasPlayedIntro = sessionStorage.getItem("archTeacherIntroPlayed");
+    if (hasPlayedIntro) {
+      introRef.current.style.display = "none";
+      appRef.current.style.opacity = 1;
+      sidebarRef.current.style.transform = "translateX(0)";
+      topbarRef.current.style.opacity = 1;
+      setShowStats(true);
+      if (webglRef.current) {
+        webglRef.current.style.opacity = 0;
+        webglRef.current.style.display = "none";
+      }
+      return; 
+    }
+
+    const canvas = introCanvasRef.current;
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+    const words = ["FACULTY","TEACHING","SYLLABUS","LECTURE","SEMESTER","RESEARCH","PUBLICATIONS","ALERTS","STUDENT","GRADES","EXAM","EVALUATION","RUBRIC"];
+    const particles = Array.from({ length: 60 }, () => ({
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      word: words[Math.floor(Math.random() * words.length)],
+      opacity: Math.random() * 0.4 + 0.05, speed: Math.random() * 0.8 + 0.2,
+      size: Math.floor(Math.random() * 10) + 10, flicker: Math.random() * 0.025 + 0.005,
+      hue: Math.random() > 0.6 ? "255,255,255" : "60,140,255",
+    }));
+
     let animId;
-    const loop = () => { animId = requestAnimationFrame(loop); renderer.render(scene, camera); };
-    loop();
+    const draw = () => {
+      ctx.fillStyle = "rgba(0,4,14,0.18)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      particles.forEach((p) => {
+        p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
+        p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
+        if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; p.word = words[Math.floor(Math.random() * words.length)]; }
+        ctx.font = `${p.size}px 'Inter', sans-serif`; 
+        ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
+        ctx.fillText(p.word, p.x, p.y);
+      });
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
+    const afterIntro = () => {
+      cancelAnimationFrame(animId);
+      sessionStorage.setItem("archTeacherIntroPlayed", "true"); 
+      gsap.set(introRef.current, { display: "none" });
+      gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
+      gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out" });
+      gsap.to(topbarRef.current, { opacity: 1, duration: 0.7 });
+      
+      setTimeout(() => setShowStats(true), 600);
+
+      gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
+      setTimeout(() => { if (webglRef.current) webglRef.current.style.display = "none"; }, 3000);
+    };
+
+    const tl = gsap.timeline({ delay: 0.4, onComplete: afterIntro });
+    tl.to("#intro-line", { scaleX: 1, duration: 0.8, ease: "power3.out" }, 0)
+      .to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.5)
+      .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4)
+      .to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4)
+      .to(introRef.current, { opacity: 0, duration: 0.35 }, 2.88);
+
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── NAV ITEMS ──
-  const navItems = [
-    ["Management", [
-      ["◈", "My Sections",  "/teacher/sections"],
-      ["⊞", "Dashboard",    "/teacher/dashboard"],
-      ["▦", "Gradebook",    "/teacher/gradebook"],
-    ]],
-    ["Communication", [["◉", "Broadcast Alerts", "/teacher/alerts"]]],
-    ["Account",       [["◌", "Profile",           "/teacher/profile"]]],
-  ];
+  // ── THREE.JS BACKGROUND ──
+  useEffect(() => {
+    if (sessionStorage.getItem("archTeacherIntroPlayed")) return;
+    const canvas = webglRef.current;
+    if (!canvas) return;
+    let W = window.innerWidth, H = window.innerHeight;
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setSize(W, H); renderer.setClearColor(0xf4f8ff, 1);
+    const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200); camera.position.set(0, 2, 10);
+    scene.add(new THREE.AmbientLight(0x0033aa, 0.8));
+    let nmx = 0, nmy = 0; const onMove = (e) => { nmx = (e.clientX / W) * 2 - 1; nmy = -(e.clientY / H) * 2 + 1; }; document.addEventListener("mousemove", onMove);
+    let animId;
+    const loop = () => {
+      animId = requestAnimationFrame(loop); camera.position.x += (nmx * 0.6 - camera.position.x) * 0.015; camera.position.y += (nmy * 0.4 + 2 - camera.position.y) * 0.015; camera.lookAt(0, 0, 0); renderer.render(scene, camera);
+    };
+    loop(); return () => { cancelAnimationFrame(animId); document.removeEventListener("mousemove", onMove); };
+  }, []);
 
   return (
     <>
-      <div className="scanlines" />
-      <div className="vignette"  />
+      <div className="mesh-bg">
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
+      </div>
+
       <canvas id="webgl" ref={webglRef} />
 
+      <div id="intro" ref={introRef}>
+        <canvas id="intro-canvas" ref={introCanvasRef} />
+        <div id="intro-line" />
+        <div id="intro-logo">ARCH</div>
+      </div>
+
       <div id="app" ref={appRef} style={{ opacity: 1 }}>
+        
         {/* ── SIDEBAR ── */}
-        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""} style={{ transform: "translateX(0)" }}>
+        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
           <div className="sb-top-bar" />
-          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
+          <button className="sb-toggle hov-target" onClick={() => setCollapse(c => !c)}>
             <span /><span /><span />
           </button>
           <div className="sb-logo">
             <div className="logo-box">A</div>
             <div><div className="logo-name">ARCH</div><div className="logo-tagline">Faculty Portal</div></div>
           </div>
-          <div className="sb-user">
+          <div className="sb-user hov-target" onClick={() => navigate('/teacher/profile')}>
             <div className="uav">Dr.</div>
             <div><div className="uname">Dr. Ahmed</div><div className="uid">EMP-8492</div></div>
           </div>
-          {navItems.map(([sec, items]) => (
+          {[
+            ["Overview", [["⊞","Dashboard","/teacher/dashboard"]]],
+            ["Management",[["◈","My Sections","/teacher/sections"],["▦","Gradebook","/teacher/gradebook"],["✓","Attendance","/teacher/attendance"],["▤","Schedule","/teacher/schedule"]]],
+            ["Communication",[["◉","Broadcasts","/teacher/alerts"]]],
+            ["Account",[["◌","Profile","/teacher/profile"]]],
+          ].map(([sec, items]) => (
             <div key={sec}>
               <div className="nav-sec">{sec}</div>
               {items.map(([ic, label, path]) => (
                 <div
                   key={label}
-                  className={`ni${location.pathname === path ? " active" : ""}`}
+                  className={`ni hov-target ${location.pathname === path ? " active" : ""}`}
                   onClick={() => navigate(path)}
-                  style={{ cursor: "pointer" }}
                 >
                   <div className="ni-ic">{ic}</div>{label}
+                  {label === "Broadcasts" && <span className="nbadge">2</span>}
                 </div>
               ))}
             </div>
@@ -227,17 +322,20 @@ export default function TeacherGradebook() {
 
         {/* ── MAIN ── */}
         <div id="main">
-          <div id="topbar">
+          <div id="topbar" ref={topbarRef}>
             <div className="tb-glow" />
             <div className="pg-title"><span>Gradebook</span></div>
             <div className="tb-r">
-              {unsaved && (
-                <div className="gb-unsaved-badge">
-                  <span className="gb-unsaved-dot" />
-                  UNSAVED CHANGES
-                </div>
-              )}
-              <div className="sem-chip">Spring 2025</div>
+              <AnimatePresence>
+                {unsaved && (
+                  <motion.div initial={{opacity:0, scale:0.8}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.8}} className="gb-unsaved-badge">
+                    <span className="gb-unsaved-dot" />
+                    UNSAVED CHANGES
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <motion.div whileHover={{ scale: 1.05 }} className="sem-chip">Spring 2025</motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="notif-bell">🔔<span className="notif-dot"/></motion.div>
             </div>
           </div>
 
@@ -245,79 +343,94 @@ export default function TeacherGradebook() {
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
+              transition={{ duration: 0.4 }}
+              className="dash-container"
             >
 
               {/* ── CONTROLS ── */}
               <div className="gb-controls">
-                <div className="gb-section-tabs">
+                <div className="marks-tab-container">
                   {Object.keys(SECTIONS_DATA).map(sec => (
-                    <button
+                    <motion.button
                       key={sec}
-                      className={`gb-sec-tab${activeSection === sec ? " active" : ""}`}
+                      className={`marks-tab ${activeSection === sec ? "active" : ""}`}
                       onClick={() => { setActiveSection(sec); setSearch(""); }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                     >
                       {sec}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
 
                 <div className="gb-right-controls">
                   <div className="gb-search">
-                    <span style={{ fontSize: 12, opacity: 0.5 }}>🔍</span>
+                    <span>🔍</span>
                     <input
                       placeholder="Search student…"
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                     />
                   </div>
-                  <button className="gb-btn-export" onClick={() => {}}>
-                    ↓ Export
-                  </button>
-                  <button className="gb-btn-save" onClick={handleSave} disabled={!unsaved}>
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="gb-btn-export" onClick={() => {}}>
+                    ↓ Export CSV
+                  </motion.button>
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`gb-btn-save ${unsaved ? "active-save" : ""}`} onClick={handleSave} disabled={!unsaved}>
                     ✓ Save Grades
-                  </button>
+                  </motion.button>
                 </div>
               </div>
 
               {/* ── SUMMARY STRIP ── */}
               <div className="gb-summary">
-                <div className="gb-stat">
+                <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                   <div className="gb-stat-label">Class Average</div>
-                  <div className={`gb-stat-value ${parseFloat(avgScore) >= 70 ? "green" : parseFloat(avgScore) >= 50 ? "amber" : "red"}`}>{avgScore}%</div>
+                  <div className={`gb-stat-value ${parseFloat(avgScore) >= 70 ? "green" : parseFloat(avgScore) >= 50 ? "amber" : "red"}`}>
+                    {showStats ? <AnimatedCounter value={avgScore} decimals={1} suffix="%" /> : "0.0%"}
+                  </div>
                   <div className="gb-stat-sub">out of {maxPts} pts</div>
-                </div>
-                <div className="gb-stat">
+                </motion.div>
+                <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                   <div className="gb-stat-label">Students</div>
-                  <div className="gb-stat-value">{sectionData.students.length}</div>
+                  <div className="gb-stat-value">
+                    {showStats ? <AnimatedCounter value={sectionData.students.length} /> : "0"}
+                  </div>
                   <div className="gb-stat-sub">{sectionData.code}</div>
-                </div>
-                <div className="gb-stat">
+                </motion.div>
+                <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                   <div className="gb-stat-label">Passing</div>
-                  <div className="gb-stat-value green">{passingCount}</div>
+                  <div className="gb-stat-value green">
+                    {showStats ? <AnimatedCounter value={passingCount} /> : "0"}
+                  </div>
                   <div className="gb-stat-sub">≥ 50% threshold</div>
-                </div>
-                <div className="gb-stat">
+                </motion.div>
+                <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                   <div className="gb-stat-label">Highest Score</div>
-                  <div className="gb-stat-value">{highestScore}</div>
+                  <div className="gb-stat-value">
+                    {showStats ? <AnimatedCounter value={highestScore} /> : "0"}
+                  </div>
                   <div className="gb-stat-sub">out of {maxPts} pts</div>
-                </div>
+                </motion.div>
               </div>
 
               {/* ── GRADEBOOK TABLE ── */}
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeSection}
-                  className="gb-table-wrap"
-                  initial={{ opacity: 0, y: 8 }}
+                  className="glass-card gb-table-wrap"
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
                 >
+                  <div className="panel-header" style={{ marginBottom: '24px' }}>
+                    <h2 className="ct"><div className="ctbar"/>Assessment Entry</h2>
+                  </div>
+
                   {/* HEADER */}
                   <div className="gb-table-head">
                     <div className="gb-col-hd left">Roll No.</div>
-                    <div className="gb-col-hd left">Student</div>
+                    <div className="gb-col-hd left">Student Identity</div>
                     {assessments.map(a => (
                       <div key={a.key} className="gb-col-hd editable-hd">
                         {a.label}
@@ -331,7 +444,7 @@ export default function TeacherGradebook() {
                   {/* ROWS */}
                   <div className="gb-roster">
                     {students.length === 0 ? (
-                      <div style={{ padding: "40px", textAlign: "center", color: "#a0b8d8", fontFamily: "JetBrains Mono, monospace", fontSize: 13 }}>
+                      <div style={{ padding: "40px", textAlign: "center", color: "var(--dimmer)", fontSize: 16 }}>
                         No students match "{search}"
                       </div>
                     ) : students.map((s, idx) => {
@@ -342,11 +455,12 @@ export default function TeacherGradebook() {
 
                       return (
                         <motion.div
-                          className="gb-row"
+                          className="gb-row hov-target"
                           key={s.id}
-                          initial={{ opacity: 0, x: -8 }}
+                          initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.2, delay: idx * 0.03 }}
+                          transition={{ duration: 0.2, delay: idx * 0.05 }}
+                          whileHover={{ backgroundColor: "rgba(26,100,255,0.05)" }}
                         >
                           {/* Roll */}
                           <div className="gb-cell left gb-roll">{s.id}</div>
@@ -357,8 +471,8 @@ export default function TeacherGradebook() {
                               <div className="gb-avatar">{s.init}</div>
                               <div>
                                 <div className="gb-student-name">{s.name}</div>
-                                <div style={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace", color: "#a0b8d8", marginTop: 1 }}>
-                                  Att: <span className={s.attCls} style={{ fontWeight: 700 }}>{s.att}</span>
+                                <div className="gb-student-att">
+                                  Att: <span className={s.attCls}>{s.att}</span>
                                 </div>
                               </div>
                             </div>
@@ -385,7 +499,7 @@ export default function TeacherGradebook() {
 
                           {/* Total */}
                           <div className="gb-cell">
-                            <div className="gb-total-cell">{total}<span style={{ fontSize: 10, color: "#a0b8d8", fontWeight: 500 }}>/{maxPts}</span></div>
+                            <div className="gb-total-cell">{total}<span className="gb-total-max">/{maxPts}</span></div>
                           </div>
 
                           {/* Grade */}
@@ -408,10 +522,10 @@ export default function TeacherGradebook() {
                     </div>
                     <div className="gb-dist-legend">
                       {[
-                        { cls: "dist-a",  color: "#00c853", label: `A  ${distribution.A}`  },
-                        { cls: "dist-b",  color: "#1a78ff", label: `B  ${distribution.B}`  },
-                        { cls: "dist-c",  color: "#ffab00", label: `C  ${distribution.C}`  },
-                        { cls: "dist-df", color: "#ff4d6a", label: `D/F ${distribution.DF}` },
+                        { cls: "dist-a",  color: "#00c853", label: `A (${distribution.A})`  },
+                        { cls: "dist-b",  color: "#1a78ff", label: `B (${distribution.B})`  },
+                        { cls: "dist-c",  color: "#ffab00", label: `C (${distribution.C})`  },
+                        { cls: "dist-df", color: "#ff4d6a", label: `D/F (${distribution.DF})` },
                       ].map(d => (
                         <div className="dl-item" key={d.label}>
                           <div className="dl-dot" style={{ background: d.color }} />
@@ -434,12 +548,13 @@ export default function TeacherGradebook() {
         {showToast && (
           <motion.div
             className="gb-toast"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.25 }}
+            initial={{ opacity: 0, y: 40, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.9 }}
+            transition={{ duration: 0.3, type: "spring" }}
           >
-            ✓ Grades saved successfully
+            <div className="toast-icon">✓</div>
+            Grades synced to secure server
           </motion.div>
         )}
       </AnimatePresence>
