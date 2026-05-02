@@ -17,7 +17,7 @@ import StudentTranscript from "./StudentTranscript";
 import { CourseProvider } from "./CourseContext";
 
 // ── TEACHER ──
-import TeacherDashboardV1 from "./TeacherDashboardV1";
+import TeacherDashV1 from "./TeacherDashV1"; // FIXED IMPORT
 import TeacherSectionsV1 from "./TeacherSectionsV1";
 import TeacherGradebook from "./TeacherGradebook";
 import TeacherAttendance from "./TeacherAttendance";
@@ -66,17 +66,16 @@ function AnimatedRoutes() {
         <Route path="/student/transcript"   element={<Page><StudentTranscript /></Page>} />
 
         {/* ── TEACHER ROUTES ── */}
-        <Route path="/teacher/dashboard"  element={<Page><TeacherDashboardV1 /></Page>} />
+        <Route path="/teacher/dashboard"  element={<Page><TeacherDashV1 /></Page>} /> {/* FIXED COMPONENT NAME */}
         <Route path="/teacher/sections"   element={<Page><TeacherSectionsV1 /></Page>} />
         <Route path="/teacher/gradebook"  element={<Page><TeacherGradebook /></Page>} />
         <Route path="/teacher/attendance" element={<Page><TeacherAttendance /></Page>} />
         <Route path="/teacher/schedule"   element={<Page><TeacherSchedule /></Page>} />
 
         {/* ── ADMIN ROUTES ── */}
-        <Route path="/admin/dashboard" element={<Page><AdminDashboard /></Page>} />
-        <Route path="/admin/students"  element={<Page><AdminStudents /></Page>} />
-        <Route path="/admin/courses"   element={<Page><AdminCourses /></Page>} />
-        <Route path="/admin/teachers"   element={<Page><AdminTeachers /></Page>} />
+        <Route path="/admin/dashboard"      element={<Page><AdminDashboard /></Page>} />
+        <Route path="/admin/students"       element={<Page><AdminStudents /></Page>} />
+        <Route path="/admin/courses"        element={<Page><AdminCourses /></Page>} />
         <Route path="/admin/teachers"       element={<Page><AdminTeachers /></Page>} />
         <Route path="/admin/enrollment"     element={<Page><AdminEnrollment /></Page>} />
         <Route path="/admin/announcements"  element={<Page><AdminAnnouncements /></Page>} />
