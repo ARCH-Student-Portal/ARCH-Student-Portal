@@ -7,7 +7,7 @@ import "./StudentDashV1.css";
 import "./StudentRegistrationV1.css";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
-import { useCourses } from "./CourseContext";
+import { useCourses, useEnrolledStats, useAvailableFiltered } from "./CourseContext";
 
 export default function StudentRegistrationV1() {
   const navigate = useNavigate();
@@ -22,48 +22,24 @@ export default function StudentRegistrationV1() {
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: "", message: "", type: "error" });
   const closeAlert = () => setModalConfig({ ...modalConfig, isOpen: false });
 
-  // ── Pull live state from context ─────────────────────────────────────────
+  // ── Get context reference and confirmation function ──────────────────────
   const { enrolled: ctxEnrolled, availablePool: ctxAvailable, confirmRegistration } = useCourses();
 
+  // ── LOCAL DRAFT STATE (User's in-flight registration) ──────────────────
   const [enrolled,       setEnrolled]       = useState(ctxEnrolled);
   const [availableData,  setAvailableData]  = useState(ctxAvailable);
 
-  const [synced, setSynced] = useState(false);
-  useEffect(() => {
-    if (!synced) {
-      setEnrolled(ctxEnrolled);
-      setAvailableData(ctxAvailable);
-      setSynced(true);
-    }
-  }, [ctxEnrolled, ctxAvailable, synced]);
-
   const mandatoryCourses = ["CS-3001", "CS-2012"];
-
-  const totalCredits = enrolled.reduce((acc, c) => acc + c.credits, 0);
-  const totalTuition = enrolled.reduce((acc, c) => acc + c.price,   0);
   const minCredits = 12;
   const maxCredits = 18;
 
   const [search, setSearch] = useState("");
 
-  const available = availableData
-    .map(course => {
-      const clashCourse = enrolled.find(e => e.slot === course.slot);
-      let status    = course.seats >= course.maxSeats ? "full" : "open";
-      let clashWith = null;
-      if (clashCourse)                                              { status = "clash";  clashWith = clashCourse.code; }
-      else if (course.req && !enrolled.some(e => e.code === course.req)) { status = "locked"; }
-      return { ...course, status, clashWith };
-    })
-    .filter(course => {
-      const q = search.toLowerCase();
-      return (
-        course.code.toLowerCase().includes(q)  ||
-        course.name.toLowerCase().includes(q)  ||
-        course.prof.toLowerCase().includes(q)  ||
-        course.slot.toLowerCase().includes(q)
-      );
-    });
+  // ── OBSERVER: Computed stats from DRAFT state (auto-updates when draft changes) ──
+  const { totalCredits, totalTuition, mandatoryMissing, prerequisiteErrors } = useEnrolledStats(enrolled);
+  
+  // ── OBSERVER: Filtered available from DRAFT state (auto-updates on search/draft) ──
+  const available = useAvailableFiltered(search, { availablePool: availableData, enrolled });
 
   const handleEnroll = (course) => {
     if (totalCredits + course.credits > maxCredits) {
@@ -84,18 +60,20 @@ export default function StudentRegistrationV1() {
   };
 
   const handleConfirm = () => {
+    if (totalCredits > maxCredits) {
+      setModalConfig({ isOpen: true, title: "Credit Limit Exceeded", message: `You cannot exceed the maximum of ${maxCredits} credits.`, type: "error" });
+      return;
+    }
     if (totalCredits < minCredits) {
       setModalConfig({ isOpen: true, title: "Minimum Credits Not Met", message: `You must enroll in at least ${minCredits} credits. You currently have ${totalCredits}.`, type: "error" });
       return;
     }
-    const missing = mandatoryCourses.filter(code => !enrolled.some(e => e.code === code));
-    if (missing.length > 0) {
-      setModalConfig({ isOpen: true, title: "Missing Mandatory Courses", message: `Missing mandatory: ${missing.join(", ")}.`, type: "error" });
+    if (mandatoryMissing.length > 0) {
+      setModalConfig({ isOpen: true, title: "Missing Mandatory Courses", message: `Missing mandatory: ${mandatoryMissing.join(", ")}.`, type: "error" });
       return;
     }
-    const prereqErrors = enrolled.filter(c => c.req && !enrolled.some(e => e.code === c.req));
-    if (prereqErrors.length > 0) {
-      setModalConfig({ isOpen: true, title: "Prerequisite Error", message: `You enrolled in ${prereqErrors[0].code} but dropped its prerequisite (${prereqErrors[0].req}).`, type: "error" });
+    if (prerequisiteErrors.length > 0) {
+      setModalConfig({ isOpen: true, title: "Prerequisite Error", message: `You enrolled in ${prerequisiteErrors[0].code} but dropped its prerequisite (${prerequisiteErrors[0].req}).`, type: "error" });
       return;
     }
 

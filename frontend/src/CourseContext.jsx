@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useMemo } from "react";
 
 // ── TIME SLOTS (shared reference so clashes are data-driven) ─────────────────
 export const TIME_SLOTS = {
@@ -407,6 +407,55 @@ export const MARKS_DATA = {
 // ── Context ──────────────────────────────────────────────────────────────────
 const CourseContext = createContext(null);
 
+// ── SELECTOR FUNCTIONS (Pure, memoizable) ────────────────────────────────────
+export function getTotalCredits(enrolled) {
+  return enrolled.reduce((acc, c) => acc + c.credits, 0);
+}
+
+export function getTotalTuition(enrolled) {
+  return enrolled.reduce((acc, c) => acc + c.price, 0);
+}
+
+export function getAvailableWithStatus(availablePool, enrolled, searchQuery = "") {
+  const mandatoryCourses = ["CS-3001", "CS-2012"];
+  
+  return availablePool
+    .map(course => {
+      const clashCourse = enrolled.find(e => e.slot === course.slot);
+      let status    = course.seats >= course.maxSeats ? "full" : "open";
+      let clashWith = null;
+      if (clashCourse)                                              { status = "clash";  clashWith = clashCourse.code; }
+      else if (course.req && !enrolled.some(e => e.code === course.req)) { status = "locked"; }
+      return { ...course, status, clashWith };
+    })
+    .filter(course => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        course.code.toLowerCase().includes(q)  ||
+        course.name.toLowerCase().includes(q)  ||
+        course.prof.toLowerCase().includes(q)  ||
+        course.slot.toLowerCase().includes(q)
+      );
+    });
+}
+
+export function validateRegistration(enrolled) {
+  const mandatoryCourses = ["CS-3001", "CS-2012"];
+  const minCredits = 12;
+  const maxCredits = 18;
+  
+  const totalCredits = getTotalCredits(enrolled);
+  const errors = {
+    creditExceeded: totalCredits > maxCredits,
+    creditInsufficient: totalCredits < minCredits,
+    mandatoryMissing: mandatoryCourses.filter(code => !enrolled.some(e => e.code === code)),
+    prerequisiteErrors: enrolled.filter(c => c.req && !enrolled.some(e => e.code === c.req)),
+  };
+  
+  return errors;
+}
+
 export function CourseProvider({ children }) {
   const [enrolled,      setEnrolled]      = useState(DEFAULT_ENROLLED);
   const [availablePool, setAvailablePool] = useState(DEFAULT_AVAILABLE);
@@ -416,15 +465,56 @@ export function CourseProvider({ children }) {
     setAvailablePool(nextAvailable);
   };
 
+  // ── MEMOIZED COMPUTED STATE (Observes enrolled/availablePool changes) ─────
+  const contextValue = useMemo(
+    () => ({
+      enrolled,
+      availablePool,
+      confirmRegistration,
+      // Immediate-use selectors (client decides when to call)
+      getTotalCredits: () => getTotalCredits(enrolled),
+      getTotalTuition: () => getTotalTuition(enrolled),
+      getAvailableWithStatus: (searchQuery = "") => getAvailableWithStatus(availablePool, enrolled, searchQuery),
+      validateRegistration: () => validateRegistration(enrolled),
+    }),
+    [enrolled, availablePool]
+  );
+
   return (
-    <CourseContext.Provider value={{ enrolled, availablePool, confirmRegistration }}>
+    <CourseContext.Provider value={contextValue}>
       {children}
     </CourseContext.Provider>
   );
 }
 
+// ── PRIMARY HOOK (Core context access) ──────────────────────────────────────
 export function useCourses() {
   const ctx = useContext(CourseContext);
   if (!ctx) throw new Error("useCourses must be used inside <CourseProvider>");
   return ctx;
+}
+
+// ── OBSERVER HOOK: ENROLLED STATS (Auto-computed, auto-updated) ──────────────
+// Can work with context state or accept optional local state for draft registrations
+export function useEnrolledStats(enrolledOverride = null) {
+  const ctx = useCourses();
+  const enrolled = enrolledOverride !== null ? enrolledOverride : ctx.enrolled;
+  
+  return useMemo(() => ({
+    totalCredits: getTotalCredits(enrolled),
+    totalTuition: getTotalTuition(enrolled),
+    ...validateRegistration(enrolled),
+  }), [enrolled]);
+}
+
+// ── OBSERVER HOOK: AVAILABLE FILTERED (Auto-computed, auto-updated) ──────────
+// Can work with context state or accept optional local state for draft registrations
+export function useAvailableFiltered(searchQuery = "", overrideState = null) {
+  const ctx = useCourses();
+  const { availablePool, enrolled: ctxEnrolled } = overrideState || ctx;
+  
+  return useMemo(() => 
+    getAvailableWithStatus(availablePool, ctxEnrolled, searchQuery),
+    [availablePool, ctxEnrolled, searchQuery]
+  );
 }
