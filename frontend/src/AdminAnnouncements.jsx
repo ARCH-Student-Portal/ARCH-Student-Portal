@@ -3,20 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
-import "./AdminPortal.css";
-import "./AdminAnnouncements.css";
-import AnnCard from "./Components/Admin/AnnCard";
-import ComposeModal from "./Components/Admin/ComposeModal";
-import AdminSidebar from "./Components/shared/AdminSidebar";
-import { ADMIN_NAV } from "./config/AdminNav";
-import {
-  TYPE_META,
-  AUDIENCES,
-  EMPTY_FORM,
-  INITIAL_ANNOUNCEMENTS,
-} from "./data/AdminAnnouncementsData";
+import "./AdminAnnouncements.css"; // 🔥 THE ONE AND ONLY CSS FILE
 
-// ── CUSTOM SMOOTH COUNTER HOOK ──
+// ── 1. CUSTOM SMOOTH COUNTER HOOK ──
 function AnimatedCounter({ value, decimals = 0, suffix = "", prefix = "", duration = 1.2, delay = 0, useCommas = false }) {
   const count = useMotionValue(0);
   const rounded = useTransform(count, (latest) => {
@@ -37,6 +26,7 @@ function AnimatedCounter({ value, decimals = 0, suffix = "", prefix = "", durati
   return <motion.span>{rounded}</motion.span>;
 }
 
+// ── 2. STATIC DATA ──
 const NAV = [
   ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
   ["Management", [["👥", "Student Records", "/admin/students"],
@@ -46,12 +36,138 @@ const NAV = [
                   ["📣", "Announcements",   "/admin/announcements"]]]
 ];
 
-/* ── COMPOSE MODAL ──────────────────────────────────────────────────────────── */
+const TYPE_META = {
+  announcement: { icon: "📣", label: "Announcement", color: "#1a78ff", bg: "rgba(26,120,255,.1)", border: "rgba(26,120,255,.3)" },
+  exam:         { icon: "📝", label: "Exam",          color: "#ff4d6a", bg: "rgba(255,77,106,.1)", border: "rgba(255,77,106,.3)" },
+  assignment:   { icon: "📋", label: "Assignment",    color: "#ffab00", bg: "rgba(255,171,0,.1)",  border: "rgba(255,171,0,.3)"  },
+  quiz:         { icon: "✏️", label: "Quiz",          color: "#00c853", bg: "rgba(0,200,83,.1)",   border: "rgba(0,200,83,.3)" },
+};
+
+const AUDIENCES = ["All Students", "BS-CS", "BS-EE", "BS-IS", "BS-MT", "BS-BBA", "Faculty", "1st Semester", "Final Year"];
+
+const INITIAL_ANNOUNCEMENTS = [
+  { id: "ann-1", type: "announcement", title: "Mid-Term 2 Hall Allocation Published", body: "Hall assignments for Mid 2 exams (Week 10) are now available on the LMS portal under 'Exam Schedule'. Students must carry their university ID cards. No entry will be permitted without a valid ID.", from: "Exam Office", audience: "All Students", date: "Mar 18, 2025", pinned: true },
+  { id: "ann-2", type: "announcement", title: "LMS Maintenance — Saturday 2–4 AM", body: "The LMS portal will be unavailable for scheduled maintenance this Saturday between 2:00 AM and 4:00 AM. Please plan all assignment submissions accordingly. No deadline extensions will be granted for this maintenance window.", from: "IT Department", audience: "All Students", date: "Mar 16, 2025", pinned: true },
+  { id: "ann-3", type: "exam", title: "OOAD Assignment 2 — Groups of 3 Only", body: "Reminder: Individual submissions for OOAD Assignment 2 will not be accepted. All groups must be registered on LMS before the submission date. Sequence and activity diagrams must be included.", from: "Dr. Hamza Raheel", audience: "BS-CS", date: "Mar 14, 2025", pinned: false },
+  { id: "ann-4", type: "announcement", title: "Spring 2025 Fee Challan Deadline", body: "The last date to submit Spring 2025 fee challans is March 20, 2025. Students with outstanding dues will have their LMS access suspended. Please visit the accounts office or pay online via the NUST payment portal.", from: "Accounts Office", audience: "All Students", date: "Mar 10, 2025", pinned: false },
+];
+
+const EMPTY_FORM = { type: "announcement", title: "", body: "", from: "Admin Office", audience: "All Students", pinned: false };
 
 
-/* ── ANNOUNCEMENT CARD ───────────────────────────────────────────────────────── */
+// ── 3. INLINE COMPOSE MODAL ──
+function ComposeModal({ existing, onClose, onSave }) {
+  const [form, setForm] = useState(existing ? { ...existing } : { ...EMPTY_FORM });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const isEdit = !!existing;
+  const canSave = form.title.trim() && form.body.trim() && form.from.trim();
 
-/* ── MAIN COMPONENT ─────────────────────────────────────────────────────────── */
+  return (
+    <div className="adm-modal-overlay" onClick={onClose}>
+      <div className="adm-modal" style={{ width: "min(900px, 95vw)", maxHeight: "90vh", overflowY: "auto", padding: "48px" }} onClick={e => e.stopPropagation()}>
+        <div className="adm-modal-hd" style={{ marginBottom: 32 }}>
+          <div className="adm-modal-title" style={{ fontSize: 36 }}>{isEdit ? "Edit Announcement" : "Post Announcement"}</div>
+          <button className="adm-modal-close" style={{ fontSize: 32 }} onClick={onClose}>✕</button>
+        </div>
+
+        <div className="adm-form-grid" style={{ gap: 24 }}>
+          <div className="adm-form-group">
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Type</label>
+            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.type} onChange={e => set("type", e.target.value)}>
+              {Object.keys(TYPE_META).map(t => <option key={t} value={t}>{TYPE_META[t].icon} {TYPE_META[t].label}</option>)}
+            </select>
+          </div>
+          <div className="adm-form-group">
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Audience</label>
+            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.audience} onChange={e => set("audience", e.target.value)}>
+              {AUDIENCES.map(a => <option key={a}>{a}</option>)}
+            </select>
+          </div>
+          <div className="adm-form-group full">
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Title</label>
+            <input className="adm-form-input" style={{ fontSize: 24, padding: "20px", fontWeight: 800 }} value={form.title} onChange={e => set("title", e.target.value)} placeholder="Announcement headline…" />
+          </div>
+          <div className="adm-form-group full">
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Body</label>
+            <textarea className="adm-form-input" rows={6} value={form.body} onChange={e => set("body", e.target.value)} placeholder="Full announcement text…" style={{ resize: "vertical", lineHeight: 1.6, fontSize: 20, padding: "20px" }} />
+          </div>
+          <div className="adm-form-group">
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Posted By</label>
+            <input className="adm-form-input" style={{ fontSize: 20, padding: "18px" }} value={form.from} onChange={e => set("from", e.target.value)} placeholder="Department / name" />
+          </div>
+          <div className="adm-form-group" style={{ justifyContent: "flex-end" }}>
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Pin to top</label>
+            <div onClick={() => set("pinned", !form.pinned)} style={{ display: "flex", alignItems: "center", gap: 14, cursor: "pointer", padding: "16px 20px", borderRadius: 14, border: `2px solid ${form.pinned ? "rgba(26,120,255,.4)" : "var(--border)"}`, background: form.pinned ? "rgba(26,120,255,.07)" : "#f8fafc", transition: "all .2s" }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, border: `2px solid ${form.pinned ? "var(--blue)" : "#cbd5e1"}`, background: form.pinned ? "var(--blue)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, transition: "all .2s", fontWeight: 900 }}>
+                {form.pinned ? "✓" : ""}
+              </div>
+              <span style={{ fontSize: 18, fontWeight: 800, color: form.pinned ? "var(--blue)" : "var(--dimmer)" }}>📌 Pin announcement</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="adm-modal-footer" style={{ marginTop: 48 }}>
+          <button className="adm-btn-secondary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={onClose}>Cancel</button>
+          <button className="adm-btn-primary" onClick={() => canSave && onSave(form)} style={{ opacity: canSave ? 1 : .5, cursor: canSave ? "pointer" : "not-allowed", fontSize: 20, padding: "16px 32px" }}>
+            {isEdit ? "Save Changes" : "📣 Post Announcement"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── 4. INLINE ANNOUNCEMENT CARD ──
+function AnnCard({ ann, onEdit, onDelete, onTogglePin }) {
+  const meta = TYPE_META[ann.type] ?? TYPE_META.announcement;
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: .95 }}
+      transition={{ duration: .28 }}
+      className="admin-isolated-card ann-card-hover"
+      style={{ padding: 0, overflow: "hidden", marginBottom: 24, borderRadius: 24 }}
+    >
+      <div style={{ height: 6, background: meta.color, borderRadius: "24px 24px 0 0", width: "100%" }} />
+      <div style={{ padding: "32px 40px", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ padding: "6px 16px", borderRadius: 20, fontSize: 16, fontWeight: 900, letterSpacing: ".06em", textTransform: "uppercase", color: meta.color, background: meta.bg, border: `1px solid ${meta.border}` }}>
+              {meta.icon} {meta.label}
+            </span>
+            <span style={{ padding: "6px 16px", borderRadius: 20, fontSize: 16, fontWeight: 800, background: "rgba(26,120,255,.08)", color: "var(--blue)", border: "1px solid rgba(26,120,255,.2)" }}>
+              {ann.audience}
+            </span>
+            {ann.pinned && (
+              <span style={{ padding: "6px 16px", borderRadius: 20, fontSize: 16, fontWeight: 800, background: "rgba(26,120,255,.1)", color: "var(--blue)", border: "1px solid rgba(26,120,255,.3)" }}>
+                📌 Pinned
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+            <button className="adm-action-btn" title={ann.pinned ? "Unpin" : "Pin"} onClick={() => onTogglePin(ann.id)} style={{ color: ann.pinned ? "var(--blue)" : undefined, fontSize: 20, width: 48, height: 48 }}>📌</button>
+            <button className="adm-action-btn" title="Edit" onClick={() => onEdit(ann)} style={{ fontSize: 20, width: 48, height: 48 }}>✏️</button>
+            <button className="adm-action-btn btn-delete" title="Delete" onClick={() => onDelete(ann.id)} style={{ fontSize: 20, width: 48, height: 48 }}>🗑️</button>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 28, fontWeight: 900, color: "var(--text-main)", marginBottom: 16, lineHeight: 1.3 }}>{ann.title}</div>
+        <div style={{ fontSize: 20, color: "var(--dimmer)", lineHeight: 1.7, marginBottom: 24 }}>{ann.body}</div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 20, fontSize: 18, color: "var(--dimmer)", opacity: .8 }}>
+          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>🗓 {ann.date}</span>
+          <span style={{ fontWeight: 600 }}>· Posted by <strong style={{ color: "var(--text-main)", opacity: 1, fontWeight: 800 }}>{ann.from}</strong></span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+
+// ── 5. MAIN COMPONENT ────────────────────────────────────────────────────────
 export default function AdminAnnouncements() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -98,7 +214,7 @@ export default function AdminAnnouncements() {
 
   const handleTogglePin = (id) => setAnnouncements(prev => prev.map(a => a.id === id ? { ...a, pinned: !a.pinned } : a));
 
-  /* Three.js bg */
+  /* Three.js bg - Blue Unified Theme */
   useEffect(() => {
     const canvas = webglRef.current;
     let W = window.innerWidth, H = window.innerHeight;
@@ -140,11 +256,11 @@ export default function AdminAnnouncements() {
   }, []);
 
   useEffect(() => {
-    document.querySelectorAll(".sc, .adm-card").forEach((el,i)=>{
+    document.querySelectorAll(".sc, .admin-isolated-card").forEach((el,i)=>{
       gsap.fromTo(el,{opacity:0,y:24},{opacity:1,y:0,duration:.45,ease:"power2.out",delay:i*.06});
     });
     setTimeout(() => setShowStats(true), 100);
-  }, []);
+  }, [typeFilter, audienceFilter]); 
 
   return (
     <div className="admin-ann-wrapper">
@@ -161,7 +277,8 @@ export default function AdminAnnouncements() {
       </AnimatePresence>
 
       <div id="app" style={{ opacity: 1, zIndex: 10, position: 'relative' }}>
-        {/* 🔥 EXACT MATCH TO DASHBOARD: SIDEBAR 🔥 */}
+        
+        {/* 🔥 INLINE SIDEBAR 🔥 */}
         <nav id="sidebar" className={collapse ? "collapse" : ""} style={{ transform: "translateX(0)" }}>
           <div className="sb-top-bar" />
           <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
@@ -188,7 +305,7 @@ export default function AdminAnnouncements() {
           <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
         </nav>
 
-        {/* 🔥 EXACT MATCH TO DASHBOARD: MAIN & TOPBAR 🔥 */}
+        {/* MAIN */}
         <div id="main">
           <div id="topbar" style={{ opacity: 1 }}>
             <div className="tb-glow" />
@@ -202,7 +319,7 @@ export default function AdminAnnouncements() {
           </div>
 
           <div id="scroll">
-            {/* ── GODZILLA STATS GRID (SGRID) ── */}
+            {/* ── GODZILLA STATS GRID ── */}
             <div className="sgrid">
               {[
                 { id:"sc1", cls:"sc-a", label:"Pinned",        val: announcements.filter(a=>a.pinned).length,             did:"d1", special:"none" },
@@ -235,8 +352,8 @@ export default function AdminAnnouncements() {
               ))}
             </div>
 
-            {/* Filter bar */}
-            <div className="adm-card" style={{ marginBottom: 40, padding: "24px 32px" }}>
+            {/* Filter bar - ANTI SQUASH CLASS APPLIED */}
+            <div className="admin-isolated-card" style={{ marginBottom: 40, padding: "24px 32px" }}>
               <div className="adm-filter-bar" style={{ marginBottom: 0, gap: 20 }}>
                 <div className="adm-filter-search" style={{ padding: "16px 20px", flex: 1, maxWidth: 600 }}>
                   <span style={{ color: "#94a3b8", fontSize: 22 }}>🔍</span>
@@ -263,7 +380,7 @@ export default function AdminAnnouncements() {
 
             {/* Announcement list */}
             {sorted.length === 0 ? (
-              <div className="adm-card" style={{ textAlign: "center", padding: "100px 40px" }}>
+              <div className="admin-isolated-card" style={{ textAlign: "center", padding: "100px 40px" }}>
                 <div style={{ fontSize: 64, marginBottom: 24 }}>📭</div>
                 <div style={{ fontSize: 28, fontWeight: 900, color: "var(--text-main)", marginBottom: 12 }}>No announcements</div>
                 <div style={{ fontSize: 20, color: "var(--dimmer)", marginBottom: 32 }}>Nothing matches your filters. Post a new announcement above.</div>

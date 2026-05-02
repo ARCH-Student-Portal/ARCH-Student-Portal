@@ -1,5 +1,5 @@
 /* =========================================
-   ADMIN ANNOUNCEMENTS — 100% ISOLATED (UNIFIED BLUE + MONSTROUS FONTS)
+   ADMIN ANNOUNCEMENTS — 100% MONOLITHIC & ISOLATED
    ========================================= */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Bitcount+Grid+Double&family=JetBrains+Mono:wght@600;800&display=swap');
 
@@ -43,7 +43,7 @@
 .admin-ann-wrapper .nav-sec { font-size: 14px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; color: #1f4f99; padding: 14px 20px 6px; }
 .admin-ann-wrapper .ni { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin: 2px 10px; border-radius: 10px; cursor: pointer; color: #145ec9; font-size: 18px; font-weight: 700; border: 1px solid transparent; transition: all .15s; position: relative; overflow: hidden; text-shadow: 0 1px 0 rgba(0, 0, 0, .22); }
 .admin-ann-wrapper .ni:hover { background: rgba(13, 137, 253, 0.102); color: #0d89fd; }
-.admin-ann-wrapper .ni.active { background: rgba(26, 100, 255, .1); border-color: rgba(64, 169, 255, .2); color: #1a64ff; }
+.admin-ann-wrapper .ni.active { background: rgba(26, 100, 255, .1); border-color: rgba(64, 169, 255, .2); color: #1a64ff; font-weight: 800; }
 .admin-ann-wrapper .ni.active::after { content: ''; position: absolute; left: 0; top: 15%; height: 70%; width: 3px; background: linear-gradient(180deg, var(--blue2), var(--blue3)); border-radius: 0 2px 2px 0; box-shadow: 0 0 8px var(--blue2), 0 0 16px rgba(64, 169, 255, .4); }
 .admin-ann-wrapper .ni-ic { width: 28px; height: 28px; border-radius: 8px; background: #ffffff; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
 .admin-ann-wrapper .ni.active .ni-ic { background: rgba(26, 100, 255, .15); color: var(--blue2); }
@@ -121,8 +121,20 @@
 .admin-ann-wrapper .cf5 { width: 16px; height: 32px; background: linear-gradient(0deg, #cc2200, #ff6600, #ffaa00); animation-duration: .4s; }
 @keyframes bigFlame { 0% { transform: scaleY(1) scaleX(1) rotate(-4deg); } 100% { transform: scaleY(1.25) scaleX(.8) rotate(4deg); } }
 
-/* ── CARDS & FORMS ── */
-.admin-ann-wrapper .adm-card { background: rgba(255,255,255,0.95); border: 1px solid var(--border); box-shadow: 0 12px 40px rgba(0,0,0,.05); border-radius: 24px; padding: 32px; backdrop-filter: blur(20px); transition: box-shadow .2s, transform .2s; }
+/* 🔥 THE ANTI-SQUASH HERO CLASS 🔥 */
+.admin-ann-wrapper .admin-isolated-card { 
+  background: rgba(255,255,255,0.95); 
+  border: 1px solid var(--border); 
+  box-shadow: 0 12px 40px rgba(0,0,0,.05); 
+  border-radius: 24px; 
+  backdrop-filter: blur(20px); 
+  transition: box-shadow .2s, transform .2s; 
+  display: flex;
+  flex-direction: column;
+  height: auto !important;
+  min-height: min-content;
+}
+
 .admin-ann-wrapper .ann-card-hover:hover { box-shadow: 0 16px 50px rgba(0,0,0,.08); transform: translateY(-3px); }
 
 .admin-ann-wrapper .adm-filter-search { display: flex; align-items: center; gap: 16px; border-radius: 20px; border: 2px solid var(--border); background: #f8fafc; transition: all .2s; }

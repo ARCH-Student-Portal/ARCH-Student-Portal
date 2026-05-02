@@ -1,14 +1,39 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import * as THREE from "three";
 import { gsap } from "gsap";
-import { motion, AnimatePresence } from "framer-motion";
-import AdminSidebar from "./Components/shared/AdminSidebar";
-import { ADMIN_NAV } from "./config/AdminNav";
-import "./AdminPortal.css";
-import "./AdminCourses.css";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import "./AdminCourses.css"; // 🔥 100% ISOLATED CSS
 
+// ── CUSTOM SMOOTH COUNTER HOOK ──
+function AnimatedCounter({ value, decimals = 0, suffix = "", prefix = "", duration = 1.2, delay = 0, useCommas = false }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => {
+    let num = Number(latest);
+    if (isNaN(num)) num = 0;
+    let formattedStr = num.toFixed(decimals);
+    if (useCommas) formattedStr = parseFloat(formattedStr).toLocaleString('en-US');
+    return prefix + formattedStr + suffix;
+  });
 
+  useEffect(() => {
+    const safeValue = Number(value);
+    const finalValue = isNaN(safeValue) ? 0 : safeValue;
+    const controls = animate(count, finalValue, { duration, delay, ease: [0.34, 1.56, 0.64, 1] });
+    return () => controls.stop();
+  }, [value, duration, delay, count]);
+
+  return <motion.span>{rounded}</motion.span>;
+}
+
+// ── STATIC DATA ──
+const NAV = [
+  ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
+  ["Management", [["👥", "Student Records", "/admin/students"],
+                  ["🎓", "Teachers",        "/admin/teachers"],
+                  ["📚", "Course Catalog",  "/admin/courses"],
+                  ["📋", "Enrollment",      "/admin/enrollment"],
+                  ["📣", "Announcements",   "/admin/announcements"]]]
+];
 
 const DEPTS    = ["All", "CS", "EE", "MT", "IS", "BBA"];
 const TYPES    = ["All", "Core", "Elective", "Lab", "Seminar"];
@@ -54,7 +79,7 @@ function fillColor(enrolled, capacity) {
   return { bar: "#00c96e", text: "#047857" };
 }
 
-/* ── COURSE MODAL ── */
+// ── INLINE COURSE MODAL ──
 function CourseModal({ course, onClose, onSave }) {
   const [form, setForm] = useState(
     course
@@ -65,71 +90,71 @@ function CourseModal({ course, onClose, onSave }) {
 
   return (
     <div className="adm-modal-overlay" onClick={onClose}>
-      <div className="adm-modal crs-modal" onClick={e => e.stopPropagation()}>
-        <div className="adm-modal-hd">
-          <div className="adm-modal-title">{course ? "Edit Course" : "Add New Course"}</div>
-          <button className="adm-modal-close" onClick={onClose}>✕</button>
+      <div className="adm-modal" style={{ width: "min(900px, 95vw)", maxHeight: "90vh", overflowY: "auto", padding: "48px" }} onClick={e => e.stopPropagation()}>
+        <div className="adm-modal-hd" style={{ marginBottom: 32 }}>
+          <div className="adm-modal-title" style={{ fontSize: 36 }}>{course ? "Edit Course" : "Add New Course"}</div>
+          <button className="adm-modal-close" style={{ fontSize: 32 }} onClick={onClose}>✕</button>
         </div>
-        <div className="adm-form-grid">
+        <div className="adm-form-grid" style={{ gap: 24 }}>
           <div className="adm-form-group">
-            <label className="adm-form-label">Course ID</label>
-            <input className="adm-form-input" value={form.id} onChange={e => set("id", e.target.value)} placeholder="e.g. CS-4011" />
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Course ID</label>
+            <input className="adm-form-input" style={{ fontSize: 24, padding: "20px", fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }} value={form.id} onChange={e => set("id", e.target.value)} placeholder="e.g. CS-4011" />
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label">Credits</label>
-            <select className="adm-form-select" value={form.credits} onChange={e => set("credits", Number(e.target.value))}>
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Credits</label>
+            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.credits} onChange={e => set("credits", Number(e.target.value))}>
               {[1,2,3,4].map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div className="adm-form-group full">
-            <label className="adm-form-label">Course Title</label>
-            <input className="adm-form-input" value={form.name} onChange={e => set("name", e.target.value)} placeholder="Full course name" />
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Course Title</label>
+            <input className="adm-form-input" style={{ fontSize: 24, padding: "20px", fontWeight: 800 }} value={form.name} onChange={e => set("name", e.target.value)} placeholder="Full course name" />
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label">Department</label>
-            <select className="adm-form-select" value={form.dept} onChange={e => set("dept", e.target.value)}>
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Department</label>
+            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.dept} onChange={e => set("dept", e.target.value)}>
               {["CS","EE","IS","MT","BBA"].map(d => <option key={d}>{d}</option>)}
             </select>
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label">Type</label>
-            <select className="adm-form-select" value={form.type} onChange={e => set("type", e.target.value)}>
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Type</label>
+            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.type} onChange={e => set("type", e.target.value)}>
               {["Core","Elective","Lab","Seminar"].map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
           <div className="adm-form-group full">
-            <label className="adm-form-label">Instructor</label>
-            <input className="adm-form-input" value={form.instructor} onChange={e => set("instructor", e.target.value)} placeholder="Faculty name" />
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Instructor</label>
+            <input className="adm-form-input" style={{ fontSize: 20, padding: "18px" }} value={form.instructor} onChange={e => set("instructor", e.target.value)} placeholder="Faculty name" />
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label">Semester</label>
-            <select className="adm-form-select" value={form.semester} onChange={e => set("semester", e.target.value)}>
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Semester</label>
+            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.semester} onChange={e => set("semester", e.target.value)}>
               {["1st","2nd","3rd","4th","5th","6th","7th","8th"].map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label">Capacity</label>
-            <input className="adm-form-input" type="number" value={form.capacity} onChange={e => set("capacity", Number(e.target.value))} min={1} />
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Capacity</label>
+            <input className="adm-form-input" type="number" style={{ fontSize: 20, padding: "18px", fontFamily: "'JetBrains Mono', monospace" }} value={form.capacity} onChange={e => set("capacity", Number(e.target.value))} min={1} />
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label">Enrolled</label>
-            <input className="adm-form-input" type="number" value={form.enrolled} onChange={e => set("enrolled", Number(e.target.value))} min={0} />
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Enrolled</label>
+            <input className="adm-form-input" type="number" style={{ fontSize: 20, padding: "18px", fontFamily: "'JetBrains Mono', monospace" }} value={form.enrolled} onChange={e => set("enrolled", Number(e.target.value))} min={0} />
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label">Status</label>
-            <select className="adm-form-select" value={form.status} onChange={e => set("status", e.target.value)}>
-              {["active","inactive","draft"].map(s => <option key={s}>{s}</option>)}
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Status</label>
+            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px", fontWeight: 800, color: form.status === "active" ? "var(--green)" : form.status === "inactive" ? "var(--red)" : "var(--amber)" }} value={form.status} onChange={e => set("status", e.target.value)}>
+              {["active","inactive","draft"].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
             </select>
           </div>
           <div className="adm-form-group full">
-            <label className="adm-form-label">Description</label>
-            <textarea className="adm-form-input" rows={3} style={{ resize: "vertical", lineHeight: 1.6 }} value={form.description} onChange={e => set("description", e.target.value)} placeholder="Brief course description..." />
+            <label className="adm-form-label" style={{ fontSize: 18 }}>Description</label>
+            <textarea className="adm-form-input" rows={4} style={{ resize: "vertical", lineHeight: 1.6, fontSize: 18, padding: "18px" }} value={form.description} onChange={e => set("description", e.target.value)} placeholder="Brief course description..." />
           </div>
         </div>
-        <div className="adm-modal-footer">
-          <button className="adm-btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="adm-btn-primary" onClick={() => onSave(form)}>
-            {course ? "Save Changes" : "Add Course"}
+        <div className="adm-modal-footer" style={{ marginTop: 48 }}>
+          <button className="adm-btn-secondary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={onClose}>Cancel</button>
+          <button className="adm-btn-primary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={() => onSave(form)}>
+            {course ? "Save Changes" : "➕ Add Course"}
           </button>
         </div>
       </div>
@@ -137,7 +162,7 @@ function CourseModal({ course, onClose, onSave }) {
   );
 }
 
-/* ── DETAIL PANEL ── */
+// ── INLINE DETAIL SLIDE-OVER PANEL ──
 function DetailPanel({ course, onClose, onEdit, onDelete }) {
   const dm = DEPT_META[course.dept] || DEPT_META.CS;
   const tm = TYPE_META[course.type] || TYPE_META.Core;
@@ -162,30 +187,29 @@ function DetailPanel({ course, onClose, onEdit, onDelete }) {
     >
       <motion.aside
         className="crs-detail-panel"
+        style={{ width: "min(600px, 88vw)" }} 
         initial={{ x: 80, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 80, opacity: 0 }}
         transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Gradient header band */}
-        <div className="crs-detail-banner" style={{ background: dm.grad }}>
+        <div className="crs-detail-banner" style={{ background: dm.grad, padding: "40px" }}>
           <div className="crs-detail-banner-noise" />
-          <button className="crs-detail-close" onClick={onClose}>✕</button>
-          <div className="crs-detail-banner-icon" style={{ background: "rgba(255,255,255,.15)" }}>
-            <span style={{ fontSize: 28 }}>{tm.icon}</span>
+          <button className="crs-detail-close" style={{ width: 40, height: 40, fontSize: 18, top: 24, right: 24 }} onClick={onClose}>✕</button>
+          <div className="crs-detail-banner-icon" style={{ background: "rgba(255,255,255,.15)", width: 72, height: 72, borderRadius: 20, marginBottom: 24 }}>
+            <span style={{ fontSize: 36 }}>{tm.icon}</span>
           </div>
-          <div className="crs-detail-banner-id">{course.id}</div>
-          <div className="crs-detail-banner-name">{course.name}</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-            <span className="crs-pill crs-pill-white">{course.dept} · {dm.label}</span>
-            <span className="crs-pill crs-pill-white">{course.type}</span>
-            <span className={`adm-badge badge-${course.status}`} style={{ background: "rgba(255,255,255,.18)", color: "#fff", border: "1px solid rgba(255,255,255,.3)", fontSize: 10 }}>{course.status}</span>
+          <div className="crs-detail-banner-id" style={{ fontSize: 16 }}>{course.id}</div>
+          <div className="crs-detail-banner-name" style={{ fontSize: 32, marginBottom: 12 }}>{course.name}</div>
+          <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
+            <span className="crs-pill crs-pill-white" style={{ fontSize: 14, padding: "8px 16px" }}>{course.dept} · {dm.label}</span>
+            <span className="crs-pill crs-pill-white" style={{ fontSize: 14, padding: "8px 16px" }}>{course.type}</span>
+            <span className={`adm-badge badge-${course.status}`} style={{ background: "rgba(255,255,255,.18)", color: "#fff", border: "1px solid rgba(255,255,255,.3)", fontSize: 14, padding: "8px 16px" }}>{course.status}</span>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="crs-detail-body">
+        <div className="crs-detail-body" style={{ padding: "32px 40px 40px", gap: 32 }}>
 
           {/* Stat row */}
           <div className="crs-detail-stat-row">
@@ -193,63 +217,60 @@ function DetailPanel({ course, onClose, onEdit, onDelete }) {
               { val: course.enrolled,   label: "Enrolled",  col: fc.text },
               { val: course.capacity,   label: "Capacity",  col: "var(--text-main)" },
               { val: `${pct}%`,         label: "Fill Rate", col: dm.accent },
-              { val: `${course.credits} cr`, label: "Credits", col: "var(--purple)" },
+              { val: `${course.credits} cr`, label: "Credits", col: "var(--blue)" },
             ].map((s, i) => (
-              <div className="crs-detail-stat" key={i}>
-                <div className="crs-detail-stat-val" style={{ color: s.col }}>{s.val}</div>
-                <div className="crs-detail-stat-label">{s.label}</div>
+              <div className="crs-detail-stat" key={i} style={{ padding: "24px 16px" }}>
+                <div className="crs-detail-stat-val" style={{ color: s.col, fontSize: 32 }}>{s.val}</div>
+                <div className="crs-detail-stat-label" style={{ fontSize: 12 }}>{s.label}</div>
               </div>
             ))}
           </div>
 
           {/* Fill bar */}
           <div className="crs-detail-fill-section">
-            <div className="crs-detail-fill-header">
+            <div className="crs-detail-fill-header" style={{ fontSize: 14, marginBottom: 12 }}>
               <span>Enrollment</span>
               <span style={{ fontFamily: "'JetBrains Mono',monospace", color: fc.text, fontWeight: 800 }}>{course.enrolled} / {course.capacity}</span>
             </div>
-            <div className="crs-detail-track">
+            <div className="crs-detail-track" style={{ height: 16, borderRadius: 8 }}>
               <div
                 className="crs-detail-fill"
-                style={{ width: 0, background: `linear-gradient(90deg, ${fc.bar}, ${fc.bar}dd)` }}
+                style={{ width: 0, background: `linear-gradient(90deg, ${fc.bar}, ${fc.bar}dd)`, borderRadius: 8 }}
               />
-              {/* Glow */}
-              <div className="crs-detail-fill-glow" style={{ width: `${Math.min(pct,100)}%`, background: fc.bar }} />
+              <div className="crs-detail-fill-glow" style={{ width: `${Math.min(pct,100)}%`, background: fc.bar, height: 32, borderRadius: 16 }} />
             </div>
           </div>
 
           {/* Info grid */}
-          <div className="crs-info-grid">
+          <div className="crs-info-grid" style={{ gap: 8 }}>
             {[
               { label: "Instructor", val: course.instructor, icon: "👤" },
               { label: "Semester",   val: `${course.semester} Semester`, icon: "📅" },
               { label: "Department", val: `${course.dept} — ${dm.label}`, icon: "🏛️" },
               { label: "Course Type",val: course.type, icon: "📌" },
             ].map((row, i) => (
-              <div className="crs-info-row" key={i}>
-                <div className="crs-info-icon" style={{ background: dm.light }}>{row.icon}</div>
+              <div className="crs-info-row" key={i} style={{ padding: "16px 20px", borderRadius: 16 }}>
+                <div className="crs-info-icon" style={{ background: dm.light, width: 44, height: 44, fontSize: 20 }}>{row.icon}</div>
                 <div>
-                  <div className="crs-info-label">{row.label}</div>
-                  <div className="crs-info-val">{row.val}</div>
+                  <div className="crs-info-label" style={{ fontSize: 13, marginBottom: 4 }}>{row.label}</div>
+                  <div className="crs-info-val" style={{ fontSize: 18 }}>{row.val}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Description */}
           {course.description && (
             <div className="crs-desc-block">
-              <div className="crs-desc-label">About this course</div>
-              <p className="crs-desc-text">{course.description}</p>
+              <div className="crs-desc-label" style={{ fontSize: 14, marginBottom: 12 }}>About this course</div>
+              <p className="crs-desc-text" style={{ fontSize: 16, padding: "20px 24px", borderRadius: 16 }}>{course.description}</p>
             </div>
           )}
 
-          {/* Actions */}
-          <div className="crs-detail-actions">
-            <button className="adm-btn-primary crs-action-primary" onClick={() => onEdit(course)}>
+          <div className="crs-detail-actions" style={{ gap: 16, marginTop: 24 }}>
+            <button className="adm-btn-primary crs-action-primary" style={{ padding: "16px 24px", fontSize: 18 }} onClick={() => onEdit(course)}>
               ✏️ Edit Course
             </button>
-            <button className="crs-action-delete" onClick={() => onDelete(course.id)}>
+            <button className="crs-action-delete" style={{ padding: "16px 24px", fontSize: 18 }} onClick={() => onDelete(course.id)}>
               🗑️ Delete
             </button>
           </div>
@@ -259,13 +280,10 @@ function DetailPanel({ course, onClose, onEdit, onDelete }) {
   );
 }
 
-/* ══════════════════════════════════
-   MAIN PAGE
-══════════════════════════════════ */
+// ── MAIN COMPONENT ──
 export default function AdminCourses() {
   const navigate = useNavigate();
   const location = useLocation();
-  const webglRef = useRef(null);
 
   const [collapse,   setCollapse]   = useState(false);
   const [courses,    setCourses]    = useState(INITIAL_COURSES);
@@ -276,6 +294,7 @@ export default function AdminCourses() {
   const [viewMode,   setViewMode]   = useState("grid");
   const [modal,      setModal]      = useState(null);
   const [detail,     setDetail]     = useState(null);
+  const [showStats,  setShowStats]  = useState(false);
 
   const filtered = courses.filter(c => {
     const q = search.toLowerCase();
@@ -304,238 +323,203 @@ export default function AdminCourses() {
   };
 
   useEffect(() => {
-    gsap.fromTo(".crs-summary-chip", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.06, ease: "power2.out" });
-    gsap.fromTo(".crs-filter-bar",   { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, delay: 0.22, ease: "power2.out" });
-  }, []);
-
-  useEffect(() => {
-    gsap.fromTo(".crs-card", { opacity: 0, y: 28, scale: .97 }, { opacity: 1, y: 0, scale: 1, duration: 0.42, stagger: 0.055, ease: "power3.out", delay: 0.1 });
-  }, [viewMode, deptFilter, typeFilter, statFilter]);
-
-  // Three.js bg (same as dashboard)
-  useEffect(() => {
-    const canvas = webglRef.current;
-    let W = window.innerWidth, H = window.innerHeight;
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(W, H); renderer.setClearColor(0xf0f5ff, 1);
-    const scene = new THREE.Scene();
-    scene.fog   = new THREE.FogExp2(0xe8e0ff, 0.02);
-    const cam   = new THREE.PerspectiveCamera(60, W/H, .1, 200);
-    cam.position.set(0, 3, 12);
-    scene.add(new THREE.AmbientLight(0x4400aa, .7));
-    const sun = new THREE.DirectionalLight(0x9966ff, 1.4);
-    sun.position.set(-6,12,8); scene.add(sun);
-    const rim = new THREE.PointLight(0x6600ff, 3, 40);
-    rim.position.set(0,6,0); scene.add(rim);
-    const objs = [];
-    const mkIco = (x,y,z,r,color) => {
-      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(r,1), new THREE.MeshPhongMaterial({color,wireframe:true,transparent:true,opacity:.18}));
-      m.position.set(x,y,z); scene.add(m);
-      objs.push({mesh:m,bob:Math.random()*.008+.004,phase:Math.random()*Math.PI*2,rx:(Math.random()-.5)*.016,ry:(Math.random()-.5)*.02});
-    };
-    mkIco(-7,2,-6,2.2,0x1a78ff); mkIco(7,-1,-7,2.8,0x7c3aed); mkIco(-2,4,-9,3.0,0x40a9ff); mkIco(4,3,-4,1.5,0xa78bfa);
-    const N=140, pp=new Float32Array(N*3), pc=new Float32Array(N*3), pv=[];
-    for(let i=0;i<N;i++){
-      pp[i*3]=(Math.random()-.5)*34;pp[i*3+1]=(Math.random()-.5)*22;pp[i*3+2]=(Math.random()-.5)*18-6;
-      pv.push({x:(Math.random()-.5)*.01,y:(Math.random()-.5)*.008});
-      const p=Math.random();
-      if(p<.45){pc[i*3]=.1;pc[i*3+1]=.47;pc[i*3+2]=1;}
-      else if(p<.75){pc[i*3]=.49;pc[i*3+1]=.23;pc[i*3+2]=.93;}
-      else{pc[i*3]=.9;pc[i*3+1]=.9;pc[i*3+2]=1;}
-    }
-    const geo=new THREE.BufferGeometry();
-    geo.setAttribute("position",new THREE.BufferAttribute(pp,3));
-    geo.setAttribute("color",new THREE.BufferAttribute(pc,3));
-    scene.add(new THREE.Points(geo,new THREE.PointsMaterial({size:.055,transparent:true,opacity:.6,vertexColors:true})));
-    const floor=new THREE.GridHelper(70,28,0x330066,0x330066);
-    floor.position.y=-5.5;floor.material.transparent=true;floor.material.opacity=.22;scene.add(floor);
-    let nx=0,ny=0;
-    const onM=e=>{nx=(e.clientX/W)*2-1;ny=-(e.clientY/H)*2+1;};
-    document.addEventListener("mousemove",onM);
-    let t=0,aid;
-    const loop=()=>{
-      aid=requestAnimationFrame(loop);t+=.012;
-      objs.forEach(o=>{o.mesh.position.y+=Math.sin(t*o.bob*10+o.phase)*.012;o.mesh.rotation.x+=o.rx;o.mesh.rotation.y+=o.ry;});
-      const pa=geo.attributes.position.array;
-      for(let i=0;i<N;i++){pa[i*3]+=pv[i].x+nx*.0018;pa[i*3+1]+=pv[i].y+ny*.0018;if(pa[i*3]>17)pa[i*3]=-17;if(pa[i*3]<-17)pa[i*3]=17;if(pa[i*3+1]>11)pa[i*3+1]=-11;if(pa[i*3+1]<-11)pa[i*3+1]=11;}
-      geo.attributes.position.needsUpdate=true;
-      rim.position.x=Math.sin(t*.5)*12;rim.position.z=Math.cos(t*.35)*9;
-      floor.position.z=((t*.8)%2.5)-1.25;
-      cam.position.x+=(nx*1.2-cam.position.x)*.018;cam.position.y+=(ny*.8+3-cam.position.y)*.018;
-      cam.lookAt(0,0,0);renderer.render(scene,cam);
-    };
-    loop();
-    const onR=()=>{W=window.innerWidth;H=window.innerHeight;renderer.setSize(W,H);cam.aspect=W/H;cam.updateProjectionMatrix();};
-    window.addEventListener("resize",onR);
-    return()=>{cancelAnimationFrame(aid);document.removeEventListener("mousemove",onM);window.removeEventListener("resize",onR);};
-  },[]);
-
-  const active  = courses.filter(c=>c.status==="active").length;
-  const draft   = courses.filter(c=>c.status==="draft").length;
-  const inactive= courses.filter(c=>c.status==="inactive").length;
-  const avgFill = Math.round(courses.reduce((a,c)=>a+(c.enrolled/c.capacity),0)/courses.length*100);
+    document.querySelectorAll(".sc, .admin-isolated-card, .crs-card").forEach((el, i) => {
+      gsap.fromTo(el, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", delay: i * 0.06 });
+    });
+    setTimeout(() => setShowStats(true), 100);
+  }, [viewMode, deptFilter, typeFilter, statFilter]); 
 
   return (
-    <>
-      <canvas id="adm-webgl" ref={webglRef} />
-      <div id="adm-app">
+    <div className="admin-crs-wrapper">
+      
+      {/* 🔥 THE FLUID MESH BACKGROUND (NO THREE.JS) 🔥 */}
+      <div className="mesh-bg">
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
+      </div>
 
-        {/* ── SIDEBAR ── */}
-        <AdminSidebar
-          sections={ADMIN_NAV}
-          collapse={collapse}
-          onToggle={() => setCollapse(c => !c)}
-        />
+      <AnimatePresence>
+        {modal && <CourseModal course={modal==="add"?null:modal} onClose={()=>setModal(null)} onSave={handleSave} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {detail && <DetailPanel course={detail} onClose={()=>setDetail(null)} onEdit={c=>{setDetail(null);setModal(c);}} onDelete={handleDelete} />}
+      </AnimatePresence>
 
-        {/* ── MAIN ── */}
-        <div id="adm-main">
-          <div id="adm-topbar">
-            <div className="adm-topbar-glow" />
-            <div className="adm-pg-title">Course Catalog</div>
-            <div className="adm-tb-r">
-              <div className="adm-sem-chip">{courses.length} courses</div>
-              {/* View toggle */}
-              <div className="crs-view-toggle">
-                <button className={`crs-view-btn${viewMode==="grid"?" active":""}`} onClick={()=>setViewMode("grid")} title="Card view">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="0" width="6" height="6" rx="1.5"/><rect x="8" y="0" width="6" height="6" rx="1.5"/><rect x="0" y="8" width="6" height="6" rx="1.5"/><rect x="8" y="8" width="6" height="6" rx="1.5"/></svg>
+      <div id="app" style={{ opacity: 1, zIndex: 10, position: 'relative' }}>
+        
+        {/* INLINE SIDEBAR */}
+        <nav id="sidebar" className={collapse ? "collapse" : ""} style={{ transform: "translateX(0)" }}>
+          <div className="sb-top-bar" />
+          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
+            <span /><span /><span />
+          </button>
+          <div className="sb-logo">
+            <div className="logo-box">A</div>
+            <div><div className="logo-name">ARCH</div><div className="logo-tagline">Admin Portal</div></div>
+          </div>
+          <div className="sb-user hov-target">
+            <div className="uav">SA</div>
+            <div><div className="uname">Super Admin</div><div className="uid">ADM-0001</div></div>
+          </div>
+          {NAV.map(([sec, items]) => (
+            <div key={sec}>
+              <div className="nav-sec">{sec}</div>
+              {items.map(([ic, label, path]) => (
+                <div key={label} className={`ni hov-target${location.pathname === path ? " active" : ""}`} onClick={() => navigate(path)}>
+                  <div className="ni-ic">{ic}</div>{label}
+                </div>
+              ))}
+            </div>
+          ))}
+          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
+        </nav>
+
+        {/* MAIN */}
+        <div id="main">
+          <div id="topbar" style={{ opacity: 1 }}>
+            <div className="tb-glow" />
+            <div className="pg-title"><span>Course Catalog</span></div>
+            <div className="tb-r">
+              <div className="sem-chip">{courses.length} total</div>
+              
+              <div className="crs-view-toggle" style={{ marginLeft: 16 }}>
+                <button className={`crs-view-btn${viewMode==="grid"?" active":""}`} onClick={()=>setViewMode("grid")} title="Card view" style={{ padding: "12px 18px" }}>
+                  <svg width="20" height="20" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="0" width="6" height="6" rx="1.5"/><rect x="8" y="0" width="6" height="6" rx="1.5"/><rect x="0" y="8" width="6" height="6" rx="1.5"/><rect x="8" y="8" width="6" height="6" rx="1.5"/></svg>
                 </button>
-                <button className={`crs-view-btn${viewMode==="list"?" active":""}`} onClick={()=>setViewMode("list")} title="List view">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="0" width="14" height="2.5" rx="1.25"/><rect x="0" y="5.75" width="14" height="2.5" rx="1.25"/><rect x="0" y="11.5" width="14" height="2.5" rx="1.25"/></svg>
+                <button className={`crs-view-btn${viewMode==="list"?" active":""}`} onClick={()=>setViewMode("list")} title="List view" style={{ padding: "12px 18px" }}>
+                  <svg width="20" height="20" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="0" width="14" height="2.5" rx="1.25"/><rect x="0" y="5.75" width="14" height="2.5" rx="1.25"/><rect x="0" y="11.5" width="14" height="2.5" rx="1.25"/></svg>
                 </button>
               </div>
-              <button className="adm-btn-primary" onClick={()=>setModal("add")}>
+
+              <button className="adm-btn-primary" onClick={()=>setModal("add")} style={{ fontSize: 18, padding: "10px 24px", marginLeft: 16 }}>
                 ➕ Add Course
               </button>
             </div>
           </div>
 
-          <div id="adm-scroll">
+          <div id="scroll">
 
-            {/* ── SUMMARY CHIPS ── */}
-            <div className="crs-summary-row">
+            {/* ── GODZILLA STATS GRID ── */}
+            <div className="sgrid">
               {[
-                { label: "Active",   val: active,   col: "#00c96e", bg: "rgba(0,201,110,.08)",  border: "rgba(0,201,110,.2)"  },
-                { label: "Draft",    val: draft,    col: "#ffab00", bg: "rgba(255,171,0,.08)",  border: "rgba(255,171,0,.2)"  },
-                { label: "Inactive", val: inactive, col: "#ff4d6a", bg: "rgba(255,77,106,.08)", border: "rgba(255,77,106,.2)" },
-                { label: "Avg Fill", val: `${avgFill}%`, col: "#7c3aed", bg: "rgba(124,58,237,.08)", border: "rgba(124,58,237,.2)" },
-                { label: "Showing",  val: filtered.length, col: "#1a78ff", bg: "rgba(26,120,255,.08)", border: "rgba(26,120,255,.2)" },
-              ].map(c=>(
-                <div className="crs-summary-chip" key={c.label} style={{ background: c.bg, border: `1px solid ${c.border}` }}>
-                  <span className="crs-chip-dot" style={{ background: c.col }} />
-                  <span className="crs-chip-label">{c.label}</span>
-                  <span className="crs-chip-val" style={{ color: c.col }}>{c.val}</span>
+                { id:"sc1", cls:"sc-a", label:"Total Courses", val: courses.length,                                did:"d1", special:"none" },
+                { id:"sc2", cls:"sc-d", label:"Active Status", val: courses.filter(c=>c.status==="active").length, did:"d2", special:"bubbles" },
+                { id:"sc3", cls:"sc-b", label:"Drafts",        val: courses.filter(c=>c.status==="draft").length,  did:"d3", special:"none" },
+                { id:"sc4", cls:"sc-c", label:"Inactive",      val: courses.filter(c=>c.status==="inactive").length,did:"d4", special:"fire" },
+              ].map((c) => (
+                <div className={`sc ${c.cls} hov-target`} id={c.id} key={c.id}>
+                  <div className="sc-blob" /><div className="sc-deco" />
+                  <div className="sc-label">{c.label}</div>
+                  <div className="sc-val">
+                    {showStats ? <AnimatedCounter value={c.val} useCommas={false} suffix="" /> : "0"}
+                  </div>
+                  {c.special === "bubbles" && (
+                    <div className="bubbles">
+                      {[0,1,2,3,4,5,6].map(i => (
+                        <span key={i} className="bubble" style={{ left:`${5+i*13}%`, animationDelay:`${i*0.3}s`, animationDuration:`${2+i*0.22}s`, width:`${6+i%3*2}px`, height:`${6+i%3*2}px` }} />
+                      ))}
+                    </div>
+                  )}
+                  {c.special === "fire" && (
+                    <div className="card-fire">
+                      {[0,1,2,3,4].map(i => (
+                        <div key={i} className={`cflame cf${i+1}`} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
 
-            {/* ── FILTER BAR ── */}
-            <div className="crs-filter-bar">
-              <div className="crs-search-wrap">
-                <svg className="crs-search-icon" width="14" height="14" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#94a3b8" strokeWidth="2"/><path d="M14 14l4 4" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"/></svg>
-                <input
-                  className="crs-search-input"
-                  placeholder="Search by title, course ID, or instructor…"
-                  value={search}
-                  onChange={e=>setSearch(e.target.value)}
-                />
-                {search && <button className="crs-search-clear" onClick={()=>setSearch("")}>✕</button>}
-              </div>
-              <div className="crs-filter-selects">
-                {[
-                  { val: deptFilter, set: setDeptFilter, opts: DEPTS, fmt: d => d==="All"?"All Depts":d },
-                  { val: typeFilter, set: setTypeFilter, opts: TYPES, fmt: t => t==="All"?"All Types":t },
-                  { val: statFilter, set: setStatFilter, opts: STATUSES, fmt: s => s==="All"?"All Status":s[0].toUpperCase()+s.slice(1) },
-                ].map((f,i)=>(
-                  <select key={i} className="crs-select" value={f.val} onChange={e=>f.set(e.target.value)}>
-                    {f.opts.map(o=><option key={o} value={o}>{f.fmt(o)}</option>)}
-                  </select>
-                ))}
-                <div className="crs-count-chip">{filtered.length} result{filtered.length!==1?"s":""}</div>
+            {/* 🔥 HORIZONTAL FILTER BAR 🔥 */}
+            <div className="admin-isolated-card" style={{ marginBottom: 40, padding: "24px 32px" }}>
+              <div style={{ display: "flex", flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 20, width: "100%" }}>
+                <div className="adm-filter-search" style={{ padding: "16px 20px", flex: 1, minWidth: 300 }}>
+                  <span style={{ color: "#94a3b8", fontSize: 22 }}>🔍</span>
+                  <input
+                    style={{ fontSize: 20 }}
+                    placeholder="Search by title, course ID, or instructor…"
+                    value={search}
+                    onChange={e=>setSearch(e.target.value)}
+                  />
+                  {search && <button className="crs-search-clear" style={{ fontSize: 20, cursor: "pointer" }} onClick={()=>setSearch("")}>✕</button>}
+                </div>
+                <select className="adm-filter-select" style={{ fontSize: 18, padding: "16px 20px" }} value={deptFilter} onChange={e=>setDeptFilter(e.target.value)}>
+                  {DEPTS.map(d=><option key={d} value={d}>{d==="All"?"All Depts":d}</option>)}
+                </select>
+                <select className="adm-filter-select" style={{ fontSize: 18, padding: "16px 20px" }} value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
+                  {TYPES.map(t=><option key={t} value={t}>{t==="All"?"All Types":t}</option>)}
+                </select>
+                <select className="adm-filter-select" style={{ fontSize: 18, padding: "16px 20px" }} value={statFilter} onChange={e=>setStatFilter(e.target.value)}>
+                  {STATUSES.map(s=><option key={s} value={s}>{s==="All"?"All Status":s.toUpperCase()}</option>)}
+                </select>
+                <div className="adm-filter-count" style={{ fontSize: 18, padding: "16px 24px" }}>
+                  {filtered.length} result{filtered.length!==1?"s":""}
+                </div>
               </div>
             </div>
 
-            {/* ══ GRID VIEW ══ */}
+            {/* ══ GODZILLA 2-FONT GRID VIEW ══ */}
             {viewMode === "grid" && (
-              <div className="crs-grid">
-                {filtered.length === 0 ? (
-                  <div className="crs-empty">
-                    <div className="crs-empty-icon">📭</div>
-                    <div className="crs-empty-text">No courses match the current filters</div>
-                  </div>
-                ) : filtered.map(c => {
-                  const dm = DEPT_META[c.dept] || DEPT_META.CS;
-                  const tm = TYPE_META[c.type] || TYPE_META.Core;
-                  const pct = Math.round((c.enrolled/c.capacity)*100);
-                  const fc = fillColor(c.enrolled, c.capacity);
-                  return (
-                    <div
-                      key={c.id}
-                      className={`crs-card${c.status!=="active"?" crs-card-muted":""}`}
-                      onClick={()=>setDetail(c)}
-                    >
-                      {/* Shimmer overlay */}
-                      <div className="crs-card-shimmer" />
-
-                      {/* Top gradient band */}
-                      <div className="crs-card-band" style={{ background: dm.grad }}>
-                        <div className="crs-card-band-noise" />
-                        <div className="crs-card-band-type" style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}>
-                          <span style={{ fontSize: 12, fontWeight: 800 }}>{tm.icon} {c.type}</span>
-                        </div>
-                        <div className={`crs-card-band-status adm-badge badge-${c.status}`} style={{ background: "rgba(255,255,255,.18)", color: "#fff", border: "1px solid rgba(255,255,255,.3)", fontSize: 10 }}>
-                          {c.status}
-                        </div>
-                      </div>
-
-                      {/* Card body */}
-                      <div className="crs-card-body">
-                        <div className="crs-card-id">{c.id}</div>
-                        <div className="crs-card-name">{c.name}</div>
-                        <div className="crs-card-instructor">
-                          <span className="crs-card-instructor-dot" style={{ background: dm.accent }} />
-                          {c.instructor}
-                        </div>
-
-                        {/* Meta pills */}
-                        <div className="crs-card-pills">
-                          <span className="crs-card-pill" style={{ background: dm.tag, color: dm.tagText }}>🏛️ {c.dept}</span>
-                          <span className="crs-card-pill" style={{ background: "rgba(124,58,237,.1)", color: "#5b21b6" }}>⚡ {c.credits} cr</span>
-                          <span className="crs-card-pill" style={{ background: "#f1f5f9", color: "var(--dimmer)" }}>📅 Sem {c.semester}</span>
-                        </div>
-
-                        {/* Enrollment bar */}
-                        <div className="crs-card-fill-wrap">
-                          <div className="crs-card-fill-header">
-                            <span>Enrollment</span>
-                            <span style={{ fontFamily: "'JetBrains Mono',monospace", color: fc.text, fontWeight: 800, fontSize: 11 }}>{c.enrolled}/{c.capacity}</span>
-                          </div>
-                          <div className="crs-card-track">
-                            <div className="crs-card-fill" style={{ width: `${Math.min(pct,100)}%`, background: fc.bar }} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Footer actions */}
-                      <div className="crs-card-footer">
-                        <button className="crs-card-btn crs-card-btn-edit"
-                          onClick={e=>{e.stopPropagation();setModal(c);}}>
-                          ✏️ Edit
-                        </button>
-                        <button className="crs-card-btn crs-card-btn-del"
-                          onClick={e=>{e.stopPropagation();handleDelete(c.id);}}>
-                          🗑️
-                        </button>
-                      </div>
+              <div className="admin-isolated-card" style={{ padding: 32, background: "transparent", border: "none", boxShadow: "none" }}>
+                <div className="crs-grid">
+                  {filtered.length === 0 ? (
+                    <div className="crs-empty" style={{ padding: "80px", textAlign: "center", width: "100%", gridColumn: "1/-1" }}>
+                      <div className="crs-empty-icon" style={{ fontSize: 64, opacity: 0.5, marginBottom: 24 }}>📭</div>
+                      <div className="crs-empty-text" style={{ fontSize: 20, fontWeight: 800, color: "var(--dimmer)" }}>No courses match the current filters</div>
                     </div>
-                  );
-                })}
+                  ) : filtered.map(c => {
+                    const dm = DEPT_META[c.dept] || DEPT_META.CS;
+                    const tm = TYPE_META[c.type] || TYPE_META.Core;
+                    const fc = fillColor(c.enrolled, c.capacity);
+                    return (
+                      <div key={c.id} className={`crs-card${c.status!=="active"?" crs-card-muted":""}`} onClick={()=>setDetail(c)}>
+                        <div className="crs-card-shimmer" />
+                        <div className="crs-card-band" style={{ background: dm.grad, height: 80, padding: "16px 24px" }}>
+                          <div className="crs-card-band-noise" />
+                          <div className="crs-card-band-type" style={{ background: "rgba(255,255,255,.15)", color: "#fff", padding: "6px 14px", fontSize: 16 }}>
+                            <span style={{ fontWeight: 800 }}>{tm.icon} {c.type}</span>
+                          </div>
+                          <div className={`crs-card-band-status adm-badge badge-${c.status}`} style={{ background: "rgba(255,255,255,.18)", color: "#fff", border: "1px solid rgba(255,255,255,.3)", fontSize: 14, padding: "6px 14px", fontWeight: 800, textTransform: 'uppercase' }}>
+                            {c.status}
+                          </div>
+                        </div>
+                        <div className="crs-card-body" style={{ padding: "32px", gap: 12 }}>
+                          {/* FONT 1: JETBRAINS MONO */}
+                          <div className="crs-card-id" style={{ fontSize: 18, fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: "var(--dimmer)" }}>{c.id}</div>
+                          {/* FONT 2: INTER BLACK */}
+                          <div className="crs-card-name" style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.2, color: "var(--text-main)" }}>{c.name}</div>
+                          <div className="crs-card-instructor" style={{ fontSize: 18, marginTop: 4, marginBottom: 20, color: "var(--dimmer)", fontWeight: 600 }}>
+                            {c.instructor}
+                          </div>
+                          <div className="crs-card-pills" style={{ gap: 12, marginBottom: 32 }}>
+                            <span className="crs-card-pill" style={{ background: dm.light, color: dm.accent, fontSize: 15, padding: "8px 16px", borderRadius: 10, fontWeight: 800 }}>🏛️ {c.dept}</span>
+                            <span className="crs-card-pill" style={{ background: "rgba(26,120,255,.08)", color: "var(--blue)", fontSize: 15, padding: "8px 16px", borderRadius: 10, fontWeight: 800 }}>⚡ {c.credits} cr</span>
+                            <span className="crs-card-pill" style={{ background: "#f1f5f9", color: "var(--dimmer)", fontSize: 15, padding: "8px 16px", borderRadius: 10, fontWeight: 800 }}>📅 Sem {c.semester}</span>
+                          </div>
+                          
+                          {/* FONT RULE 1 & 2 TOGETHER */}
+                          <div className="crs-card-fill-wrap" style={{ marginTop: "auto", display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontSize: 18, color: "var(--dimmer)", fontWeight: 600 }}>Enrollment</span>
+                            <span style={{ fontFamily: "'Bitcount Grid Double', monospace", color: fc.text, fontWeight: 700, fontSize: 28 }}>{c.enrolled}/{c.capacity}</span>
+                          </div>
+                        </div>
+                        <div className="crs-card-footer" style={{ padding: "20px 32px", gap: 16 }}>
+                          <button className="crs-card-btn crs-card-btn-edit" style={{ fontSize: 18, padding: "12px 24px" }} onClick={e=>{e.stopPropagation();setModal(c);}}>✏️ Edit</button>
+                          <button className="crs-card-btn crs-card-btn-del" style={{ fontSize: 18, padding: "12px 24px" }} onClick={e=>{e.stopPropagation();handleDelete(c.id);}}>🗑️</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* ══ LIST VIEW ══ */}
+            {/* ══ LIST VIEW (SUPERSIZED) ══ */}
             {viewMode === "list" && (
-              <div className="adm-card" style={{ padding: 0, overflow: "hidden" }}>
-                <div className="adm-table-wrap" style={{ borderRadius: 18 }}>
+              <div className="admin-isolated-card" style={{ padding: 0 }}>
+                <div className="adm-table-wrap" style={{ borderRadius: 24 }}>
                   <table className="adm-table">
                     <thead>
                       <tr>
@@ -546,49 +530,51 @@ export default function AdminCourses() {
                         <th>Cr</th>
                         <th>Instructor</th>
                         <th>Sem</th>
-                        <th style={{ minWidth: 140 }}>Enrollment</th>
+                        <th style={{ minWidth: 160 }}>Enrollment</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th style={{ textAlign: "right" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filtered.length === 0 ? (
-                        <tr><td colSpan={10} style={{ textAlign:"center",padding:"48px",color:"var(--dimmer)",opacity:.45,fontFamily:"'JetBrains Mono',monospace",fontSize:13 }}>No courses match current filters</td></tr>
+                        <tr><td colSpan={10} style={{ textAlign:"center",padding:"80px",color:"var(--dimmer)",opacity:.6,fontFamily:"'JetBrains Mono',monospace",fontSize:20,fontWeight:800 }}>📭 No courses match current filters</td></tr>
                       ) : filtered.map(c => {
                         const dm = DEPT_META[c.dept] || DEPT_META.CS;
                         const tm = TYPE_META[c.type] || TYPE_META.Core;
                         const pct = Math.round((c.enrolled/c.capacity)*100);
                         const fc = fillColor(c.enrolled,c.capacity);
                         return (
-                          <tr key={c.id} className="crs-list-row" onClick={()=>setDetail(c)}>
-                            <td><span className="td-mono">{c.id}</span></td>
+                          <tr key={c.id} className="crs-list-row adm-tr-hover" onClick={()=>setDetail(c)}>
+                            <td className="td-mono">{c.id}</td>
                             <td>
-                              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-                                <div className="crs-list-icon" style={{ background: dm.grad }}>
-                                  <span style={{ color:"#fff",fontSize:13,fontWeight:800 }}>{tm.icon}</span>
+                              <div style={{ display:"flex",alignItems:"center",gap:16 }}>
+                                <div className="crs-list-icon" style={{ background: dm.grad, width: 44, height: 44, borderRadius: 12 }}>
+                                  <span style={{ color:"#fff",fontSize:20,fontWeight:800 }}>{tm.icon}</span>
                                 </div>
                                 <span className="td-bold">{c.name}</span>
                               </div>
                             </td>
                             <td>
-                              <span className="crs-dept-tag" style={{ background: dm.tag, color: dm.tagText }}>{c.dept}</span>
+                              <span className="crs-dept-tag" style={{ background: dm.tag, color: dm.tagText, fontSize: 15, padding: "6px 12px", borderRadius: 8 }}>{c.dept}</span>
                             </td>
-                            <td className="td-dim">{c.type}</td>
-                            <td style={{ fontFamily:"'JetBrains Mono',monospace",fontWeight:800,color:"var(--purple)",textAlign:"center" }}>{c.credits}</td>
-                            <td className="td-dim" style={{ fontSize:12 }}>{c.instructor}</td>
-                            <td className="td-dim">{c.semester}</td>
+                            <td className="td-dim" style={{ fontSize: 16 }}>{c.type}</td>
+                            <td style={{ fontFamily:"'Bitcount Grid Double',monospace",fontWeight:700,color:"var(--blue)",textAlign:"center",fontSize:28 }}>{c.credits}</td>
+                            <td className="td-dim" style={{ fontSize: 16 }}>{c.instructor}</td>
+                            <td className="td-dim" style={{ fontSize: 16 }}>{c.semester}</td>
                             <td>
-                              <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                                <div className="adm-dept-bar-track" style={{ flex:1,height:5,minWidth:50 }}>
+                              <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+                                <div className="adm-dept-bar-track" style={{ flex:1,height:8,minWidth:60,borderRadius:4,background:"#f1f5f9" }}>
                                   <div style={{ height:"100%",borderRadius:4,width:`${Math.min(pct,100)}%`,background:fc.bar }} />
                                 </div>
-                                <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:11,fontWeight:700,color:fc.text,whiteSpace:"nowrap" }}>{c.enrolled}/{c.capacity}</span>
+                                <span style={{ fontFamily:"'JetBrains Mono',monospace",fontSize:15,fontWeight:800,color:fc.text,whiteSpace:"nowrap" }}>{c.enrolled}/{c.capacity}</span>
                               </div>
                             </td>
                             <td><span className={`adm-badge badge-${c.status}`}>{c.status}</span></td>
-                            <td onClick={e=>e.stopPropagation()}>
-                              <button className="adm-action-btn" onClick={()=>setModal(c)}>✏️</button>
-                              <button className="adm-action-btn btn-delete" onClick={()=>handleDelete(c.id)}>🗑️</button>
+                            <td onClick={e=>e.stopPropagation()} style={{ textAlign: "right" }}>
+                              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                                <button className="adm-action-btn" onClick={()=>setModal(c)} style={{ width: 44, height: 44, fontSize: 18 }}>✏️</button>
+                                <button className="adm-action-btn btn-delete" onClick={()=>handleDelete(c.id)} style={{ width: 44, height: 44, fontSize: 18 }}>🗑️</button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -599,16 +585,9 @@ export default function AdminCourses() {
               </div>
             )}
 
-          </div>{/* /adm-scroll */}
-        </div>{/* /adm-main */}
-      </div>{/* /adm-app */}
-
-      <AnimatePresence>
-        {modal && <CourseModal course={modal==="add"?null:modal} onClose={()=>setModal(null)} onSave={handleSave} />}
-      </AnimatePresence>
-      <AnimatePresence>
-        {detail && <DetailPanel course={detail} onClose={()=>setDetail(null)} onEdit={c=>{setDetail(null);setModal(c);}} onDelete={handleDelete} />}
-      </AnimatePresence>
-    </>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
