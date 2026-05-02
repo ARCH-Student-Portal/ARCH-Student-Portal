@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import "./StudentDashV1.css";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
-import { courses, notices, attendances } from "./data/StudentDashData";
-
+import StudentApi from "./config/studentApi";
 
 export default function StudentDashV1() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const introCanvasRef = useRef(null);
   const introRef       = useRef(null);
@@ -21,25 +18,67 @@ export default function StudentDashV1() {
   const [collapse, setCollapse]   = useState(false);
   const [showStats, setShowStats] = useState(false);
 
-  // Credit bar widths as React state (no DOM IDs)
   const [barDone,   setBarDone]   = useState("0%");
   const [barActive, setBarActive] = useState("0%");
 
-  // Delta texts as React state (no setText() DOM mutation)
+  const [dashData, setDashData] = useState({
+    gpa: null,
+    courses: [],
+    notices: [],
+    attendance: []
+  });
+
   const deltas = showStats
-    ? ["↑ +0.08 this semester", "of 136 required", "courses active", "1 course at risk"]
+    ? [
+        dashData.gpa ? `↑ +0.08 this semester` : "",
+        dashData.gpa ? `of ${dashData.gpa.totalCreditsRequired} required` : "",
+        "courses active",
+        dashData.attendance.some(a => a.percentage < 75) ? "1 course at risk" : ""
+      ]
     : ["", "", "", ""];
 
+  // fetch dashboard data
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const [gpaRes, coursesRes, attendanceRes, announcementsRes] = await Promise.all([
+          StudentApi.getGPA(),
+          StudentApi.getCourses(),
+          StudentApi.getAttendance(),
+          StudentApi.getAnnouncements()
+        ]);
+
+        setDashData({
+          gpa: gpaRes,
+          courses: coursesRes.courses || [],
+          attendance: attendanceRes.attendance || [],
+          notices: announcementsRes.announcements || []
+        });
+
+        if (gpaRes) {
+          const done   = gpaRes.creditsCompleted;
+          const active = gpaRes.creditsInProgress;
+          const total  = gpaRes.totalCreditsRequired;
+          setBarDone(`${Math.round((done / total) * 100)}%`);
+          setBarActive(`${Math.round((active / total) * 100)}%`);
+        }
+      } catch (err) {
+        console.error('Dashboard fetch error:', err);
+      }
+    };
+    fetchDashboard();
+  }, []);
+
+  // intro animation
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archIntroPlayed");
 
     if (hasPlayedIntro) {
-      introRef.current.style.display  = "none";
-      appRef.current.style.opacity    = 1;
+      introRef.current.style.display     = "none";
+      appRef.current.style.opacity       = 1;
       sidebarRef.current.style.transform = "translateX(0)";
-      topbarRef.current.style.opacity = 1;
+      topbarRef.current.style.opacity    = 1;
       setShowStats(true);
-      setTimeout(() => { setBarDone("63%"); setBarActive("11%"); }, 200);
       return;
     }
 
@@ -84,7 +123,11 @@ export default function StudentDashV1() {
         p.y -= p.speed * 0.4;
         p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
         p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
-        if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; p.word = words[Math.floor(Math.random() * words.length)]; }
+        if (p.y < -30) {
+          p.y = canvas.height + 20;
+          p.x = Math.random() * canvas.width;
+          p.word = words[Math.floor(Math.random() * words.length)];
+        }
         ctx.font = `${p.size}px 'Inter', sans-serif`;
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.letterSpacing = "0.15em";
@@ -92,18 +135,22 @@ export default function StudentDashV1() {
       });
       const scanY = ((frame * 1.8) % (canvas.height + 60)) - 30;
       const g = ctx.createLinearGradient(0, scanY - 4, 0, scanY + 4);
-      g.addColorStop(0, "transparent"); g.addColorStop(0.5, "rgba(80,160,255,0.12)"); g.addColorStop(1, "transparent");
-      ctx.fillStyle = g; ctx.fillRect(0, scanY - 4, canvas.width, 8);
+      g.addColorStop(0, "transparent");
+      g.addColorStop(0.5, "rgba(80,160,255,0.12)");
+      g.addColorStop(1, "transparent");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, scanY - 4, canvas.width, 8);
       animId = requestAnimationFrame(draw);
     };
-    ctx.fillStyle = "#00040e"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#00040e";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     draw();
 
     const afterIntro = () => {
       cancelAnimationFrame(animId);
       sessionStorage.setItem("archIntroPlayed", "true");
       gsap.set(introRef.current, { display: "none" });
-      gsap.to(appRef.current,   { opacity: 1, duration: 0.6 });
+      gsap.to(appRef.current,     { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out", delay: 0.05 });
       gsap.to(topbarRef.current,  { opacity: 1, duration: 0.7, delay: 0.4 });
       document.querySelectorAll(".sc").forEach((el, i) =>
@@ -112,23 +159,19 @@ export default function StudentDashV1() {
       document.querySelectorAll(".glass-card").forEach((el, i) =>
         gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)", delay: 1.0 + i * 0.12 })
       );
-      setTimeout(() => {
-        setShowStats(true);
-        setBarDone("63%");
-        setBarActive("11%");
-      }, 650);
+      setTimeout(() => setShowStats(true), 650);
     };
 
     const tl = gsap.timeline({ delay: 0.4, onComplete: afterIntro });
-    tl.to("#intro-line", { scaleX: 1, duration: 0.8, ease: "power3.out" }, 0)
-      .to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.5)
-      .to("#intro-logo", { textShadow: "0 0 80px rgba(80,160,255,1), 0 0 160px rgba(40,100,255,0.8)", duration: 0.5 }, 1.0)
-      .to("#intro-sub",  { opacity: 1, y: 0, duration: 0.5 }, 1.1)
-      .to("#intro-uni",  { opacity: 1, duration: 0.4 }, 1.4)
-      .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4)
-      .to("#intro-sub",  { opacity: 0, duration: 0.3 }, 2.4)
-      .to("#intro-uni",  { opacity: 0, duration: 0.3 }, 2.4)
-      .to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4)
+    tl.to("#intro-line",  { scaleX: 1, duration: 0.8, ease: "power3.out" }, 0)
+      .to("#intro-logo",  { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.5)
+      .to("#intro-logo",  { textShadow: "0 0 80px rgba(80,160,255,1), 0 0 160px rgba(40,100,255,0.8)", duration: 0.5 }, 1.0)
+      .to("#intro-sub",   { opacity: 1, y: 0, duration: 0.5 }, 1.1)
+      .to("#intro-uni",   { opacity: 1, duration: 0.4 }, 1.4)
+      .to("#intro-logo",  { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4)
+      .to("#intro-sub",   { opacity: 0, duration: 0.3 }, 2.4)
+      .to("#intro-uni",   { opacity: 0, duration: 0.3 }, 2.4)
+      .to("#intro-line",  { opacity: 0, duration: 0.3 }, 2.4)
       .to("#intro-flash", { opacity: 1, duration: 0.08 }, 2.85)
       .to("#intro-flash", { opacity: 0, duration: 0.4  }, 2.93)
       .to(introRef.current, { opacity: 0, duration: 0.35 }, 2.88);
@@ -136,17 +179,25 @@ export default function StudentDashV1() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
+  const avgAttendance = dashData.attendance.length > 0
+    ? Math.round(dashData.attendance.reduce((sum, a) => sum + (a.percentage ?? 0), 0) / dashData.attendance.length)
+    : 0;
+
   const STATS = [
-    { id: "sc1", cls: "sc-a", label: "Cumulative GPA",    value: 3.62, decimals: 2, suffix: "",  delta: deltas[0], ddcls: "d-up",   special: "none"    },
-    { id: "sc2", cls: "sc-b", label: "Credits Done",       value: 86,   decimals: 0, suffix: "",  delta: deltas[1], ddcls: "d-blue", special: "none"    },
-    { id: "sc3", cls: "sc-c", label: "Enrolled Courses",   value: 5,    decimals: 0, suffix: "",  delta: deltas[2], ddcls: "d-up",   special: "bubbles" },
-    { id: "sc4", cls: "sc-d", label: "Avg Attendance",     value: 78,   decimals: 0, suffix: "%", delta: deltas[3], ddcls: "d-warn", special: "fire"    },
+    { id: "sc1", cls: "sc-a", label: "Cumulative GPA",  value: dashData.gpa?.cgpa ?? 0,               decimals: 2, suffix: "",  delta: deltas[0], ddcls: "d-up",   special: "none"    },
+    { id: "sc2", cls: "sc-b", label: "Credits Done",     value: dashData.gpa?.creditsCompleted ?? 0,   decimals: 0, suffix: "",  delta: deltas[1], ddcls: "d-blue", special: "none"    },
+    { id: "sc3", cls: "sc-c", label: "Enrolled Courses", value: dashData.courses.length,                decimals: 0, suffix: "",  delta: deltas[2], ddcls: "d-up",   special: "bubbles" },
+    { id: "sc4", cls: "sc-d", label: "Avg Attendance",   value: avgAttendance,                          decimals: 0, suffix: "%", delta: deltas[3], ddcls: "d-warn", special: "fire"    },
   ];
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   return (
     <>
       <div className="mesh-bg">
-        <div className="mesh-blob blob-1" /><div className="mesh-blob blob-2" /><div className="mesh-blob blob-3" />
+        <div className="mesh-blob blob-1" />
+        <div className="mesh-blob blob-2" />
+        <div className="mesh-blob blob-3" />
       </div>
 
       <div id="intro" ref={introRef}>
@@ -163,8 +214,8 @@ export default function StudentDashV1() {
           ref={sidebarRef}
           sections={STUDENT_NAV}
           logoLabel="Student Portal"
-          userName="Areeb Bucha"
-          userId="21K-3210"
+          userName={user.name || 'Student'}
+          userId={user.rollNumber || ''}
           collapse={collapse}
           onToggle={() => setCollapse(c => !c)}
         />
@@ -186,7 +237,6 @@ export default function StudentDashV1() {
           </div>
 
           <div id="scroll">
-            {/* ── STAT CARDS — React-controlled, no DOM IDs ── */}
             <div className="sgrid">
               {STATS.map((c) => (
                 <div className={`sc ${c.cls} hov-target`} id={c.id} key={c.id}>
@@ -221,26 +271,34 @@ export default function StudentDashV1() {
                   <div className="ct"><div className="ctbar"/>Current Courses</div>
                   <div className="ca hov-target" onClick={() => navigate('/student/academic')} style={{cursor: 'pointer'}}>View grades →</div>
                 </div>
-                {courses.map((c,i) => (
+
+                {dashData.courses.map((c, i) => (
                   <div className="crow hov-target" key={i}>
-                    <div className="cdot" style={{background:c.color,boxShadow:`0 0 10px ${c.color}88`}}/>
-                    <div className="cinfo"><div className="cname">{c.name}</div><div className="cmeta">{c.code}</div></div>
-                    <div className={`gbadge ${c.gc}`}>{c.grade}</div>
+                    <div className="cdot" style={{ background: '#1a78ff', boxShadow: '0 0 10px #1a78ff88' }}/>
+                    <div className="cinfo">
+                      <div className="cname">{c.name}</div>
+                      <div className="cmeta">{c.courseCode} · {c.creditHours} Cr · Sec {c.section}</div>
+                    </div>
+                    <div className="gbadge">{c.letterGrade ?? '—'}</div>
                   </div>
                 ))}
 
-                {/* ── Credit bar — React state, no DOM IDs ── */}
                 <div className="credit-wrap">
-                  <div className="credit-hd"><div className="credit-title">Credit Progress</div><div className="credit-count">86 / 136 hrs</div></div>
+                  <div className="credit-hd">
+                    <div className="credit-title">Credit Progress</div>
+                    <div className="credit-count">
+                      {dashData.gpa?.creditsCompleted ?? 0} / {dashData.gpa?.totalCreditsRequired ?? 130} hrs
+                    </div>
+                  </div>
                   <div className="credit-track">
                     <div className="cb-done"  style={{ width: barDone,   transition: "width 1.8s cubic-bezier(.34,1,.64,1)" }}/>
                     <div className="cb-active" style={{ width: barActive, transition: "width 1.8s cubic-bezier(.34,1,.64,1) .15s" }}/>
                     <div className="cb-rem"/>
                   </div>
                   <div className="credit-leg">
-                    <div className="cl"><div className="cl-sw" style={{background:"#00e676"}}/>Done: 86</div>
-                    <div className="cl"><div className="cl-sw" style={{background:"#1a78ff"}}/>Active: 15</div>
-                    <div className="cl"><div className="cl-sw" style={{background:"rgba(255,255,255,.15)"}}/>Left: 35</div>
+                    <div className="cl"><div className="cl-sw" style={{background:"#00e676"}}/>Done: {dashData.gpa?.creditsCompleted ?? 0}</div>
+                    <div className="cl"><div className="cl-sw" style={{background:"#1a78ff"}}/>Active: {dashData.gpa?.creditsInProgress ?? 0}</div>
+                    <div className="cl"><div className="cl-sw" style={{background:"rgba(255,255,255,.15)"}}/>Left: {dashData.gpa?.creditsRemaining ?? 0}</div>
                   </div>
                 </div>
               </div>
@@ -252,14 +310,18 @@ export default function StudentDashV1() {
                     <div className="ct"><div className="ctbar"/>Latest Notices</div>
                     <div className="ca hov-target" onClick={() => navigate('/student/notices')} style={{cursor: 'pointer'}}>All →</div>
                   </div>
-                  {notices.map((n,i) => (
+                  {dashData.notices.map((n, i) => (
                     <div className="nitem hov-target" key={i}>
                       <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:5}}>
-                        <span className={`ntag ${n.cls}`}>{n.tag}</span>
-                        {n.fire && (<div className="inline-fire"><div className="iflame if1"/><div className="iflame if2"/><div className="iflame if3"/></div>)}
+                        <span className={`ntag ${n.type === 'university' ? 'nt-univ' : 'nt-fac'}`}>{n.tag}</span>
+                        {n.isPinned && (
+                          <div className="inline-fire">
+                            <div className="iflame if1"/><div className="iflame if2"/><div className="iflame if3"/>
+                          </div>
+                        )}
                       </div>
                       <div className="ntitle">{n.title}</div>
-                      <div className="ndate">{n.date}</div>
+                      <div className="ndate">{new Date(n.createdAt).toISOString().split('T')[0]}</div>
                     </div>
                   ))}
                 </div>
@@ -271,19 +333,33 @@ export default function StudentDashV1() {
                     <div className="ca hov-target" onClick={() => navigate('/student/attendance')} style={{cursor: 'pointer'}}>Full report →</div>
                   </div>
                   <div className="attgrid">
-                    {attendances.map((a,i) => (
-                      <div className={`attmini hov-target ${a.good?"att-ok":"att-bad"}`} key={i}>
-                        {a.good && (<div className="att-bubbles">{[0,1,2,3].map(j => <span key={j} className="att-bubble" style={{left:`${10+j*25}%`,animationDelay:`${j*0.4}s`}}/>)}</div>)}
-                        {!a.good && (<div className="widget-fire"><div className="wf wf1"/><div className="wf wf2"/><div className="wf wf3"/><div className="wf wf4"/><div className="wf wf5"/></div>)}
-                        <div className="attpct">{a.pct}</div>
-                        <div className="attlabel">{a.label}</div>
+                    {dashData.attendance.map((a, i) => (
+                      <div className={`attmini hov-target ${a.percentage >= 75 ? "att-ok" : "att-bad"}`} key={i}>
+                        {a.percentage >= 75 && (
+                          <div className="att-bubbles">
+                            {[0,1,2,3].map(j => <span key={j} className="att-bubble" style={{left:`${10+j*25}%`,animationDelay:`${j*0.4}s`}}/>)}
+                          </div>
+                        )}
+                        {a.percentage < 75 && (
+                          <div className="widget-fire">
+                            <div className="wf wf1"/><div className="wf wf2"/><div className="wf wf3"/><div className="wf wf4"/><div className="wf wf5"/>
+                          </div>
+                        )}
+                        <div className="attpct">{a.percentage ?? 0}%</div>
+                        <div className="attlabel">{a.courseCode}</div>
                       </div>
                     ))}
                   </div>
-                  <div className="att-alert">
-                    <div className="alert-fire"><div className="af af1"/><div className="af af2"/><div className="af af3"/></div>
-                    <span>DSA at 72% — below 75% minimum. Grade at risk.</span>
-                  </div>
+                  {dashData.attendance.some(a => a.percentage < 75) && (
+                    <div className="att-alert">
+                      <div className="alert-fire">
+                        <div className="af af1"/><div className="af af2"/><div className="af af3"/>
+                      </div>
+                      <span>
+                        {dashData.attendance.filter(a => a.percentage < 75).map(a => a.courseCode).join(', ')} below 75% minimum. Grade at risk.
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
