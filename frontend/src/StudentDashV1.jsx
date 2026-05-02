@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { gsap } from "gsap";
+import { countUp, setText } from "./Utilities/domAnimation";
 import "./StudentDashV1.css";
+import Sidebar from "./Components/shared/Sidebar";
+import { STUDENT_NAV } from "./config/studentNav";
+import { courses, notices, attendances } from "./data/StudentDashData";
 
 export default function StudentDashV1() {
   const navigate = useNavigate();
@@ -188,26 +192,6 @@ export default function StudentDashV1() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  const courses = [
-    { color: "#1a78ff", name: "Object Oriented Analysis & Design", code: "CS-3001 · 3 Cr · Sec A", grade: "A", gc: "g-a" },
-    { color: "#40a9ff", name: "Data Structures & Algorithms", code: "CS-2010 · 3 Cr · Sec B", grade: "B+", gc: "g-b" },
-    { color: "#69c0ff", name: "Database Systems", code: "CS-2012 · 3 Cr · Sec A", grade: "A-", gc: "g-a" },
-    { color: "#91d5ff", name: "Calculus & Analytical Geometry", code: "MT-1001 · 3 Cr · Sec C", grade: "B", gc: "g-b" },
-    { color: "#ff4d6a", name: "Programming Fundamentals", code: "CS-1001 · 3 Cr · Sec D", grade: "C+", gc: "g-c" },
-  ];
-
-  const notices = [
-    { tag: "Urgent", cls: "nt-urg", title: "Mid-Term Examination Schedule Published", date: "2025-03-18", fire: true },
-    { tag: "Faculty", cls: "nt-fac", title: "OOAD Assignment 2 Deadline Extended", date: "2025-03-16 · Hamza Raheel", fire: false },
-    { tag: "University", cls: "nt-uni", title: "Campus Closure — Eid-ul-Fitr Holiday", date: "2025-03-14", fire: false },
-  ];
-
-  const attendances = [
-    { pct: "88%", label: "OOAD", good: true },
-    { pct: "72%", label: "DSA", good: false },
-    { pct: "92%", label: "DB Sys", good: true },
-  ];
-
   return (
     <>
       {/* ── NEW APPLE/STRIPE FLUID MESH BACKGROUND ── */}
@@ -229,44 +213,15 @@ export default function StudentDashV1() {
 
       {/* APP */}
       <div id="app" ref={appRef}>
-        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
-          <div className="sb-top-bar" />
-          <button className = "sb-toggle" onClick={() => setCollapse(c => !c)}> 
-            <span/><span/><span/>
-          </button> 
-          <div className="sb-logo">
-            <div className="logo-box">A</div>
-            <div><div className="logo-name">ARCH</div><div className="logo-tagline">Student Portal</div></div>
-          </div>
-          <div className="sb-user hov-target">
-            <div className="uav">AB</div>
-            <div><div className="uname">Areeb Bucha</div><div className="uid">21K-3210</div></div>
-          </div>
-          
-          {[
-            ["Overview", [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
-            ["Courses",[["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
-            ["Communication",[["◉","Notices","/student/notices"]]],
-            ["Account",[["◌","Profile","/student/profile"]]],
-          ].map(([sec, items]) => (
-            <div key={sec}>
-              <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div 
-                  className={`ni hov-target${location.pathname === path ? " active" : ""}`} 
-                  key={label}
-                  onClick={() => navigate(path)}
-                  style={{cursor: 'pointer'}}
-                >
-                  <div className="ni-ic">{ic}</div>{label}
-                  {label === "Notices" && <span className="nbadge">3</span>}
-                </div>
-              ))}
-            </div>
-          ))}
-          
-          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
-        </nav>
+        <Sidebar
+          ref={sidebarRef}  // <--- ADD THIS LINE
+          sections={STUDENT_NAV}
+          logoLabel="Student Portal"
+          userName="Areeb Bucha"
+          userId="21K-3210"
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         <div id="main">
           <div id="topbar" ref={topbarRef}>
@@ -411,17 +366,3 @@ export default function StudentDashV1() {
     </>
   );
 }
-
-function countUp(id, target, dec, suffix, duration) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const start = Date.now();
-  const tick = () => {
-    const p = Math.min((Date.now() - start) / duration, 1);
-    const ease = 1 - Math.pow(1 - p, 4);
-    el.textContent = (target * ease).toFixed(dec) + suffix;
-    if (p < 1) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-}
-function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
