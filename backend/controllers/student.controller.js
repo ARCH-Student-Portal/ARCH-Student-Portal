@@ -4,6 +4,8 @@ const AnnouncementRepo = require('../repositories/announcement.repository');
 const GradeService = require('../services/grade.service');
 const AttendanceService = require('../services/attendance.service');
 const ScheduleService = require('../services/schedule.service');
+const AnnouncementAdapter = require('../patterns/AnnouncementAdapter');
+
 
 class StudentController {
     async getProfile(req, res) {
@@ -233,15 +235,15 @@ class StudentController {
     }
 
     async getAnnouncements(req, res) {
-        try {
-            const enrollments = await EnrollmentRepo.findActiveByStudent(req.user.id);
-            const enrolledCourseIds = enrollments.map(e => e.course);
-            const announcements = await AnnouncementRepo.findForStudent(enrolledCourseIds, req.query.week);
-            res.status(200).json({ announcements });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
-        }
+    try {
+        const enrollments = await EnrollmentRepo.findActiveByStudent(req.user.id);
+        const enrolledCourseIds = enrollments.map(e => e.course);
+        const announcements = await AnnouncementRepo.findForStudent(enrolledCourseIds, req.query.week);
+        res.status(200).json({ announcements: AnnouncementAdapter.adaptMany(announcements) });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 }
 
 const controller = new StudentController();

@@ -5,6 +5,9 @@ const GradeService = require('../services/grade.service');
 const AttendanceService = require('../services/attendance.service');
 const ScheduleService = require('../services/schedule.service');
 const EnrollmentService = require('../services/enrollment.service');
+const AnnouncementAdapter = require('../patterns/AnnouncementAdapter');
+const { enrollmentEventBus } = require('../patterns/NotificationObserver');
+
 
 class TeacherController {
     async getProfile(req, res) {
@@ -188,32 +191,41 @@ class TeacherController {
     }
 
     async updateGrades(req, res) {
-        try {
-            const { sectionId } = req.params;
-            const { enrollmentId, assessments, letterGrade, gradePoints } = req.body;
+    try {
+        const { sectionId } = req.params;
+        const { enrollmentId, assessments, letterGrade, gradePoints } = req.body;
 
-            const course = await CourseRepo.findOneBySection(sectionId, req.user.id);
-            if (!course) return res.status(403).json({ message: 'Access denied' });
+        const course = await CourseRepo.findOneBySection(sectionId, req.user.id);
+        if (!course) return res.status(403).json({ message: 'Access denied' });
 
-            const enrollment = await EnrollmentRepo.findById(enrollmentId);
-            if (!enrollment) return res.status(404).json({ message: 'Enrollment not found' });
+        const enrollment = await EnrollmentRepo.findById(enrollmentId);
+        if (!enrollment) return res.status(404).json({ message: 'Enrollment not found' });
 
-            if (assessments && Array.isArray(assessments)) {
-                assessments.forEach(({ assessmentId, obtainedMarks }) => {
-                    const assessment = enrollment.assessments.id(assessmentId);
-                    if (assessment) assessment.obtainedMarks = obtainedMarks;
-                });
-            }
-
-            if (letterGrade !== undefined) enrollment.letterGrade = letterGrade;
-            if (gradePoints !== undefined) enrollment.gradePoints = gradePoints;
-
-            await EnrollmentRepo.save(enrollment);
-            res.status(200).json({ message: 'Grades updated', enrollment });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
+        if (assessments && Array.isArray(assessments)) {
+            assessments.forEach(({ assessmentId, obtainedMarks }) => {
+                const assessment = enrollment.assessments.id(assessmentId);
+                if (assessment) assessment.obtainedMarks = obtainedMarks;
+            });
         }
+
+        if (letterGrade !== undefined) enrollment.letterGrade = letterGrade;
+        if (gradePoints !== undefined) enrollment.gradePoints = gradePoints;
+
+        await EnrollmentRepo.save(enrollment);
+
+        if (letterGrade) {
+            enrollmentEventBus.emit('grade.updated', {
+                studentName: enrollmentId,
+                courseName: course.name,
+                letterGrade
+            });
+        }
+
+        res.status(200).json({ message: 'Grades updated', enrollment });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 
     async getAttendance(req, res) {
         try {
@@ -253,39 +265,50 @@ class TeacherController {
     }
 
     async markAttendance(req, res) {
-        try {
-            const { sectionId } = req.params;
-            const { date, topic, records } = req.body;
+    try {
+        const { sectionId } = req.params;
+        const { date, topic, records } = req.body;
 
-            const course = await CourseRepo.findOneBySection(sectionId, req.user.id);
-            if (!course) return res.status(403).json({ message: 'Access denied' });
+        const course = await CourseRepo.findOneBySection(sectionId, req.user.id);
+        if (!course) return res.status(403).json({ message: 'Access denied' });
 
-            for (const record of records) {
-                const enrollment = await EnrollmentRepo.findById(record.enrollmentId);
-                if (!enrollment) continue;
+        for (const record of records) {
+            const enrollment = await EnrollmentRepo.findById(record.enrollmentId);
+            if (!enrollment) continue;
 
-                enrollment.attendance.classLog.push({
-                    date: new Date(date),
-                    topic: topic || null,
-                    status: record.status
-                });
+            enrollment.attendance.classLog.push({
+                date: new Date(date),
+                topic: topic || null,
+                status: record.status
+            });
 
-                enrollment.attendance.totalLectures += 1;
-                if (record.status === 'present') {
-                    enrollment.attendance.attendedLectures += 1;
-                } else if (record.status === 'tardy') {
-                    enrollment.attendance.attendedLectures += 1;
-                    enrollment.attendance.tardies += 1;
-                }
-
-                await EnrollmentRepo.save(enrollment);
+            enrollment.attendance.totalLectures += 1;
+            if (record.status === 'present') {
+                enrollment.attendance.attendedLectures += 1;
+            } else if (record.status === 'tardy') {
+                enrollment.attendance.attendedLectures += 1;
+                enrollment.attendance.tardies += 1;
             }
 
-            res.status(200).json({ message: 'Attendance marked successfully' });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
+            await EnrollmentRepo.save(enrollment);
+
+            const percentage = AttendanceService.calcAttendancePercentage(
+                enrollment.attendance.attendedLectures,
+                enrollment.attendance.totalLectures
+            );
+
+            enrollmentEventBus.emit('attendance.updated', {
+                studentName: record.enrollmentId,
+                courseName: course.name,
+                percentage
+            });
         }
+
+        res.status(200).json({ message: 'Attendance marked successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 
     async getSchedule(req, res) {
         try {
@@ -320,42 +343,47 @@ class TeacherController {
     }
 
     async getAnnouncements(req, res) {
-        try {
-            const announcements = await AnnouncementRepo.findByCreator(req.user.id);
-            res.status(200).json({ announcements });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
-        }
+    try {
+        const announcements = await AnnouncementRepo.findByCreator(req.user.id);
+        res.status(200).json({ announcements: AnnouncementAdapter.adaptMany(announcements) });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 
-    async postAnnouncement(req, res) {
-        try {
-            const { title, body, type, course, weekNumber, category } = req.body;
+async postAnnouncement(req, res) {
+    try {
+        const { title, body, type, course, weekNumber, category } = req.body;
 
-            if (type === 'faculty' && !course) {
-                return res.status(400).json({ message: 'Course is required for faculty announcements' });
-            }
-
-            if (type === 'faculty' && course) {
-                const courseExists = await CourseRepo.findOneBySection(course, req.user.id);
-                if (!courseExists) return res.status(403).json({ message: 'Access denied' });
-            }
-
-            const announcement = await AnnouncementRepo.create({
-                title, body,
-                createdBy: req.user.id,
-                createdByModel: 'Teacher',
-                type,
-                course: course || null,
-                weekNumber: weekNumber || null,
-                category: category || 'notice'
-            });
-
-            res.status(201).json({ message: 'Announcement posted', announcement });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
+        if (type === 'faculty' && !course) {
+            return res.status(400).json({ message: 'Course is required for faculty announcements' });
         }
+
+        if (type === 'faculty' && course) {
+            const courseExists = await CourseRepo.findOneBySection(course, req.user.id);
+            if (!courseExists) return res.status(403).json({ message: 'Access denied' });
+        }
+
+        const announcement = await AnnouncementRepo.create({
+            title, body,
+            createdBy: req.user.id,
+            createdByModel: 'Teacher',
+            type,
+            course: course || null,
+            weekNumber: weekNumber || null,
+            category: category || 'notice'
+        });
+
+        const populated = await announcement.populate([
+            { path: 'createdBy', select: 'name' },
+            { path: 'course', select: 'courseCode name' }
+        ]);
+
+        res.status(201).json({ message: 'Announcement posted', announcement: AnnouncementAdapter.adapt(populated) });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 }
 
 const controller = new TeacherController();

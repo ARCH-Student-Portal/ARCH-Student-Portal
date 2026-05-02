@@ -1,5 +1,6 @@
 const EnrollmentRepo = require('../repositories/enrollment.repository');
 const CourseRepo = require('../repositories/course.repository');
+const { enrollmentEventBus } = require('../patterns/NotificationObserver');
 
 class EnrollmentService {
     async enrollStudent(studentId, courseId, sectionId, semester) {
@@ -28,6 +29,12 @@ class EnrollmentService {
         section.seatsAvailable -= 1;
         await CourseRepo.save(course);
 
+        enrollmentEventBus.emit('enrollment.created', {
+            studentName: studentId,
+            courseName: course.name,
+            event: 'ENROLLED'
+        });
+
         return enrollment;
     }
 
@@ -42,6 +49,12 @@ class EnrollmentService {
                 section.seatsAvailable += 1;
                 await CourseRepo.save(course);
             }
+
+            enrollmentEventBus.emit('enrollment.dropped', {
+                studentName: enrollmentId,
+                courseName: course.name,
+                event: 'UNENROLLED'
+            });
         }
 
         return enrollment;

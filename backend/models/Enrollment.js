@@ -31,7 +31,8 @@ const enrollmentSchema = new mongoose.Schema({
     attendance: {type: attendanceSchema, default: () => ({})  },
     letterGrade: {type: String, default: null}, // "A", "B"
     gradePoints: {type: Number, default: null}, // 3.6, 2.9
-    isCompleted: {type: Boolean, default: false} // false = ongoing, true = past
+    isCompleted: {type: Boolean, default: false},
+    isDropped: {type: Boolean, default: false}
 
 });
 

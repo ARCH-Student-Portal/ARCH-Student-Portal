@@ -1,3 +1,4 @@
+const UserFactory = require('../patterns/UserFactory');
 const StudentRepo = require('../repositories/student.repository');
 const TeacherRepo = require('../repositories/teacher.repository');
 const CourseRepo = require('../repositories/course.repository');
@@ -5,6 +6,11 @@ const EnrollmentRepo = require('../repositories/enrollment.repository');
 const AnnouncementRepo = require('../repositories/announcement.repository');
 const AuthService = require('../services/auth.service');
 const EnrollmentService = require('../services/enrollment.service');
+const AnnouncementAdapter = require('../patterns/AnnouncementAdapter');
+const PaginationIterator = require('../patterns/PaginationIterator');
+const EnrollmentState = require('../patterns/EnrollmentState');
+
+
 
 class AdminController {
     async getDashboard(req, res) {
@@ -51,13 +57,22 @@ class AdminController {
     }
 
     async getStudents(req, res) {
-        try {
-            const students = await StudentRepo.findAll();
-            res.status(200).json({ total: students.length, students });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
-        }
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+
+        const students = await StudentRepo.findAll();
+        const iterator = new PaginationIterator(students, pageSize);
+        const paginated = iterator.getPage(page);
+
+        res.status(200).json({
+            students: paginated,
+            meta: { ...iterator.getMeta(), currentPage: page }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 
     async getStudent(req, res) {
         try {
@@ -70,33 +85,17 @@ class AdminController {
     }
 
     async createStudent(req, res) {
-        try {
-            const {
-                name, email, password, rollNumber,
-                department, program, semester,
-                batch, section, phone, address, cnic, dob, guardian
-            } = req.body;
-
-            const exists = await StudentRepo.findByEmailOrRoll(email, rollNumber);
-            if (exists) return res.status(400).json({ message: 'Email or roll number already exists' });
-
-            const hashedPassword = await AuthService.hashPassword(password);
-            const student = await StudentRepo.create({
-                name, email, password: hashedPassword,
-                rollNumber, department, program, semester,
-                batch: batch || null, section: section || null,
-                phone: phone || null, address: address || null,
-                cnic: cnic || null, dob: dob || null,
-                guardian: guardian || {}
-            });
-
-            const studentObj = student.toObject();
-            delete studentObj.password;
-            res.status(201).json({ message: 'Student created', student: studentObj });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
-        }
+    try {
+        const student = await UserFactory.createUser('student', req.body);
+        const studentObj = student.toObject();
+        delete studentObj.password;
+        res.status(201).json({ message: 'Student created', student: studentObj });
+    } catch (error) {
+        if (error.message === 'DUPLICATE_STUDENT') return res.status(400).json({ message: 'Email or roll number already exists' });
+        if (error.message === 'INVALID_ROLE') return res.status(400).json({ message: 'Invalid role' });
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 
     async updateStudent(req, res) {
         try {
@@ -117,6 +116,47 @@ class AdminController {
             res.status(500).json({ message: 'Server error', error: error.message });
         }
     }
+
+    async completeEnrollment(req, res) {
+    try {
+        const { letterGrade, gradePoints } = req.body;
+        const enrollment = await EnrollmentRepo.findById(req.params.id);
+        if (!enrollment) return res.status(404).json({ message: 'Enrollment not found' });
+
+        const state = new EnrollmentState(enrollment);
+        const result = await state.complete(letterGrade, gradePoints);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+}
+
+async dropEnrollment(req, res) {
+    try {
+        const enrollment = await EnrollmentRepo.findById(req.params.id);
+        if (!enrollment) return res.status(404).json({ message: 'Enrollment not found' });
+
+        const state = new EnrollmentState(enrollment);
+        const result = await state.drop();
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+}
+
+async reactivateEnrollment(req, res) {
+    try {
+        const enrollment = await EnrollmentRepo.findById(req.params.id);
+        if (!enrollment) return res.status(404).json({ message: 'Enrollment not found' });
+
+        const state = new EnrollmentState(enrollment);
+        const result = await state.reactivate();
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+}
+
 
     async deleteStudent(req, res) {
         try {
@@ -149,24 +189,17 @@ class AdminController {
     }
 
     async createTeacher(req, res) {
-        try {
-            const { name, email, password, employeeId, department } = req.body;
-
-            const exists = await TeacherRepo.findByEmailOrEmployeeId(email, employeeId);
-            if (exists) return res.status(400).json({ message: 'Email or employee ID already exists' });
-
-            const hashedPassword = await AuthService.hashPassword(password);
-            const teacher = await TeacherRepo.create({
-                name, email, password: hashedPassword, employeeId, department
-            });
-
-            const teacherObj = teacher.toObject();
-            delete teacherObj.password;
-            res.status(201).json({ message: 'Teacher created', teacher: teacherObj });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
-        }
+    try {
+        const teacher = await UserFactory.createUser('teacher', req.body);
+        const teacherObj = teacher.toObject();
+        delete teacherObj.password;
+        res.status(201).json({ message: 'Teacher created', teacher: teacherObj });
+    } catch (error) {
+        if (error.message === 'DUPLICATE_TEACHER') return res.status(400).json({ message: 'Email or employee ID already exists' });
+        if (error.message === 'INVALID_ROLE') return res.status(400).json({ message: 'Invalid role' });
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 
     async updateTeacher(req, res) {
         try {
@@ -195,13 +228,22 @@ class AdminController {
     }
 
     async getCourses(req, res) {
-        try {
-            const courses = await CourseRepo.findAll();
-            res.status(200).json({ total: courses.length, courses });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
-        }
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 10;
+
+        const courses = await CourseRepo.findAll();
+        const iterator = new PaginationIterator(courses, pageSize);
+        const paginated = iterator.getPage(page);
+
+        res.status(200).json({
+            courses: paginated,
+            meta: { ...iterator.getMeta(), currentPage: page }
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 
     async getCourse(req, res) {
         try {
@@ -296,31 +338,37 @@ class AdminController {
     }
 
     async getAnnouncements(req, res) {
-        try {
-            const announcements = await AnnouncementRepo.findAll();
-            res.status(200).json({ announcements });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
-        }
+    try {
+        const announcements = await AnnouncementRepo.findAll();
+        res.status(200).json({ announcements: AnnouncementAdapter.adaptMany(announcements) });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 
-    async postAnnouncement(req, res) {
-        try {
-            const { title, body, type, course, weekNumber, category } = req.body;
-            const announcement = await AnnouncementRepo.create({
-                title, body,
-                createdBy: req.user.id,
-                createdByModel: 'Admin',
-                type: type || 'university',
-                course: course || null,
-                weekNumber: weekNumber || null,
-                category: category || 'notice'
-            });
-            res.status(201).json({ message: 'Announcement posted', announcement });
-        } catch (error) {
-            res.status(500).json({ message: 'Server error', error: error.message });
-        }
+async postAnnouncement(req, res) {
+    try {
+        const { title, body, type, course, weekNumber, category } = req.body;
+        const announcement = await AnnouncementRepo.create({
+            title, body,
+            createdBy: req.user.id,
+            createdByModel: 'Admin',
+            type: type || 'university',
+            course: course || null,
+            weekNumber: weekNumber || null,
+            category: category || 'notice'
+        });
+
+        const populated = await announcement.populate([
+            { path: 'createdBy', select: 'name' },
+            { path: 'course', select: 'courseCode name' }
+        ]);
+
+        res.status(201).json({ message: 'Announcement posted', announcement: AnnouncementAdapter.adapt(populated) });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
+}
 }
 
 const controller = new AdminController();
@@ -344,5 +392,8 @@ module.exports = {
     enrollStudentHandler: controller.enrollStudentHandler.bind(controller),
     unenrollStudentHandler: controller.unenrollStudentHandler.bind(controller),
     getAnnouncements: controller.getAnnouncements.bind(controller),
-    postAnnouncement: controller.postAnnouncement.bind(controller)
+    postAnnouncement: controller.postAnnouncement.bind(controller),
+    completeEnrollment: controller.completeEnrollment.bind(controller),
+dropEnrollment: controller.dropEnrollment.bind(controller),
+reactivateEnrollment: controller.reactivateEnrollment.bind(controller)
 };
