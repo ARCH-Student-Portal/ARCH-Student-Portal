@@ -4,6 +4,8 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
 import "./TeacherDashV1.css";
+import Sidebar from "./Components/shared/Sidebar";
+import { TEACHER_NAV } from "./config/TeacherNav";
 
 // ── CUSTOM SMOOTH COUNTER HOOK ──
 function AnimatedCounter({ value, decimals = 0, suffix = "", duration = 1.2, delay = 0 }) {
@@ -229,30 +231,14 @@ export default function TeacherDashV1() {
       </div>
 
       <div id="app" ref={appRef}>
-        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
-          <div className="sb-top-bar" /><button className="sb-toggle" onClick={() => setCollapse(c => !c)}><span/><span/><span/></button> 
-          <div className="sb-logo"><div className="logo-box">A</div><div><div className="logo-name">ARCH</div><div className="logo-tagline">Faculty Portal</div></div></div>
-          <div className="sb-user" onClick={() => navigate('/teacher/profile')}>
-            <div className="uav">Dr.</div><div><div className="uname">Dr. Ahmed</div><div className="uid">EMP-8492</div></div>
-          </div>
-          {[
-            ["Overview", [["⊞","Dashboard","/teacher/dashboard"]]],
-            ["Management",[["◈","My Sections","/teacher/sections"],["▦","Gradebook","/teacher/gradebook"],["✓","Attendance","/teacher/attendance"],["▤","Schedule","/teacher/schedule"]]],
-            ["Communication",[["◉","Broadcasts","/teacher/alerts"]]],
-            ["Account",[["◌","Profile","/teacher/profile"]]],
-          ].map(([sec, items]) => (
-            <div key={sec}>
-              <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div className={`ni ${location.pathname === path ? " active" : ""}`} key={label} onClick={() => navigate(path)} style={{cursor: 'pointer'}}>
-                  <div className="ni-ic">{ic}</div>{label}
-                  {label === "Broadcasts" && <span className="nbadge">2</span>}
-                </div>
-              ))}
-            </div>
-          ))}
-          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
-        </nav>
+        <Sidebar
+          sections={TEACHER_NAV}
+          logoLabel="Faculty Portal"
+          userName="Dr. Ahmed"
+          userId="EMP-8492"
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         <div id="main">
           <div id="topbar" ref={topbarRef}>

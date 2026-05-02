@@ -925,28 +925,15 @@ export default function StudentMarks() {
 
       <div id="mrk-app" ref={ar}>
 
-        <nav id="mrk-sidebar" ref={sr} className={c ? "collapse" : ""}>
-          <div className="sb-top-bar" />
-          <button className="sb-toggle" onClick={() => scol(function(p) { return !p; })}>
-            <span /><span /><span />
-          </button>
-          <div className="sb-logo">
-            <div className="logo-box">A</div>
-            <div>
-              <div className="logo-name">ARCH</div>
-              <div className="logo-tagline">Student Portal</div>
-            </div>
-          </div>
-          <div className="sb-user">
-            <div className="uav">AB</div>
-            <div>
-              <div className="uname">Areeb Bucha</div>
-              <div className="uid">21K-3210</div>
-            </div>
-          </div>
-          {sidepts}
-          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
-        </nav>
+        <Sidebar
+          ref={sidebarRef}  // <--- ADD THIS LINE
+          sections={STUDENT_NAV}
+          logoLabel="Student Portal"
+          userName="Areeb Bucha"
+          userId="21K-3210"
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         <div id="mrk-main">
           <div id="mrk-topbar" ref={tr}>
