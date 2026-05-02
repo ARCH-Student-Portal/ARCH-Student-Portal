@@ -98,10 +98,12 @@ export default function TeacherGradebook() {
   const introCanvasRef = useRef(null);
   const introRef  = useRef(null);
   const appRef    = useRef(null);
-  const sidebarRef = useRef(null);
   const topbarRef = useRef(null);
   const [collapse, setCollapse] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [introPlayed, setIntroPlayed] = useState(
+    () => !!sessionStorage.getItem("archTeacherIntroPlayed")
+  );
 
   const [activeSection, setActiveSection] = useState("CS-3001");
   const [scores, setScores]  = useState(() => {
@@ -182,21 +184,15 @@ export default function TeacherGradebook() {
 
   // ── CINEMATIC INTRO ──
   useEffect(() => {
-    const hasPlayedIntro = sessionStorage.getItem("archTeacherIntroPlayed");
-    if (hasPlayedIntro) {
-      introRef.current.style.display = "none";
-      appRef.current.style.opacity = 1;
-      sidebarRef.current.style.transform = "translateX(0)";
-      topbarRef.current.style.opacity = 1;
+    // If intro already played, just set stats visible — no DOM manipulation needed
+    // because introPlayed state already conditionally hides the intro overlay in JSX
+    if (introPlayed) {
       setShowStats(true);
-      if (webglRef.current) {
-        webglRef.current.style.opacity = 0;
-        webglRef.current.style.display = "none";
-      }
-      return; 
+      return;
     }
 
     const canvas = introCanvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
@@ -226,31 +222,34 @@ export default function TeacherGradebook() {
 
     const afterIntro = () => {
       cancelAnimationFrame(animId);
-      sessionStorage.setItem("archTeacherIntroPlayed", "true"); 
-      gsap.set(introRef.current, { display: "none" });
-      gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
-      gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out" });
-      gsap.to(topbarRef.current, { opacity: 1, duration: 0.7 });
-      
+      sessionStorage.setItem("archTeacherIntroPlayed", "true");
+      setIntroPlayed(true); // triggers re-render to hide intro overlay via JSX
+      if (appRef.current)    gsap.to(appRef.current,   { opacity: 1, duration: 0.6 });
+      if (topbarRef.current) gsap.to(topbarRef.current, { opacity: 1, duration: 0.7 });
       setTimeout(() => setShowStats(true), 600);
-
-      gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
-      setTimeout(() => { if (webglRef.current) webglRef.current.style.display = "none"; }, 3000);
+      if (webglRef.current) {
+        gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
+        setTimeout(() => { if (webglRef.current) webglRef.current.style.display = "none"; }, 3000);
+      }
     };
 
     const tl = gsap.timeline({ delay: 0.4, onComplete: afterIntro });
-    tl.to("#intro-line", { scaleX: 1, duration: 0.8, ease: "power3.out" }, 0)
-      .to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.5)
-      .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4)
-      .to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4)
-      .to(introRef.current, { opacity: 0, duration: 0.35 }, 2.88);
+    if (introRef.current) {
+      tl.to("#intro-line", { scaleX: 1, duration: 0.8, ease: "power3.out" }, 0)
+        .to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.5)
+        .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4)
+        .to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4)
+        .to(introRef.current, { opacity: 0, duration: 0.35 }, 2.88);
+    } else {
+      afterIntro();
+    }
 
     return () => cancelAnimationFrame(animId);
-  }, []);
+  }, [introPlayed]);
 
   // ── THREE.JS BACKGROUND ──
   useEffect(() => {
-    if (sessionStorage.getItem("archTeacherIntroPlayed")) return;
+    if (introPlayed) return;
     const canvas = webglRef.current;
     if (!canvas) return;
     let W = window.innerWidth, H = window.innerHeight;
@@ -274,13 +273,15 @@ export default function TeacherGradebook() {
         <div className="mesh-blob blob-3" />
       </div>
 
-      <canvas id="webgl" ref={webglRef} />
+      <canvas id="webgl" ref={webglRef} style={{ display: introPlayed ? "none" : undefined }} />
 
-      <div id="intro" ref={introRef}>
-        <canvas id="intro-canvas" ref={introCanvasRef} />
-        <div id="intro-line" />
-        <div id="intro-logo">ARCH</div>
-      </div>
+      {!introPlayed && (
+        <div id="intro" ref={introRef}>
+          <canvas id="intro-canvas" ref={introCanvasRef} />
+          <div id="intro-line" />
+          <div id="intro-logo">ARCH</div>
+        </div>
+      )}
 
       <div id="app" ref={appRef} style={{ opacity: 1 }}>
         

@@ -61,6 +61,7 @@ export default function TeacherDashV1() {
     const hasPlayedIntro = sessionStorage.getItem("archTeacherIntroPlayed");
 
     if (hasPlayedIntro) {
+      
       introRef.current.style.display = "none";
       appRef.current.style.opacity = 1;
       sidebarRef.current.style.transform = "translateX(0)";
