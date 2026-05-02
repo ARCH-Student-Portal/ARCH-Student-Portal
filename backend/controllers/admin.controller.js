@@ -4,16 +4,15 @@ const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
 const Announcement = require('../models/Announcement');
 const bcrypt = require('bcryptjs');
+const { enrollStudent, unenrollStudent } = require('../services/enrollment.service');
 
 // GET /api/admin/dashboard
 const getDashboard = async (req, res) => {
     try {
-        // top stats
         const totalStudents = await Student.countDocuments();
         const totalTeachers = await Teacher.countDocuments();
         const activeCourses = await Course.countDocuments();
 
-        // enrollment by department
         const students = await Student.find().select('department');
         const departmentMap = {};
         students.forEach(s => {
@@ -24,7 +23,6 @@ const getDashboard = async (req, res) => {
             ([department, count]) => ({ department, count })
         );
 
-        // average attendance across all active enrollments
         const enrollments = await Enrollment.find({ isCompleted: false });
         let totalPercentage = 0;
         let countWithLectures = 0;
@@ -38,7 +36,6 @@ const getDashboard = async (req, res) => {
             ? parseFloat((totalPercentage / countWithLectures).toFixed(1))
             : null;
 
-        // recently added students
         const recentStudents = await Student.find()
             .sort({ _id: -1 })
             .limit(5)
@@ -54,7 +51,6 @@ const getDashboard = async (req, res) => {
             enrollmentByDepartment,
             recentStudents
         });
-
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
@@ -90,7 +86,6 @@ const createStudent = async (req, res) => {
             batch, section, phone, address, cnic, dob, guardian
         } = req.body;
 
-        // check if email or rollNumber already exists
         const exists = await Student.findOne({ $or: [{ email }, { rollNumber }] });
         if (exists) return res.status(400).json({ message: 'Email or roll number already exists' });
 
@@ -151,7 +146,6 @@ const deleteStudent = async (req, res) => {
         const student = await Student.findByIdAndDelete(req.params.id);
         if (!student) return res.status(404).json({ message: 'Student not found' });
 
-        // also delete all enrollments for this student
         await Enrollment.deleteMany({ student: req.params.id });
 
         res.status(200).json({ message: 'Student deleted' });
@@ -234,13 +228,11 @@ const deleteTeacher = async (req, res) => {
     try {
         const teacher = await Teacher.findByIdAndDelete(req.params.id);
         if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
-
         res.status(200).json({ message: 'Teacher deleted' });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
-
 
 // GET /api/admin/courses
 const getCourses = async (req, res) => {
@@ -328,7 +320,6 @@ const deleteCourse = async (req, res) => {
         const course = await Course.findByIdAndDelete(req.params.id);
         if (!course) return res.status(404).json({ message: 'Course not found' });
 
-        // delete all enrollments for this course
         await Enrollment.deleteMany({ course: req.params.id });
 
         res.status(200).json({ message: 'Course deleted' });
@@ -338,70 +329,32 @@ const deleteCourse = async (req, res) => {
 };
 
 // POST /api/admin/enrollments
-const enrollStudent = async (req, res) => {
+const enrollStudentHandler = async (req, res) => {
     try {
         const { studentId, courseId, sectionId, semester } = req.body;
 
-        // verify student exists
         const student = await Student.findById(studentId);
         if (!student) return res.status(404).json({ message: 'Student not found' });
 
-        // verify course and section exist
-        const course = await Course.findById(courseId);
-        if (!course) return res.status(404).json({ message: 'Course not found' });
-
-        const section = course.sections.id(sectionId);
-        if (!section) return res.status(404).json({ message: 'Section not found' });
-
-        // check if already enrolled
-        const alreadyEnrolled = await Enrollment.findOne({
-            student: studentId,
-            course: courseId,
-            isCompleted: false
-        });
-        if (alreadyEnrolled) return res.status(400).json({ message: 'Student already enrolled in this course' });
-
-        // check seat availability
-        if (section.seatsAvailable <= 0) {
-            return res.status(400).json({ message: 'No seats available in this section' });
-        }
-
-        // create enrollment
-        const enrollment = await Enrollment.create({
-            student: studentId,
-            course: courseId,
-            sectionId,
-            semester
-        });
-
-        // decrement available seats
-        section.seatsAvailable -= 1;
-        await course.save();
-
+        const enrollment = await enrollStudent(studentId, courseId, sectionId, semester);
         res.status(201).json({ message: 'Student enrolled successfully', enrollment });
+
     } catch (error) {
+        if (error.message === 'COURSE_NOT_FOUND') return res.status(404).json({ message: 'Course not found' });
+        if (error.message === 'SECTION_NOT_FOUND') return res.status(404).json({ message: 'Section not found' });
+        if (error.message === 'ALREADY_ENROLLED') return res.status(400).json({ message: 'Student already enrolled in this course' });
+        if (error.message === 'NO_SEATS') return res.status(400).json({ message: 'No seats available in this section' });
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
 // DELETE /api/admin/enrollments/:id
-const unenrollStudent = async (req, res) => {
+const unenrollStudentHandler = async (req, res) => {
     try {
-        const enrollment = await Enrollment.findByIdAndDelete(req.params.id);
-        if (!enrollment) return res.status(404).json({ message: 'Enrollment not found' });
-
-        // increment seats back
-        const course = await Course.findById(enrollment.course);
-        if (course) {
-            const section = course.sections.id(enrollment.sectionId);
-            if (section) {
-                section.seatsAvailable += 1;
-                await course.save();
-            }
-        }
-
+        await unenrollStudent(req.params.id);
         res.status(200).json({ message: 'Student unenrolled successfully' });
     } catch (error) {
+        if (error.message === 'ENROLLMENT_NOT_FOUND') return res.status(404).json({ message: 'Enrollment not found' });
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
@@ -459,8 +412,8 @@ module.exports = {
     createCourse,
     updateCourse,
     deleteCourse,
-    enrollStudent,
-    unenrollStudent,
+    enrollStudentHandler,
+    unenrollStudentHandler,
     getAnnouncements,
     postAnnouncement
 };

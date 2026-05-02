@@ -1,3 +1,6 @@
+const { calculateWeightedPercentage } = require('../services/grade.service');
+const { calcAttendancePercentage, isAtRisk } = require('../services/attendance.service');
+const { sortByDayAndTime } = require('../services/schedule.service');
 const Teacher = require('../models/Teacher');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
@@ -184,9 +187,7 @@ const getSectionStudents = async (req, res) => {
             semester: e.student.semester,
             letterGrade: e.letterGrade,
             gradePoints: e.gradePoints,
-            attendancePercentage: e.attendance.totalLectures > 0
-                ? parseFloat(((e.attendance.attendedLectures / e.attendance.totalLectures) * 100).toFixed(1))
-                : null
+            attendancePercentage: calcAttendancePercentage(e.attendance.attendedLectures, e.attendance.totalLectures)
         }));
 
         const section = course.sections.id(sectionId);
@@ -242,16 +243,7 @@ const getGradebook = async (req, res) => {
             });
 
             // calculate weighted percentage
-            let totalPercentage = 0;
-            course.weightage.forEach(w => {
-                const assessments = assessmentsByType[w.type] || [];
-                if (assessments.length === 0) return;
-
-                const totalObtained = assessments.reduce((sum, a) => sum + a.obtainedMarks, 0);
-                const totalMarks = assessments.reduce((sum, a) => sum + a.totalMarks, 0);
-                const typePercentage = (totalObtained / totalMarks) * w.percentage;
-                totalPercentage += typePercentage;
-            });
+            const totalPercentage = calculateWeightedPercentage(assessmentsByType, course.weightage);
 
             return {
                 enrollmentId: enrollment._id,
@@ -340,9 +332,7 @@ const getAttendance = async (req, res) => {
 
         const attendance = enrollments.map(enrollment => {
             const { totalLectures, attendedLectures, tardies, classLog } = enrollment.attendance;
-            const percentage = totalLectures > 0
-                ? parseFloat(((attendedLectures / totalLectures) * 100).toFixed(1))
-                : null;
+            const percentage = calcAttendancePercentage(attendedLectures, totalLectures);
 
             return {
                 enrollmentId: enrollment._id,
@@ -353,7 +343,7 @@ const getAttendance = async (req, res) => {
                 absent: totalLectures - attendedLectures,
                 tardies,
                 percentage,
-                isAtRisk: percentage !== null && percentage < 75,
+                isAtRisk: isAtRisk(percentage),
                 classLog
             };
         });
@@ -497,12 +487,7 @@ const getSchedule = async (req, res) => {
         });
 
         // sort by day then time
-        const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        schedule.sort((a, b) => {
-            const dayDiff = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
-            if (dayDiff !== 0) return dayDiff;
-            return a.startTime.localeCompare(b.startTime);
-        });
+        sortByDayAndTime(schedule);
 
         res.status(200).json({ schedule });
     } catch (error) {

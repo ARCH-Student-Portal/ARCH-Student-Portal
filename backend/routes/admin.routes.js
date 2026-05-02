@@ -18,8 +18,8 @@ const {
     createCourse,
     updateCourse,
     deleteCourse,
-    enrollStudent,
-    unenrollStudent,
+    enrollStudentHandler,
+    unenrollStudentHandler,
     getAnnouncements,
     postAnnouncement
 } = require('../controllers/admin.controller');
@@ -52,8 +52,8 @@ router.patch('/courses/:id', updateCourse);
 router.delete('/courses/:id', deleteCourse);
 
 // enrollment management
-router.post('/enrollments', enrollStudent);
-router.delete('/enrollments/:id', unenrollStudent);
+router.post('/enrollments', enrollStudentHandler);
+router.delete('/enrollments/:id', unenrollStudentHandler);
 
 // announcements
 router.get('/announcements', getAnnouncements);

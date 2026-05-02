@@ -1,3 +1,6 @@
+const { calculateCGPA } = require('../services/grade.service');
+const { calcAttendancePercentage } = require('../services/attendance.service');
+const { sortByDayAndTime } = require('../services/schedule.service');
 const Student = require('../models/Student');
 const Enrollment = require('../models/Enrollment');
 const Announcement = require('../models/Announcement');
@@ -107,9 +110,7 @@ const getAttendance = async (req, res) => {
 
         const attendance = enrollments.map(enrollment => {
             const { totalLectures, attendedLectures, tardies, classLog } = enrollment.attendance;
-            const percentage = totalLectures > 0
-                ? ((attendedLectures / totalLectures) * 100).toFixed(1)
-                : null;
+            const percentage = calcAttendancePercentage(attendedLectures, totalLectures);
 
             return {
                 enrollmentId: enrollment._id,
@@ -119,7 +120,7 @@ const getAttendance = async (req, res) => {
                 totalLectures,
                 attendedLectures,
                 tardies,
-                percentage: percentage ? parseFloat(percentage) : null,
+                percentage,
                 classLog
             };
         });
@@ -197,12 +198,7 @@ const getTranscript = async (req, res) => {
             };
         });
 
-        const totalAttemptedCredits = completedEnrollments.reduce(
-            (sum, e) => sum + e.course.creditHours, 0
-        );
-        const cgpa = totalAttemptedCredits > 0
-            ? parseFloat((totalQualityPoints / totalAttemptedCredits).toFixed(2))
-            : null;
+        const cgpa = calculateCGPA(completedEnrollments);
 
         res.status(200).json({
             student: {
@@ -258,12 +254,7 @@ const getTimetable = async (req, res) => {
             });
         });
 
-        const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        timetable.sort((a, b) => {
-            const dayDiff = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
-            if (dayDiff !== 0) return dayDiff;
-            return a.startTime.localeCompare(b.startTime);
-        });
+        sortByDayAndTime(timetable);
 
         res.status(200).json({ timetable });
     } catch (error) {
@@ -322,11 +313,7 @@ const getGPA = async (req, res) => {
         }));
 
         // Cumulative GPA
-        const totalCredits = enrollments.reduce((sum, e) => sum + e.course.creditHours, 0);
-        const totalQualityPoints = enrollments.reduce((sum, e) => sum + (e.course.creditHours * (e.gradePoints ?? 0)), 0);
-        const cgpa = totalCredits > 0
-            ? parseFloat((totalQualityPoints / totalCredits).toFixed(2))
-            : null;
+        const cgpa = calculateCGPA(enrollments);
 
         // Credits breakdown
         const completed = enrollments.filter(e => e.isCompleted);
