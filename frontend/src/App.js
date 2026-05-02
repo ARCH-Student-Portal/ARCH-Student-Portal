@@ -17,11 +17,12 @@ import StudentTranscript from "./StudentTranscript";
 import { CourseProvider } from "./CourseContext";
 
 // ── TEACHER ──
-import TeacherDashV1 from "./TeacherDashV1"; // FIXED IMPORT
+import TeacherDashV1 from "./TeacherDashV1"; 
 import TeacherSectionsV1 from "./TeacherSectionsV1";
 import TeacherGradebook from "./TeacherGradebook";
 import TeacherAttendance from "./TeacherAttendance";
 import TeacherSchedule from "./TeacherSchedule";
+import TeacherBroadcasts from "./TeacherBroadcasts"; // 🚀 BOOM. IMPORTED.
 
 // ── ADMIN ──
 import AdminDashboard from "./AdminDashboard";
@@ -66,11 +67,12 @@ function AnimatedRoutes() {
         <Route path="/student/transcript"   element={<Page><StudentTranscript /></Page>} />
 
         {/* ── TEACHER ROUTES ── */}
-        <Route path="/teacher/dashboard"  element={<Page><TeacherDashV1 /></Page>} /> {/* FIXED COMPONENT NAME */}
+        <Route path="/teacher/dashboard"  element={<Page><TeacherDashV1 /></Page>} />
         <Route path="/teacher/sections"   element={<Page><TeacherSectionsV1 /></Page>} />
         <Route path="/teacher/gradebook"  element={<Page><TeacherGradebook /></Page>} />
         <Route path="/teacher/attendance" element={<Page><TeacherAttendance /></Page>} />
         <Route path="/teacher/schedule"   element={<Page><TeacherSchedule /></Page>} />
+        <Route path="/teacher/alerts"     element={<Page><TeacherBroadcasts /></Page>} /> {/* 🚀 BOOM. ROUTED. */}
 
         {/* ── ADMIN ROUTES ── */}
         <Route path="/admin/dashboard"      element={<Page><AdminDashboard /></Page>} />
