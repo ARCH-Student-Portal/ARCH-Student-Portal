@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
+import Sidebar from "./Components/shared/Sidebar";
+import { STUDENT_NAV } from "./config/studentNav";
 import "./StudentNotices.css";
 
 // ── CURRENT WEEK (1-indexed, 0 = semester not started) ───────────────────────

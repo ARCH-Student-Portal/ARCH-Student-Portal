@@ -4,6 +4,8 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts"; 
 import { motion, AnimatePresence } from "framer-motion"; 
+import Sidebar from "./Components/shared/Sidebar";
+import { STUDENT_NAV } from "./config/studentNav";
 import "./StudentAcademicV1.css"; 
 
 export default function StudentAcademicV1() {
@@ -241,26 +243,15 @@ export default function StudentAcademicV1() {
       </div>
 
       <div id="app" ref={appRef}>
-        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
-          <div className="sb-top-bar" />
-          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}><span/><span/><span/></button> 
-          <div className="sb-logo">
-            <div className="logo-box">A</div><div><div className="logo-name">ARCH</div><div className="logo-tagline">Student Portal</div></div>
-          </div>
-          <div className="sb-user">
-            <div className="uav">AB</div><div><div className="uname">Areeb Bucha</div><div className="uid">21K-3210</div></div>
-          </div>
-          {sidebarSections.map(([sec, items]) => (
-            <div key={sec}>
-              <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div className={`ni ${location.pathname === path ? " active" : ""}`} key={label} onClick={() => navigate(path)} style={{cursor: 'pointer'}}>
-                  <div className="ni-ic">{ic}</div>{label}
-                </div>
-              ))}
-            </div>
-          ))}
-        </nav>
+        <Sidebar
+          ref={sidebarRef}  // <--- ADD THIS LINE
+          sections={STUDENT_NAV}
+          logoLabel="Student Portal"
+          userName="Areeb Bucha"
+          userId="21K-3210"
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         <div id="main">
           <div id="topbar">

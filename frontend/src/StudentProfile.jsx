@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
+import Sidebar from "./Components/shared/Sidebar";
+import { STUDENT_NAV } from "./config/studentNav";
 import { gsap } from "gsap";
 import "./StudentProfile.css";
 
@@ -212,35 +214,15 @@ export default function StudentProfileV1() {
 
       <div id="app" ref={appRef}>
         
-        <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
-          <div className="sb-top-bar" />
-          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}><span/><span/><span/></button> 
-          <div className="sb-logo">
-            <div className="logo-box">A</div>
-            <div><div className="logo-name">ARCH</div><div className="logo-tagline">Student Portal</div></div>
-          </div>
-          <div className="sb-user hov-target">
-            <div className="uav">{student.initials}</div>
-            <div><div className="uname">{student.name}</div><div className="uid">{student.rollNo}</div></div>
-          </div>
-          
-          {[
-            ["Overview", [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
-            ["Courses",[["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
-            ["Communication",[["◉","Notices","/student/notices"]]],
-            ["Account",[["◌","Profile","/student/profile"]]],
-          ].map(([sec, items]) => (
-            <div key={sec}>
-              <div className="nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div className={`ni hov-target${location.pathname === path ? " active" : ""}`} key={label} onClick={() => navigate(path)} style={{cursor: 'pointer'}}>
-                  <div className="ni-ic">{ic}</div>{label}
-                </div>
-              ))}
-            </div>
-          ))}
-          <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
-        </nav>
+        <Sidebar
+          ref={sidebarRef}  // <--- ADD THIS LINE
+          sections={STUDENT_NAV}
+          logoLabel="Student Portal"
+          userName="Areeb Bucha"
+          userId="21K-3210"
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         <div id="main">
           <div id="topbar" ref={topbarRef}>
