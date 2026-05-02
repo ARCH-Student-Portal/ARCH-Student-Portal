@@ -18,10 +18,13 @@ const {
     createCourse,
     updateCourse,
     deleteCourse,
-    enrollStudent,
-    unenrollStudent,
+    enrollStudentHandler,
+    unenrollStudentHandler,
     getAnnouncements,
-    postAnnouncement
+    postAnnouncement,
+    completeEnrollment,
+    dropEnrollment,
+    reactivateEnrollment
 } = require('../controllers/admin.controller');
 
 // all routes protected — must be a logged in admin
@@ -52,8 +55,11 @@ router.patch('/courses/:id', updateCourse);
 router.delete('/courses/:id', deleteCourse);
 
 // enrollment management
-router.post('/enrollments', enrollStudent);
-router.delete('/enrollments/:id', unenrollStudent);
+router.post('/enrollments', enrollStudentHandler);
+router.delete('/enrollments/:id', unenrollStudentHandler);
+router.patch('/enrollments/:id/complete', completeEnrollment);
+router.patch('/enrollments/:id/drop', dropEnrollment);
+router.patch('/enrollments/:id/reactivate', reactivateEnrollment);
 
 // announcements
 router.get('/announcements', getAnnouncements);

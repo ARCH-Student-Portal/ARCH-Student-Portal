@@ -1,10 +1,11 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const connectDB = require('./config/db');
 
 dotenv.config();
-connectDB();
+
+const db = require('./config/db');
+db.connect();
 
 const studentAuthRoutes = require('./routes/auth.student.routes');
 const teacherAuthRoutes = require('./routes/auth.teacher.routes');
@@ -16,7 +17,6 @@ const adminRoutes = require('./routes/admin.routes');
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use('/api/admin', adminRoutes);
 
 app.get('/', (req, res) => {
     res.send('Arch Academic Portal API is running');
