@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
 import { TEACHER_NAV } from "./config/TeacherNav";
 import "./TeacherDashV1.css"; // Core shell layout
@@ -35,7 +35,6 @@ const TEACHER_INFO = {
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 export default function TeacherProfile() {
   const navigate   = useNavigate();
-  const location   = useLocation();
   const webglRef   = useRef(null);
   const introCanvasRef = useRef(null);
   const introRef   = useRef(null);
@@ -137,18 +136,6 @@ export default function TeacherProfile() {
     return () => cancelAnimationFrame(animId);
   }, [hasPlayedIntro]);
 
-  const navItems = [
-    ["Management", [
-      ["◈", "My Sections",   "/teacher/sections"],
-      ["⊞", "Dashboard",     "/teacher/dashboard"],
-      ["▦", "Gradebook",     "/teacher/gradebook"],
-      ["✓", "Attendance",    "/teacher/attendance"],
-      ["▤", "Schedule",      "/teacher/schedule"],
-    ]],
-    ["Communication", [["◉", "Broadcasts", "/teacher/alerts"]]], 
-    ["Account",       [["◌", "Profile",    "/teacher/profile"]]],
-  ];
-
   return (
     <>
       <div className="mesh-bg">
@@ -168,6 +155,7 @@ export default function TeacherProfile() {
         
         {/* ── SIDEBAR ── */}
         <Sidebar
+          ref={sidebarRef}
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
           userName="Dr. Ahmed"

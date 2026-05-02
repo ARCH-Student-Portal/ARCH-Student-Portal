@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import "./TeacherDashV1.css";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
 import Sidebar from "./Components/shared/Sidebar";
@@ -11,7 +11,6 @@ import { TEACHER_NAV } from "./config/TeacherNav";
 
 export default function TeacherDashV1() {
   const navigate = useNavigate();
-  const location = useLocation();
   const webglRef = useRef(null);
   const introCanvasRef = useRef(null);
   const introRef = useRef(null);
@@ -49,15 +48,22 @@ export default function TeacherDashV1() {
       
       introRef.current.style.display = "none";
       appRef.current.style.opacity = 1;
-      sidebarRef.current.style.transform = "translateX(0)";
+      if (sidebarRef.current) sidebarRef.current.style.transform = "translateX(0)";
       topbarRef.current.style.opacity = 1;
       setShowStats(true);
 
+      // 2. Safely apply styles only if the refs are connected
+      if (introRef.current) introRef.current.style.display = "none";
+      if (appRef.current) appRef.current.style.opacity = 1;
+      if (sidebarRef.current) sidebarRef.current.style.transform = "translateX(0)";
+      if (topbarRef.current) topbarRef.current.style.opacity = 1;
+
+      // 3. Handle WebGL ref safely
       if (webglRef.current) {
         webglRef.current.style.opacity = 0;
         webglRef.current.style.display = "none";
       }
-      return; 
+      return;
     }
 
     const canvas = introCanvasRef.current;
@@ -218,6 +224,7 @@ export default function TeacherDashV1() {
 
       <div id="app" ref={appRef}>
         <Sidebar
+          ref={sidebarRef}
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
           userName="Dr. Ahmed"
