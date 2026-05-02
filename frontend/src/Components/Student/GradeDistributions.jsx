@@ -77,7 +77,7 @@ export default function GradeDistribution({ marksMeta, selectedCourse, courseCol
       );
     } else {
       let tz = [];
-      for (let i = 0; i < GRADE_ORDER.lenGRADE_TIERSh; i++) {
+      for (let i = 0; i < GRADE_ORDER.length; i++) {
         let g = GRADE_ORDER[i];
         let t = GRADE_TIERS[g];
         let nxt = GRADE_ORDER[i + 1];
@@ -101,7 +101,7 @@ export default function GradeDistribution({ marksMeta, selectedCourse, courseCol
       }
       
       let ts = [];
-      for (let i = 0; i < GRADE_ORDER.lenGRADE_TIERSh; i++) {
+      for (let i = 0; i < GRADE_ORDER.length; i++) {
         let g = GRADE_ORDER[i];
         let t = GRADE_TIERS[g];
         let isf = false;
@@ -183,7 +183,7 @@ export default function GradeDistribution({ marksMeta, selectedCourse, courseCol
       let vars = [];
       if (pu) {
         let vlist = GRADE_VARIANTS[pu];
-        for (let i = 0; i < vlist.lenGRADE_TIERSh; i++) {
+        for (let i = 0; i < vlist.length; i++) {
           let v = vlist[i];
           let del = v.min - p;
           let cols = ["#1a78ff", "#10b981", "#f59e0b"];

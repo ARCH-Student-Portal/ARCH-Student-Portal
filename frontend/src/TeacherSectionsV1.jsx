@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
 import { TEACHER_NAV } from "./config/TeacherNav";
@@ -14,7 +14,6 @@ import "./TeacherSections.css";
 
 export default function TeacherSectionsV1() {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const webglRef = useRef(null);
   const introCanvasRef = useRef(null);
@@ -103,10 +102,9 @@ export default function TeacherSectionsV1() {
       r: Math.random() * 1.5, opacity: Math.random() * 0.6 + 0.1, twinkle: Math.random() * 0.02,
     }));
 
-    let animId, frame = 0;
+    let animId;
     const draw = () => {
       ctx.fillStyle = "rgba(0,4,14,0.18)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      frame++;
       stars.forEach((s) => {
         s.opacity += s.twinkle * (Math.random() > 0.5 ? 1 : -1);
         s.opacity = Math.max(0.05, Math.min(0.8, s.opacity));
@@ -193,6 +191,7 @@ export default function TeacherSectionsV1() {
         
         {/* UNIFIED SIDEBAR */}
         <Sidebar
+          ref={sidebarRef}
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
           userName="Dr. Ahmed"
