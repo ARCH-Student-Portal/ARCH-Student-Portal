@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   GRADE_TIERS, GRADE_VARIANTS, GRADE_ORDER,
   computeOverallPct, getLetterGrade,
-} from "../Utilities/GradeUtils";
+} from "../../Utilities/GradeUtils";
 
 export default function GradeDistribution({ marksMeta, selectedCourse, courseColor }) {
   // ... paste the existing GradeDistribution function body here verbatim,

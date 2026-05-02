@@ -5,7 +5,7 @@ import {
   GRADE_TIERS,
   computeOverallPct,
   getLetterGrade,
-} from "../Utilities/GradeUtils";
+} from "../../Utilities/GradeUtils";
 
 export default function FinalGrade({ marksMeta, selectedCourse, courseColor }) {
   // ... paste the existing FinalGrade function body here verbatim,

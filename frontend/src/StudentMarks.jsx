@@ -5,8 +5,8 @@ import { gsap } from "gsap";
 import { AnimatePresence, motion } from "framer-motion";
 import "./StudentMarks.css";
 import { useCourses, MARKS_DATA } from "./CourseContext";
-import GradeDistribution from "./Components/GradeDistributions";
-import FinalGrade from "./Components/FinalGrade";
+import GradeDistribution from "./Components/Student/GradeDistributions";
+import FinalGrade from "./Components/Student/FinalGrade";
 import {
   SECTION_ICONS,
   GRADE_TIERS,

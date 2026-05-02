@@ -5,6 +5,14 @@ import { gsap } from "gsap";
 import { motion, AnimatePresence } from "framer-motion";
 import "./AdminPortal.css";
 import "./AdminAnnouncements.css";
+import AnnCard from "./Components/Admin/AnnCard";
+import ComposeModal from "./Components/Admin/ComposeModal";
+import {
+  TYPE_META,
+  AUDIENCES,
+  EMPTY_FORM,
+  INITIAL_ANNOUNCEMENTS,
+} from "./data/AdminAnnouncementsData";
 
 const NAV = [
   ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
@@ -15,233 +23,11 @@ const NAV = [
                   ["📣", "Announcements",   "/admin/announcements"]]]
 ];
 
-const TYPE_META = {
-  announcement: { icon: "📣", label: "Announcement", color: "#7c3aed", bg: "rgba(124,58,237,.1)", border: "rgba(124,58,237,.3)" },
-  exam:         { icon: "📝", label: "Exam",          color: "#ff4d6a", bg: "rgba(255,77,106,.1)", border: "rgba(255,77,106,.3)" },
-  assignment:   { icon: "📋", label: "Assignment",    color: "#ff9800", bg: "rgba(255,152,0,.1)",  border: "rgba(255,152,0,.3)"  },
-  quiz:         { icon: "✏️", label: "Quiz",          color: "#40a9ff", bg: "rgba(64,169,255,.1)", border: "rgba(64,169,255,.3)" },
-};
-
-const AUDIENCES = ["All Students", "BS-CS", "BS-EE", "BS-IS", "BS-MT", "BS-BBA", "Faculty", "1st Semester", "Final Year"];
-
-const INITIAL_ANNOUNCEMENTS = [
-  {
-    id: "ann-1", type: "announcement", title: "Mid-Term 2 Hall Allocation Published",
-    body: "Hall assignments for Mid 2 exams (Week 10) are now available on the LMS portal under 'Exam Schedule'. Students must carry their university ID cards. No entry will be permitted without a valid ID.",
-    from: "Exam Office", audience: "All Students", date: "Mar 18, 2025", pinned: true,
-  },
-  {
-    id: "ann-2", type: "announcement", title: "LMS Maintenance — Saturday 2–4 AM",
-    body: "The LMS portal will be unavailable for scheduled maintenance this Saturday between 2:00 AM and 4:00 AM. Please plan all assignment submissions accordingly. No deadline extensions will be granted for this maintenance window.",
-    from: "IT Department", audience: "All Students", date: "Mar 16, 2025", pinned: true,
-  },
-  {
-    id: "ann-3", type: "exam", title: "OOAD Assignment 2 — Groups of 3 Only",
-    body: "Reminder: Individual submissions for OOAD Assignment 2 will not be accepted. All groups must be registered on LMS before the submission date. Sequence and activity diagrams must be included.",
-    from: "Dr. Hamza Raheel", audience: "BS-CS", date: "Mar 14, 2025", pinned: false,
-  },
-  {
-    id: "ann-4", type: "announcement", title: "Spring 2025 Fee Challan Deadline",
-    body: "The last date to submit Spring 2025 fee challans is March 20, 2025. Students with outstanding dues will have their LMS access suspended. Please visit the accounts office or pay online via the NUST payment portal.",
-    from: "Accounts Office", audience: "All Students", date: "Mar 10, 2025", pinned: false,
-  },
-  {
-    id: "ann-5", type: "quiz", title: "DSA Quiz 2 — Scope Clarification",
-    body: "DSA Quiz 2 scheduled for Week 7 will cover Binary Search Trees, AVL Trees, and Introduction to Graph Traversal (BFS/DFS). The quiz will be 15 minutes, closed book, conducted in the lab.",
-    from: "Dr. Farhan Siddiqui", audience: "BS-CS", date: "Mar 3, 2025", pinned: false,
-  },
-  {
-    id: "ann-6", type: "announcement", title: "Faculty Research Seminar — AI in Education",
-    body: "A university-wide research seminar on 'AI in Education' will be held on March 25, 2025 in Auditorium Block C at 2:00 PM. Attendance is optional but strongly encouraged for final-year students.",
-    from: "Research Office", audience: "Faculty", date: "Mar 1, 2025", pinned: false,
-  },
-];
-
-const EMPTY_FORM = { type: "announcement", title: "", body: "", from: "Admin Office", audience: "All Students" };
-
 /* ── COMPOSE MODAL ──────────────────────────────────────────────────────────── */
-function ComposeModal({ existing, onClose, onSave }) {
-  const [form, setForm] = useState(existing ? { ...existing } : { ...EMPTY_FORM });
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const isEdit = !!existing;
 
-  const canSave = form.title.trim() && form.body.trim() && form.from.trim();
-
-  return (
-    <div className="adm-modal-overlay" onClick={onClose}>
-      <div className="adm-modal" style={{ width: "min(640px,92vw)", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div className="adm-modal-hd">
-          <div className="adm-modal-title">{isEdit ? "Edit Announcement" : "Post Announcement"}</div>
-          <button className="adm-modal-close" onClick={onClose}>✕</button>
-        </div>
-
-        <div className="adm-form-grid">
-          {/* Type */}
-          <div className="adm-form-group">
-            <label className="adm-form-label">Type</label>
-            <select className="adm-form-select" value={form.type} onChange={e => set("type", e.target.value)}>
-              {Object.keys(TYPE_META).map(t => <option key={t} value={t}>{TYPE_META[t].icon} {TYPE_META[t].label}</option>)}
-            </select>
-          </div>
-          {/* Audience */}
-          <div className="adm-form-group">
-            <label className="adm-form-label">Audience</label>
-            <select className="adm-form-select" value={form.audience} onChange={e => set("audience", e.target.value)}>
-              {AUDIENCES.map(a => <option key={a}>{a}</option>)}
-            </select>
-          </div>
-          {/* Title */}
-          <div className="adm-form-group full">
-            <label className="adm-form-label">Title</label>
-            <input
-              className="adm-form-input"
-              value={form.title}
-              onChange={e => set("title", e.target.value)}
-              placeholder="Announcement headline…"
-            />
-          </div>
-          {/* Body */}
-          <div className="adm-form-group full">
-            <label className="adm-form-label">Body</label>
-            <textarea
-              className="adm-form-input"
-              rows={5}
-              value={form.body}
-              onChange={e => set("body", e.target.value)}
-              placeholder="Full announcement text…"
-              style={{ resize: "vertical", lineHeight: 1.6 }}
-            />
-          </div>
-          {/* From */}
-          <div className="adm-form-group">
-            <label className="adm-form-label">Posted By</label>
-            <input
-              className="adm-form-input"
-              value={form.from}
-              onChange={e => set("from", e.target.value)}
-              placeholder="Department / name"
-            />
-          </div>
-          {/* Pin */}
-          <div className="adm-form-group" style={{ justifyContent: "flex-end" }}>
-            <label className="adm-form-label">Pin to top</label>
-            <div
-              onClick={() => set("pinned", !form.pinned)}
-              style={{
-                display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
-                padding: "10px 14px", borderRadius: 10,
-                border: `1px solid ${form.pinned ? "rgba(124,58,237,.4)" : "var(--border)"}`,
-                background: form.pinned ? "rgba(124,58,237,.07)" : "#f8fafc",
-                transition: "all .2s",
-              }}
-            >
-              <div style={{
-                width: 18, height: 18, borderRadius: 5,
-                border: `2px solid ${form.pinned ? "var(--purple)" : "#cbd5e1"}`,
-                background: form.pinned ? "var(--purple)" : "transparent",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#fff", fontSize: 11, transition: "all .2s",
-              }}>
-                {form.pinned ? "✓" : ""}
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: form.pinned ? "var(--purple)" : "var(--dimmer)" }}>
-                📌 Pin announcement
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="adm-modal-footer">
-          <button className="adm-btn-secondary" onClick={onClose}>Cancel</button>
-          <button
-            className="adm-btn-primary"
-            onClick={() => canSave && onSave(form)}
-            style={{ opacity: canSave ? 1 : .5, cursor: canSave ? "pointer" : "not-allowed" }}
-          >
-            {isEdit ? "Save Changes" : "📣 Post Announcement"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ── ANNOUNCEMENT CARD ───────────────────────────────────────────────────────── */
-function AnnCard({ ann, onEdit, onDelete, onTogglePin }) {
-  const meta = TYPE_META[ann.type] ?? TYPE_META.announcement;
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: .95 }}
-      transition={{ duration: .28 }}
-      className="adm-card"
-      style={{ padding: 0, overflow: "hidden", marginBottom: 14 }}
-    >
-      {/* Colour stripe */}
-      <div style={{ height: 3, background: meta.color, borderRadius: "18px 18px 0 0" }} />
-      <div style={{ padding: "18px 22px" }}>
-        {/* Top row */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{
-              padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 800,
-              letterSpacing: ".06em", textTransform: "uppercase",
-              color: meta.color, background: meta.bg, border: `1px solid ${meta.border}`,
-            }}>
-              {meta.icon} {meta.label}
-            </span>
-            <span style={{
-              padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-              background: "rgba(26,120,255,.08)", color: "var(--blue)",
-              border: "1px solid rgba(26,120,255,.2)",
-            }}>
-              {ann.audience}
-            </span>
-            {ann.pinned && (
-              <span style={{
-                padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                background: "rgba(124,58,237,.1)", color: "var(--purple)",
-                border: "1px solid rgba(124,58,237,.25)",
-              }}>
-                📌 Pinned
-              </span>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-            <button
-              className="adm-action-btn"
-              title={ann.pinned ? "Unpin" : "Pin"}
-              onClick={() => onTogglePin(ann.id)}
-              style={{ color: ann.pinned ? "var(--purple)" : undefined }}
-            >
-              📌
-            </button>
-            <button className="adm-action-btn" title="Edit" onClick={() => onEdit(ann)}>✏️</button>
-            <button className="adm-action-btn btn-delete" title="Delete" onClick={() => onDelete(ann.id)}>🗑️</button>
-          </div>
-        </div>
 
-        {/* Title */}
-        <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-main)", marginBottom: 8, lineHeight: 1.4 }}>
-          {ann.title}
-        </div>
-
-        {/* Body */}
-        <div style={{ fontSize: 13, color: "var(--dimmer)", lineHeight: 1.7, marginBottom: 14 }}>
-          {ann.body}
-        </div>
-
-        {/* Footer */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "var(--dimmer)", opacity: .75 }}>
-          <span style={{ fontFamily: "'JetBrains Mono',monospace" }}>🗓 {ann.date}</span>
-          <span>· Posted by <strong style={{ color: "var(--text-main)", opacity: 1 }}>{ann.from}</strong></span>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 /* ── MAIN COMPONENT ─────────────────────────────────────────────────────────── */
 export default function AdminAnnouncements() {
