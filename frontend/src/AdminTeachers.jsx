@@ -3,16 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, AnimatePresence } from "framer-motion";
+import AdminSidebar from "./Components/shared/AdminSidebar";
+import { ADMIN_NAV } from "./config/AdminNav";
 import "./AdminPortal.css";
-
-const NAV = [
-  ["Overview",   [["⊞", "Dashboard",       "/admin/dashboard"]]],
-  ["Management", [["👥", "Student Records", "/admin/students"],
-                  ["🎓", "Teachers",        "/admin/teachers"],
-                  ["📚", "Course Catalog",  "/admin/courses"],
-                  ["📋", "Enrollment",      "/admin/enrollment"],
-                  ["📣", "Announcements",   "/admin/announcements"]]]
-];
 
 const INITIAL_TEACHERS = [
   { id: "FAC-001", name: "Dr. Imran Sheikh",     dept: "CS",  designation: "Associate Professor", email: "imran.sheikh@nu.edu.pk",   phone: "+92-300-1010101", status: "active",   courses: 3, experience: "12 yrs", specialization: "Machine Learning"       },
@@ -218,41 +211,11 @@ export default function AdminTeachers() {
 
       <div id="adm-app">
         {/* ── SIDEBAR ── */}
-        <nav id="adm-sidebar" className={collapse ? "collapse" : ""}>
-          <div className="adm-sb-top-bar" />
-          <button className="adm-sb-toggle" onClick={() => setCollapse(c => !c)}>
-            <span /><span /><span />
-          </button>
-          <div className="adm-sb-logo">
-            <div className="adm-logo-box">A</div>
-            <div>
-              <div className="adm-logo-name">ARCH</div>
-              <div className="adm-logo-tagline">Admin Panel</div>
-            </div>
-          </div>
-          <div className="adm-sb-user">
-            <div className="adm-uav">SA</div>
-            <div>
-              <div className="adm-uname">Super Admin</div>
-              <div className="adm-uid">ADM-0001</div>
-            </div>
-          </div>
-          {NAV.map(([sec, items]) => (
-            <div key={sec}>
-              <div className="adm-nav-sec">{sec}</div>
-              {items.map(([ic, label, path]) => (
-                <div
-                  key={label}
-                  className={`adm-ni${location.pathname === path ? " active" : ""}`}
-                  onClick={() => navigate(path)}
-                >
-                  <div className="adm-ni-ic">{ic}</div>{label}
-                </div>
-              ))}
-            </div>
-          ))}
-          <div className="adm-sb-foot">Spring 2025 · FAST-NUCES</div>
-        </nav>
+        <AdminSidebar
+          sections={ADMIN_NAV}
+          collapse={collapse}
+          onToggle={() => setCollapse(c => !c)}
+        />
 
         {/* ── MAIN ── */}
         <div id="adm-main">

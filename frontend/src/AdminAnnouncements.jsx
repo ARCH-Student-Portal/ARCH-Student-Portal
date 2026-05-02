@@ -7,6 +7,8 @@ import "./AdminPortal.css";
 import "./AdminAnnouncements.css";
 import AnnCard from "./Components/Admin/AnnCard";
 import ComposeModal from "./Components/Admin/ComposeModal";
+import AdminSidebar from "./Components/shared/AdminSidebar";
+import { ADMIN_NAV } from "./config/AdminNav";
 import {
   TYPE_META,
   AUDIENCES,

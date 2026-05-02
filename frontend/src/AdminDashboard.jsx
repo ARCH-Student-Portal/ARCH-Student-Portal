@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import * as THREE from "three";
+import AdminSidebar from "./Components/shared/AdminSidebar";
+import { ADMIN_NAV } from "./config/AdminNav";
 import { gsap } from "gsap";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import "./AdminDashboardV1.css"; // 🔥 DEDICATED, ISOLATED CSS FILE
