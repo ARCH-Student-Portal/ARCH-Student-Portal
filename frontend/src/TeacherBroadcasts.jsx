@@ -1,71 +1,110 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
-import "./TeacherDashV1.css"; // Core shell layout
-import "./TeacherBroadcasts.css"; // Specific broadcast overrides
+import "./TeacherDashV1.css";
+import "./TeacherBroadcasts.css";
+import TeacherApi from "./config/teacherApi";
 
-// ── DUMMY DATA ─────────────────────────────────────────────────────────────
-const SECTIONS = [
-  { id: "CS-3001", name: "OOAD · Sec A", students: 38 },
-  { id: "CS-2010", name: "DSA · Sec B", students: 42 },
-  { id: "CS-2012L", name: "DB Lab · Sec A", students: 35 },
-];
-
-const INITIAL_HISTORY = [
-  { id: 1, subject: "Assignment 2 deadline extended", preview: "Due to the recent server outage, you now have until Friday midnight...", date: "Today · 10:30 AM", sections: ["CS-3001"], urgent: true },
-  { id: 2, subject: "Quiz 3 Syllabus", preview: "Please note that Quiz 3 will cover chapters 4, 5, and the first half of 6.", date: "Yesterday · 02:15 PM", sections: ["CS-2010"], urgent: false },
-  { id: 3, subject: "Welcome to the new semester", preview: "Looking forward to seeing you all in our first lab session tomorrow.", date: "Jan 12 · 09:00 AM", sections: ["CS-2012L", "CS-3001"], urgent: false },
-];
-
-// ── COMPONENT ─────────────────────────────────────────────────────────────────
 export default function TeacherBroadcasts() {
   const navigate   = useNavigate();
   const location   = useLocation();
   const webglRef   = useRef(null);
   const sidebarRef = useRef(null);
-  
-  const [collapse, setCollapse] = useState(false);
 
-  // Form State
-  const [selectedSections, setSelectedSections] = useState(["CS-3001"]);
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
-  const [isUrgent, setIsUrgent] = useState(false);
-  const [history, setHistory] = useState(INITIAL_HISTORY);
-  const [showToast, setShowToast] = useState(false);
+  const [collapse,          setCollapse]         = useState(false);
+  const [sections,          setSections]         = useState([]);
+  const [selectedSections,  setSelectedSections] = useState([]);
+  const [subject,           setSubject]          = useState("");
+  const [message,           setMessage]          = useState("");
+  const [isUrgent,          setIsUrgent]         = useState(false);
+  const [history,           setHistory]          = useState([]);
+  const [showToast,         setShowToast]        = useState(false);
+  const [loading,           setLoading]          = useState(true);
+
+  const teacherUser = JSON.parse(localStorage.getItem('user') || '{}');
 
   const isFormValid = selectedSections.length > 0 && subject.trim().length > 0 && message.trim().length > 0;
 
+  // fetch sections and announcements
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [sectionsRes, announcementsRes] = await Promise.all([
+          TeacherApi.getSections(),
+          TeacherApi.getAnnouncements()
+        ]);
+
+        const secs = (sectionsRes.sections || []).map(s => ({
+          id: s.sectionId,
+          courseId: s.courseId,
+          name: `${s.courseCode} · Sec ${s.sectionName}`,
+          students: s.studentCount
+        }));
+        setSections(secs);
+        if (secs.length > 0) setSelectedSections([secs[0].id]);
+
+        const hist = (announcementsRes.announcements || []).map(a => ({
+          id: a.id,
+          subject: a.title,
+          preview: a.body?.substring(0, 70) + (a.body?.length > 70 ? "..." : ""),
+          date: new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          sections: a.course ? [a.course.code] : ['All'],
+          urgent: a.isPinned
+        }));
+        setHistory(hist);
+      } catch (err) {
+        console.error('Broadcasts fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
   const toggleSection = (id) => {
-    setSelectedSections(prev => 
+    setSelectedSections(prev =>
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
     );
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!isFormValid) return;
-    
-    const newBroadcast = {
-      id: Date.now(),
-      subject: subject,
-      preview: message.substring(0, 70) + (message.length > 70 ? "..." : ""),
-      date: "Just now",
-      sections: selectedSections,
-      urgent: isUrgent
-    };
 
-    setHistory([newBroadcast, ...history]);
-    setSubject("");
-    setMessage("");
-    setIsUrgent(false);
-    
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+    try {
+      // find course id from first selected section
+      const section = sections.find(s => s.id === selectedSections[0]);
+
+      await TeacherApi.postAnnouncement({
+        title: subject,
+        body: message,
+        type: 'faculty',
+        course: section?.courseId || null,
+        category: isUrgent ? 'notice' : 'notice'
+      });
+
+      const newBroadcast = {
+        id: Date.now(),
+        subject,
+        preview: message.substring(0, 70) + (message.length > 70 ? "..." : ""),
+        date: "Just now",
+        sections: selectedSections.map(id => sections.find(s => s.id === id)?.name || id),
+        urgent: isUrgent
+      };
+
+      setHistory(prev => [newBroadcast, ...prev]);
+      setSubject("");
+      setMessage("");
+      setIsUrgent(false);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (err) {
+      console.error('Send broadcast error:', err);
+    }
   };
 
-  // ── THREE.JS BACKGROUND ──
+  // three.js background
   useEffect(() => {
     const canvas = webglRef.current;
     if (!canvas) return;
@@ -85,13 +124,13 @@ export default function TeacherBroadcasts() {
 
   const navItems = [
     ["Management", [
-      ["◈", "My Sections",   "/teacher/sections"],
-      ["⊞", "Dashboard",     "/teacher/dashboard"],
-      ["▦", "Gradebook",     "/teacher/gradebook"],
-      ["✓", "Attendance",    "/teacher/attendance"],
-      ["▤", "Schedule",      "/teacher/schedule"],
+      ["◈", "My Sections",  "/teacher/sections"],
+      ["⊞", "Dashboard",    "/teacher/dashboard"],
+      ["▦", "Gradebook",    "/teacher/gradebook"],
+      ["✓", "Attendance",   "/teacher/attendance"],
+      ["▤", "Schedule",     "/teacher/schedule"],
     ]],
-    ["Communication", [["◉", "Broadcasts", "/teacher/alerts"]]], 
+    ["Communication", [["◉", "Broadcasts", "/teacher/alerts"]]],
     ["Account",       [["◌", "Profile",    "/teacher/profile"]]],
   ];
 
@@ -106,8 +145,7 @@ export default function TeacherBroadcasts() {
       <canvas id="webgl" ref={webglRef} style={{ display: 'none' }} />
 
       <div id="app" style={{ opacity: 1, zIndex: 10, position: 'relative' }}>
-        
-        {/* ── SIDEBAR ── */}
+
         <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""} style={{ transform: "translateX(0)" }}>
           <div className="sb-top-bar" />
           <button className="sb-toggle hov-target" onClick={() => setCollapse(c => !c)}>
@@ -121,10 +159,10 @@ export default function TeacherBroadcasts() {
             </div>
           </div>
           <div className="sb-user hov-target" onClick={() => navigate('/teacher/profile')}>
-            <div className="uav">Dr.</div>
+            <div className="uav">{(teacherUser.name || 'DR').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}</div>
             <div>
-              <div className="uname">Dr. Ahmed</div>
-              <div className="uid">EMP-8492</div>
+              <div className="uname">{teacherUser.name || 'Teacher'}</div>
+              <div className="uid">{teacherUser.employeeId || ''}</div>
             </div>
           </div>
 
@@ -138,7 +176,9 @@ export default function TeacherBroadcasts() {
                   onClick={() => navigate(path)}
                 >
                   <div className="ni-ic">{ic}</div>{label}
-                  {label === "Broadcasts" && <span className="nbadge">2</span>}
+                  {label === "Broadcasts" && history.length > 0 && (
+                    <span className="nbadge">{history.length}</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -147,7 +187,6 @@ export default function TeacherBroadcasts() {
           <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
         </nav>
 
-        {/* ── MAIN ── */}
         <div id="main">
           <div id="topbar" style={{ opacity: 1 }}>
             <div className="tb-glow" />
@@ -165,18 +204,19 @@ export default function TeacherBroadcasts() {
               transition={{ duration: 0.4 }}
               className="bc-layout"
             >
-              {/* ── LEFT: COMPOSER (glass-card removed) ── */}
+              {/* LEFT: COMPOSER */}
               <div className="bc-composer">
                 <div className="panel-header">
                   <h2 className="ct"><div className="ctbar"/>New Broadcast</h2>
                 </div>
 
                 <div className="bc-form">
-                  {/* Targets */}
                   <div className="bc-field">
                     <label>Send To</label>
                     <div className="bc-pills">
-                      {SECTIONS.map(sec => (
+                      {loading ? (
+                        <div style={{ color: '#94a3b8' }}>Loading sections...</div>
+                      ) : sections.map(sec => (
                         <motion.button
                           key={sec.id}
                           className={`bc-pill ${selectedSections.includes(sec.id) ? "active" : ""}`}
@@ -191,31 +231,28 @@ export default function TeacherBroadcasts() {
                     </div>
                   </div>
 
-                  {/* Subject */}
                   <div className="bc-field">
-                    <input 
-                      type="text" 
-                      className="bc-subject-input" 
-                      placeholder="Subject Line..." 
+                    <input
+                      type="text"
+                      className="bc-subject-input"
+                      placeholder="Subject Line..."
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
                     />
                   </div>
 
-                  {/* Message Body */}
                   <div className="bc-field" style={{ flex: 1 }}>
-                    <textarea 
-                      className="bc-message-input" 
-                      placeholder="Type your announcement here. Markdown is supported."
+                    <textarea
+                      className="bc-message-input"
+                      placeholder="Type your announcement here."
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                     />
                   </div>
 
-                  {/* Footer / Actions */}
                   <div className="bc-composer-footer">
                     <div className="bc-priority-wrap">
-                      <motion.button 
+                      <motion.button
                         className={`bc-priority-btn ${isUrgent ? "urgent" : ""}`}
                         onClick={() => setIsUrgent(!isUrgent)}
                         whileHover={{ scale: 1.05 }}
@@ -227,11 +264,11 @@ export default function TeacherBroadcasts() {
 
                     <div className="bc-stats-hint">
                       Reaching {selectedSections.reduce((acc, curr) => {
-                        return acc + (SECTIONS.find(s => s.id === curr)?.students || 0);
+                        return acc + (sections.find(s => s.id === curr)?.students || 0);
                       }, 0)} Students
                     </div>
 
-                    <motion.button 
+                    <motion.button
                       className={`bc-send-btn ${isFormValid ? "ready" : ""}`}
                       disabled={!isFormValid}
                       onClick={handleSend}
@@ -244,10 +281,8 @@ export default function TeacherBroadcasts() {
                 </div>
               </div>
 
-              {/* ── RIGHT: HISTORY LEDGER ── */}
+              {/* RIGHT: HISTORY */}
               <div className="bc-ledger">
-                
-                {/* Mini KPI row for the Ledger (glass-card removed) */}
                 <div className="bc-kpi-row">
                   <div className="bc-kpi-card">
                     <div className="bc-kpi-val blue">
@@ -257,13 +292,12 @@ export default function TeacherBroadcasts() {
                   </div>
                   <div className="bc-kpi-card">
                     <div className="bc-kpi-val green">
-                      <AnimatedCounter value={94} suffix="%" />
+                      <AnimatedCounter value={sections.reduce((sum, s) => sum + s.students, 0)} />
                     </div>
-                    <div className="bc-kpi-lbl">Avg Read Rate</div>
+                    <div className="bc-kpi-lbl">Total Students</div>
                   </div>
                 </div>
 
-                {/* History Panel (glass-card removed) */}
                 <div className="bc-history-panel">
                   <div className="panel-header" style={{ marginBottom: "24px" }}>
                     <h2 className="ct"><div className="ctbar"/>Broadcast History</h2>
@@ -271,8 +305,12 @@ export default function TeacherBroadcasts() {
 
                   <div className="bc-history-list">
                     <AnimatePresence>
-                      {history.map((item, idx) => (
-                        <motion.div 
+                      {history.length === 0 ? (
+                        <div style={{ color: '#94a3b8', padding: 20, textAlign: 'center' }}>
+                          No broadcasts yet
+                        </div>
+                      ) : history.map((item, idx) => (
+                        <motion.div
                           key={item.id}
                           className="bc-history-item hov-target"
                           initial={{ opacity: 0, y: 10 }}
@@ -284,12 +322,11 @@ export default function TeacherBroadcasts() {
                             <div className="bc-hi-meta">
                               <span className="bc-hi-date">{item.date}</span>
                               <span className="bc-hi-sections">
-                                {item.sections.join(", ")}
+                                {Array.isArray(item.sections) ? item.sections.join(", ") : item.sections}
                               </span>
                             </div>
                             {item.urgent && <span className="bc-hi-urgent">URGENT</span>}
                           </div>
-                          
                           <div className="bc-hi-subject">{item.subject}</div>
                           <div className="bc-hi-preview">{item.preview}</div>
                         </motion.div>
@@ -297,14 +334,12 @@ export default function TeacherBroadcasts() {
                     </AnimatePresence>
                   </div>
                 </div>
-
               </div>
             </motion.div>
           </div>
         </div>
       </div>
 
-      {/* ── TOAST ── */}
       <AnimatePresence>
         {showToast && (
           <motion.div

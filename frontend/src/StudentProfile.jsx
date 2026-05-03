@@ -24,6 +24,7 @@ const STUDENT_FALLBACK = {
   address:    "",
   department: "",
   faculty:    "",
+  guardianPhone: "",
 };
 
 // ── SAFELY COERCE A VALUE TO STRING ──────────────────────────────────────────
@@ -111,7 +112,7 @@ export default function StudentProfileV1() {
         setStudent({
           name, rollNo, program, department: dept, faculty,
           batch, semester, section, email, phone, address,
-          dob, cnic, guardian,
+          dob, cnic, guardian, guardianPhone,
           initials: getInitials(name),
         });
         setUserName(name || "Student");

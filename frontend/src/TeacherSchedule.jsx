@@ -6,35 +6,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
 import { TEACHER_NAV } from "./config/TeacherNav";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
-import "./TeacherDashV1.css"; // Core shell layout
-import "./TeacherSchedule.css"; // Specific schedule overrides
-
-// ── SCHEDULE DATA ─────────────────────────────────────────────────────────────
-const SCHEDULE = [
-  // Monday
-  { id: 1, day: "Mon", name: "Object Oriented Analysis & Design", code: "CS-3001", section: "Sec A", type: "lecture", timeStr: "01:00 PM - 02:30 PM", room: "CR-204", students: 38, credits: 3 },
-  { id: 2, day: "Mon", name: "Office Hours", code: "OFFICE", section: "", type: "office", timeStr: "03:00 PM - 04:00 PM", room: "Faculty Room 12", students: null, credits: null },
-
-  // Tuesday
-  { id: 3, day: "Tue", name: "Data Structures & Algorithms", code: "CS-2010", section: "Sec B", type: "lecture", timeStr: "08:00 AM - 09:30 AM", room: "CR-101", students: 42, credits: 3 },
-  { id: 4, day: "Tue", name: "Database Systems Lab", code: "CS-2012L", section: "Sec A", type: "lab", timeStr: "11:30 AM - 02:30 PM", room: "CS-Lab 3", students: 35, credits: 1 },
-
-  // Wednesday
-  { id: 5, day: "Wed", name: "Object Oriented Analysis & Design", code: "CS-3001", section: "Sec A", type: "lecture", timeStr: "01:00 PM - 02:30 PM", room: "CR-204", students: 38, credits: 3 },
-  { id: 6, day: "Wed", name: "Department Meeting", code: "DEPT", section: "", type: "meeting", timeStr: "03:30 PM - 04:30 PM", room: "CS Faculty Lounge", students: null, credits: null },
-
-  // Thursday
-  { id: 7, day: "Thu", name: "Data Structures & Algorithms", code: "CS-2010", section: "Sec B", type: "lecture", timeStr: "08:00 AM - 09:30 AM", room: "CR-101", students: 42, credits: 3 },
-  { id: 8, day: "Thu", name: "Software Engineering", code: "CS-3005", section: "Sec C", type: "lecture", timeStr: "11:00 AM - 12:30 PM", room: "CR-302", students: 40, credits: 3 },
-  { id: 9, day: "Thu", name: "Office Hours", code: "OFFICE", section: "", type: "office", timeStr: "02:00 PM - 03:00 PM", room: "Faculty Room 12", students: null, credits: null },
-
-  // Friday
-  { id: 10, day: "Fri", name: "Software Engineering", code: "CS-3005", section: "Sec C", type: "lecture", timeStr: "09:00 AM - 10:30 AM", room: "CR-302", students: 40, credits: 3 },
-];
+import "./TeacherDashV1.css";
+import "./TeacherSchedule.css";
+import TeacherApi from "./config/teacherApi";
 
 const VALID_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
 function parseTime(timeStr) {
   const [h, rest] = timeStr.split(":");
   const [m, ap]   = rest.split(" ");
@@ -45,32 +22,33 @@ function parseTime(timeStr) {
 }
 
 function isNow(timeStr) {
-  const now   = new Date();
-  const mins  = now.getHours() * 60 + now.getMinutes();
+  const now  = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
   const [start, end] = timeStr.split(" - ");
   return mins >= parseTime(start) && mins <= parseTime(end);
 }
 
 const TYPE_META = {
-  lecture : { label: "Lecture",  accentClass: "acc-lecture", tagClass: "tag-lecture" },
-  lab     : { label: "Lab",      accentClass: "acc-lab",     tagClass: "tag-lab"     },
-  office  : { label: "Office Hours", accentClass: "acc-office", tagClass: "tag-office" },
-  meeting : { label: "Meeting",  accentClass: "acc-meeting", tagClass: "tag-meeting" },
+  lecture: { label: "Lecture",      accentClass: "acc-lecture", tagClass: "tag-lecture" },
+  lab:     { label: "Lab",          accentClass: "acc-lab",     tagClass: "tag-lab"     },
+  office:  { label: "Office Hours", accentClass: "acc-office",  tagClass: "tag-office"  },
+  meeting: { label: "Meeting",      accentClass: "acc-meeting", tagClass: "tag-meeting" },
 };
 
-function weekStats() {
-  const lectures = SCHEDULE.filter(s => s.type === "lecture" || s.type === "lab");
-  const sections = [...new Set(lectures.map(s => s.code + s.section))].length;
-  const totalStudents = [...new Map(lectures.map(s => [s.code + s.section, s.students])).values()]
-    .reduce((a, b) => a + b, 0);
-  const hours = lectures.reduce((sum, s) => {
-    const [start, end] = s.timeStr.split(" - ");
-    return sum + (parseTime(end) - parseTime(start)) / 60;
-  }, 0);
-  return { sections, totalStudents, hours: parseFloat(hours.toFixed(1)) };
+// convert day name to short form
+function toShortDay(day) {
+  const map = { Monday: "Mon", Tuesday: "Tue", Wednesday: "Wed", Thursday: "Thu", Friday: "Fri", Saturday: "Sat", Sunday: "Sun" };
+  return map[day] || day.slice(0, 3);
 }
 
-// ── COMPONENT ─────────────────────────────────────────────────────────────────
+// format time from "08:00" to "08:00 AM"
+function formatTime(t) {
+  const [h, m] = t.split(":").map(Number);
+  const ap = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${ap}`;
+}
+
 export default function TeacherSchedule() {
   const navigate   = useNavigate();
   const webglRef   = useRef(null);
@@ -79,10 +57,15 @@ export default function TeacherSchedule() {
   const appRef     = useRef(null);
   const sidebarRef = useRef(null);
   const topbarRef  = useRef(null);
-  
-  const [collapse, setCollapse] = useState(false);
 
-  // Safely check session storage to avoid server-side crashes
+  const [collapse,  setCollapse]  = useState(false);
+  const [schedule,  setSchedule]  = useState([]);
+  const [activeDay, setActiveDay] = useState("Mon");
+  const [selected,  setSelected]  = useState(null);
+  const [showStats, setShowStats] = useState(false);
+
+  const teacherUser = JSON.parse(localStorage.getItem('user') || '{}');
+
   const [hasPlayedIntro] = useState(() => {
     if (typeof window !== "undefined") {
       return sessionStorage.getItem("archTeacherIntroPlayed") === "true";
@@ -90,29 +73,61 @@ export default function TeacherSchedule() {
     return false;
   });
 
-  const [showStats, setShowStats] = useState(hasPlayedIntro);
+  // fetch schedule
+  useEffect(() => {
+    TeacherApi.getSchedule()
+      .then(res => {
+        const slots = (res.schedule || []).map((s, idx) => ({
+          id: idx + 1,
+          day: toShortDay(s.day),
+          name: s.courseName,
+          code: s.courseCode,
+          section: s.sectionName,
+          type: "lecture",
+          timeStr: `${formatTime(s.startTime)} - ${formatTime(s.endTime)}`,
+          room: s.room,
+          students: null,
+          credits: s.creditHours
+        }));
+        setSchedule(slots);
 
-  const todayStr   = new Date().toLocaleDateString("en-US", { weekday: "short" });
-  const initialDay = VALID_DAYS.includes(todayStr) ? todayStr : "Mon";
-  const firstClass = SCHEDULE.filter(s => s.day === initialDay)[0] ?? null;
+        // set initial day and selected
+        const todayStr = new Date().toLocaleDateString("en-US", { weekday: "short" });
+        const initDay = VALID_DAYS.includes(todayStr) ? todayStr : "Mon";
+        setActiveDay(initDay);
+        const first = slots.filter(s => s.day === initDay)[0] ?? slots[0] ?? null;
+        setSelected(first);
+      })
+      .catch(err => console.error('Schedule fetch error:', err));
+  }, []);
 
-  const [activeDay,  setActiveDay]  = useState(initialDay);
-  const [selected,   setSelected]   = useState(firstClass);
-
-  const filtered = SCHEDULE
+  const filtered = schedule
     .filter(s => s.day === activeDay)
     .sort((a, b) => parseTime(a.timeStr.split(" - ")[0]) - parseTime(b.timeStr.split(" - ")[0]));
 
   const handleDayChange = (day) => {
     setActiveDay(day);
-    const first = SCHEDULE.filter(s => s.day === day)
+    const first = schedule
+      .filter(s => s.day === day)
       .sort((a, b) => parseTime(a.timeStr.split(" - ")[0]) - parseTime(b.timeStr.split(" - ")[0]))[0] ?? null;
     setSelected(first);
   };
 
+  const todayStr = new Date().toLocaleDateString("en-US", { weekday: "short" });
+
+  // weekly stats from real data
+  const weekStats = () => {
+    const lectures = schedule.filter(s => s.type === "lecture" || s.type === "lab");
+    const sections = [...new Set(lectures.map(s => s.code + s.section))].length;
+    const hours = lectures.reduce((sum, s) => {
+      const [start, end] = s.timeStr.split(" - ");
+      return sum + (parseTime(end) - parseTime(start)) / 60;
+    }, 0);
+    return { sections, totalStudents: 0, hours: parseFloat(hours.toFixed(1)) };
+  };
   const stats = weekStats();
 
-  // ── CINEMATIC INTRO ──
+  // cinematic intro
   useEffect(() => {
     if (hasPlayedIntro) {
       if (introRef.current) introRef.current.style.display = "none";
@@ -125,10 +140,10 @@ export default function TeacherSchedule() {
     }
 
     const canvas = introCanvasRef.current;
-    if(!canvas) return;
-    const ctx    = canvas.getContext("2d");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-    const words = ["FACULTY","SCHEDULE","LECTURE","SEMESTER","STUDENTS","GRADES", "ARCH", "PORTAL"];
+    const words = ["FACULTY","SCHEDULE","LECTURE","SEMESTER","STUDENTS","GRADES","ARCH","PORTAL"];
     const particles = Array.from({ length: 60 }, () => ({
       x: Math.random() * canvas.width, y: Math.random() * canvas.height,
       word: words[Math.floor(Math.random() * words.length)],
@@ -162,14 +177,14 @@ export default function TeacherSchedule() {
       gsap.to(webglRef.current, { opacity: 0, duration: 2.5 });
       setTimeout(() => { if (webglRef.current) webglRef.current.style.display = "none"; }, 3000);
     }});
-    
+
     tl.to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7 }, 0.5)
       .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7 }, 2.4);
-      
+
     return () => cancelAnimationFrame(animId);
   }, [hasPlayedIntro]);
 
-  // ── THREE.JS BACKGROUND ──
+  // three.js background
   useEffect(() => {
     if (hasPlayedIntro) return;
     const canvas = webglRef.current;
@@ -204,19 +219,17 @@ export default function TeacherSchedule() {
       </div>
 
       <div id="app" ref={appRef} style={{ opacity: hasPlayedIntro ? 1 : 0, zIndex: 10, position: 'relative' }}>
-        
-        {/* ── SIDEBAR ── */}
+
         <Sidebar
           ref={sidebarRef}
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
-          userName="Dr. Ahmed"
-          userId="EMP-8492"
+          userName={teacherUser.name || 'Teacher'}
+          userId={teacherUser.employeeId || ''}
           collapse={collapse}
           onToggle={() => setCollapse(c => !c)}
         />
 
-        {/* ── MAIN ── */}
         <div id="main">
           <div id="topbar" ref={topbarRef} style={{ opacity: hasPlayedIntro ? 1 : 0 }}>
             <div className="tb-glow" />
@@ -234,7 +247,6 @@ export default function TeacherSchedule() {
               transition={{ duration: 0.4 }}
               className="tt-layout"
             >
-              {/* ── Schedule MAIN (Removed .glass-card) ── */}
               <div className="tt-main">
                 <div className="tt-header">
                   <h2 className="ct" style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -271,51 +283,40 @@ export default function TeacherSchedule() {
                         </div>
                       ) : (
                         filtered.map((item, idx) => {
-                          const meta = TYPE_META[item.type];
+                          const meta = TYPE_META[item.type] || TYPE_META.lecture;
                           const live = item.type === "lecture" && activeDay === todayStr && isNow(item.timeStr);
                           return (
-                            <motion.div 
-                              className="timeline-row" 
+                            <motion.div
+                              className="timeline-row"
                               key={item.id}
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: idx * 0.05 }}
                             >
-                              {/* TIME */}
                               <div className="time-col">
                                 {item.timeStr.split(" - ")[0].split(" ")[0]}
                                 <span className="time-ampm">{item.timeStr.split(" - ")[0].split(" ")[1]}</span>
                               </div>
 
-                              {/* CARD */}
                               <div className="cards-col">
                                 <motion.div
-                                  className={`class-card hov-target ${selected?.id === item.id ? " active" : ""}`}
+                                  className={`class-card hov-target${selected?.id === item.id ? " active" : ""}`}
                                   onClick={() => setSelected(item)}
                                   whileHover={{ y: -4, backgroundColor: "rgba(26,100,255,0.02)", borderColor: "rgba(26,120,255,0.4)" }}
                                   whileTap={{ scale: 0.98 }}
                                 >
                                   <div className={`card-accent ${meta.accentClass}`} />
-
                                   <div className="card-main">
                                     <div className="card-code-row">
                                       <span className={`tt-type-tag ${meta.tagClass}`}>{meta.label}</span>
-                                      {item.code !== "OFFICE" && item.code !== "DEPT" && (
-                                        <span className="card-code">{item.code} &nbsp;|&nbsp; {item.section}</span>
-                                      )}
+                                      <span className="card-code">{item.code} &nbsp;|&nbsp; {item.section}</span>
                                     </div>
                                     <h3>{item.name}</h3>
                                     <div className="card-meta">
                                       <div className="meta-item">📍 {item.room}</div>
-                                      {item.students != null && (
-                                        <div className="meta-item">👥 {item.students} students</div>
-                                      )}
-                                      <div className="meta-item">
-                                        🕐 {item.timeStr.split(" - ")[1]}
-                                      </div>
+                                      <div className="meta-item">🕐 {item.timeStr.split(" - ")[1]}</div>
                                     </div>
                                   </div>
-
                                   {live && <div className="indicator-now">LIVE NOW</div>}
                                 </motion.div>
                               </div>
@@ -328,7 +329,6 @@ export default function TeacherSchedule() {
                 </div>
               </div>
 
-              {/* ── SIDE PANEL (Removed .glass-card) ── */}
               <AnimatePresence>
                 {selected && (
                   <motion.div
@@ -338,7 +338,6 @@ export default function TeacherSchedule() {
                     exit={{ x: 50, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   >
-                    {/* Header */}
                     <div className="sp-header">
                       <div className="sp-tag">{selected.code}</div>
                       <div className="sp-title">{selected.name}</div>
@@ -347,7 +346,6 @@ export default function TeacherSchedule() {
                       )}
                     </div>
 
-                    {/* Data grid */}
                     <div className="sp-data-grid">
                       <div className="sp-data-box">
                         <div className="sp-label">Room</div>
@@ -355,8 +353,8 @@ export default function TeacherSchedule() {
                       </div>
                       <div className="sp-data-box">
                         <div className="sp-label">Type</div>
-                        <div className={`sp-val tt-type-tag ${TYPE_META[selected.type].tagClass}`} style={{ display: "inline-flex" }}>
-                          {TYPE_META[selected.type].label}
+                        <div className={`sp-val tt-type-tag ${TYPE_META[selected.type]?.tagClass || 'tag-lecture'}`} style={{ display: "inline-flex" }}>
+                          {TYPE_META[selected.type]?.label || 'Lecture'}
                         </div>
                       </div>
                       <div className="sp-data-box" style={{ gridColumn: "1 / -1" }}>
@@ -369,13 +367,6 @@ export default function TeacherSchedule() {
                           </div>
                         </div>
                       </div>
-
-                      {selected.students != null && (
-                        <div className="sp-data-box">
-                          <div className="sp-label">Students</div>
-                          <div className="sp-val">{selected.students}</div>
-                        </div>
-                      )}
                       {selected.credits != null && (
                         <div className="sp-data-box">
                           <div className="sp-label">Credits</div>
@@ -384,65 +375,42 @@ export default function TeacherSchedule() {
                       )}
                     </div>
 
-                    {/* Weekly load strip — shown for lecture/lab only */}
-                    {(selected.type === "lecture" || selected.type === "lab") && (
-                      <div className="sp-load-box">
-                        <div className="sp-label" style={{ marginBottom: 16 }}>Weekly Load Summary</div>
-                        <div className="sp-load-row">
-                          <div className="sp-load-stat">
-                            <div className="sp-load-num">
-                              {showStats ? <AnimatedCounter value={stats.sections} /> : "0"}
-                            </div>
-                            <div className="sp-load-lbl">Sections</div>
+                    <div className="sp-load-box">
+                      <div className="sp-label" style={{ marginBottom: 16 }}>Weekly Load Summary</div>
+                      <div className="sp-load-row">
+                        <div className="sp-load-stat">
+                          <div className="sp-load-num">
+                            {showStats ? <AnimatedCounter value={stats.sections} /> : "0"}
                           </div>
-                          <div className="sp-load-divider" />
-                          <div className="sp-load-stat">
-                            <div className="sp-load-num">
-                              {showStats ? <AnimatedCounter value={stats.totalStudents} /> : "0"}
-                            </div>
-                            <div className="sp-load-lbl">Students</div>
+                          <div className="sp-load-lbl">Sections</div>
+                        </div>
+                        <div className="sp-load-divider" />
+                        <div className="sp-load-stat">
+                          <div className="sp-load-num">
+                            {showStats ? <AnimatedCounter value={stats.hours} decimals={1} /> : "0"}<span>h</span>
                           </div>
-                          <div className="sp-load-divider" />
-                          <div className="sp-load-stat">
-                            <div className="sp-load-num">
-                              {showStats ? <AnimatedCounter value={stats.hours} decimals={1} /> : "0"}<span>h</span>
-                            </div>
-                            <div className="sp-load-lbl">Teach hrs</div>
-                          </div>
+                          <div className="sp-load-lbl">Teach hrs</div>
                         </div>
                       </div>
-                    )}
+                    </div>
 
-                    {/* Quick actions */}
                     <div className="sp-actions">
-                      {selected.type === "lecture" || selected.type === "lab" ? (
-                        <>
-                          <motion.button
-                            className="sp-action-btn primary"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => navigate("/teacher/attendance")}
-                          >
-                            ✓ Mark Attendance
-                          </motion.button>
-                          <motion.button
-                            className="sp-action-btn secondary"
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => navigate("/teacher/gradebook")}
-                          >
-                            ▦ Open Gradebook
-                          </motion.button>
-                        </>
-                      ) : (
-                        <motion.button 
-                          className="sp-action-btn secondary"
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          ◉ Add to Calendar
-                        </motion.button>
-                      )}
+                      <motion.button
+                        className="sp-action-btn primary"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate("/teacher/attendance")}
+                      >
+                        ✓ Mark Attendance
+                      </motion.button>
+                      <motion.button
+                        className="sp-action-btn secondary"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate("/teacher/gradebook")}
+                      >
+                        ▦ Open Gradebook
+                      </motion.button>
                     </div>
                   </motion.div>
                 )}

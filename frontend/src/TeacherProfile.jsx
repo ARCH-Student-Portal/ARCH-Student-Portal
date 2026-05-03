@@ -5,34 +5,11 @@ import { gsap } from "gsap";
 import { motion } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
 import { TEACHER_NAV } from "./config/TeacherNav";
-import "./TeacherDashV1.css"; // Core shell layout
-import "./TeacherProfile.css"; // Specific profile overrides
+import "./TeacherDashV1.css";
+import "./TeacherProfile.css";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
+import TeacherApi from "./config/teacherApi";
 
-// ── DUMMY DATA ─────────────────────────────────────────────────────────────
-const TEACHER_INFO = {
-  name: "Dr. Ahmed Hassan",
-  id: "EMP-8492",
-  title: "Associate Professor",
-  department: "Computer Science",
-  email: "ahmed.hassan@nu.edu.pk",
-  phone: "+92 300 1234567",
-  office: "Faculty Block, Room 12",
-  bio: "Dr. Ahmed specializes in Software Architecture and Distributed Systems. With over a decade of industry experience before joining academia, he brings real-world enterprise engineering practices into the classroom.",
-  stats: {
-    courses: 24,
-    students: 1850,
-    publications: 32,
-    years: 8
-  },
-  publications: [
-    { id: 1, title: "Scalable Microservices in High-Latency Environments", year: "2024", journal: "IEEE Transactions on Software Engineering" },
-    { id: 2, title: "Optimizing React-Based Enterprise Dashboards", year: "2023", journal: "Journal of Web Engineering" },
-    { id: 3, title: "A Study on Student Engagement in Remote Computer Science Education", year: "2022", journal: "ACM SIGCSE" },
-  ]
-};
-
-// ── COMPONENT ─────────────────────────────────────────────────────────────────
 export default function TeacherProfile() {
   const navigate   = useNavigate();
   const webglRef   = useRef(null);
@@ -41,10 +18,18 @@ export default function TeacherProfile() {
   const appRef     = useRef(null);
   const sidebarRef = useRef(null);
   const topbarRef  = useRef(null);
-  
-  const [collapse, setCollapse] = useState(false);
 
-  // Safely check session storage
+  const [collapse, setCollapse] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [teacherData, setTeacherData] = useState({
+    name: '',
+    employeeId: '',
+    department: '',
+    email: '',
+    role: '',
+    stats: { totalSections: 0, totalStudents: 0 }
+  });
+
   const [hasPlayedIntro] = useState(() => {
     if (typeof window !== "undefined") {
       return sessionStorage.getItem("archTeacherIntroPlayed") === "true";
@@ -52,15 +37,33 @@ export default function TeacherProfile() {
     return false;
   });
 
-  const [showStats, setShowStats] = useState(hasPlayedIntro);
-
   const handleLogout = () => {
-    // Clear session storage to reset intro animations on next login
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user');
     sessionStorage.clear();
     navigate("/login");
   };
 
-  // ── CINEMATIC INTRO ──
+  // fetch teacher profile
+  useEffect(() => {
+    TeacherApi.getProfile()
+      .then(res => {
+        const t = res.teacher ?? {};
+        const stats = res.stats ?? { totalSections: 0, totalStudents: 0 };
+        setTeacherData({
+          name: t.name ?? '',
+          employeeId: t.employeeId ?? '',
+          department: t.department ?? '',
+          email: t.email ?? '',
+          role: t.role ?? 'teacher',
+          stats
+        });
+      })
+      .catch(err => console.error('TeacherProfile fetch error:', err));
+  }, []);
+
+  // cinematic intro
   useEffect(() => {
     if (hasPlayedIntro) {
       if (introRef.current) introRef.current.style.display = "none";
@@ -73,10 +76,10 @@ export default function TeacherProfile() {
     }
 
     const canvas = introCanvasRef.current;
-    if(!canvas) return;
-    const ctx    = canvas.getContext("2d");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-    const words = ["FACULTY","PROFILE","RESEARCH","ACADEMICS","NUCES","SYSTEMS", "ARCH", "PORTAL"];
+    const words = ["FACULTY","PROFILE","RESEARCH","ACADEMICS","NUCES","SYSTEMS","ARCH","PORTAL"];
     const particles = Array.from({ length: 60 }, () => ({
       x: Math.random() * canvas.width, y: Math.random() * canvas.height,
       word: words[Math.floor(Math.random() * words.length)],
@@ -110,14 +113,14 @@ export default function TeacherProfile() {
       gsap.to(webglRef.current, { opacity: 0, duration: 2.5 });
       setTimeout(() => { if (webglRef.current) webglRef.current.style.display = "none"; }, 3000);
     }});
-    
+
     tl.to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7 }, 0.5)
       .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7 }, 2.4);
-      
+
     return () => cancelAnimationFrame(animId);
   }, [hasPlayedIntro]);
 
-  // ── THREE.JS BACKGROUND ──
+  // three.js background
   useEffect(() => {
     if (hasPlayedIntro) return;
     const canvas = webglRef.current;
@@ -136,6 +139,14 @@ export default function TeacherProfile() {
     return () => cancelAnimationFrame(animId);
   }, [hasPlayedIntro]);
 
+  // derive initials
+  const initials = teacherData.name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'DR';
+
   return (
     <>
       <div className="mesh-bg">
@@ -152,19 +163,17 @@ export default function TeacherProfile() {
       </div>
 
       <div id="app" ref={appRef} style={{ opacity: hasPlayedIntro ? 1 : 0, zIndex: 10, position: 'relative' }}>
-        
-        {/* ── SIDEBAR ── */}
+
         <Sidebar
           ref={sidebarRef}
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
-          userName="Dr. Ahmed"
-          userId="EMP-8492"
+          userName={teacherData.name || 'Teacher'}
+          userId={teacherData.employeeId || ''}
           collapse={collapse}
           onToggle={() => setCollapse(c => !c)}
         />
 
-        {/* ── MAIN ── */}
         <div id="main">
           <div id="topbar" ref={topbarRef} style={{ opacity: hasPlayedIntro ? 1 : 0 }}>
             <div className="tb-glow" />
@@ -182,37 +191,29 @@ export default function TeacherProfile() {
               transition={{ duration: 0.4 }}
               className="tp-layout"
             >
-              {/* ── LEFT: IDENTITY CARD ── */}
+              {/* LEFT: IDENTITY CARD */}
               <div className="tp-card tp-sidebar-card">
                 <div className="tp-avatar-wrap">
-                  <div className="tp-avatar">Dr.</div>
+                  <div className="tp-avatar">{initials}</div>
                   <div className="tp-status-dot"></div>
                 </div>
-                
-                <h1 className="tp-name">{TEACHER_INFO.name}</h1>
-                <div className="tp-title">{TEACHER_INFO.title}</div>
-                <div className="tp-id-badge">{TEACHER_INFO.id}</div>
+
+                <h1 className="tp-name">{teacherData.name || 'Loading...'}</h1>
+                <div className="tp-title">{teacherData.role === 'teacher' ? 'Faculty Member' : teacherData.role}</div>
+                <div className="tp-id-badge">{teacherData.employeeId}</div>
 
                 <div className="tp-contact-list">
                   <div className="tp-contact-item">
                     <span className="tp-ci-icon">✉</span>
-                    <div className="tp-ci-text">{TEACHER_INFO.email}</div>
-                  </div>
-                  <div className="tp-contact-item">
-                    <span className="tp-ci-icon">✆</span>
-                    <div className="tp-ci-text">{TEACHER_INFO.phone}</div>
-                  </div>
-                  <div className="tp-contact-item">
-                    <span className="tp-ci-icon">🏢</span>
-                    <div className="tp-ci-text">{TEACHER_INFO.office}</div>
+                    <div className="tp-ci-text">{teacherData.email}</div>
                   </div>
                   <div className="tp-contact-item">
                     <span className="tp-ci-icon">🎓</span>
-                    <div className="tp-ci-text">{TEACHER_INFO.department}</div>
+                    <div className="tp-ci-text">{teacherData.department}</div>
                   </div>
                 </div>
 
-                <motion.button 
+                <motion.button
                   className="tp-logout-btn"
                   onClick={handleLogout}
                   whileHover={{ scale: 1.02 }}
@@ -222,61 +223,47 @@ export default function TeacherProfile() {
                 </motion.button>
               </div>
 
-              {/* ── RIGHT: DOSSIER ── */}
+              {/* RIGHT: DOSSIER */}
               <div className="tp-main-content">
-                
+
                 {/* KPI Grid */}
                 <div className="tp-stats-grid">
                   <div className="tp-card tp-stat-box">
                     <div className="tp-stat-val blue">
-                      {showStats ? <AnimatedCounter value={TEACHER_INFO.stats.courses} /> : "0"}
+                      {showStats ? <AnimatedCounter value={teacherData.stats.totalSections} /> : "0"}
                     </div>
-                    <div className="tp-stat-lbl">Courses Taught</div>
+                    <div className="tp-stat-lbl">Sections Assigned</div>
                   </div>
                   <div className="tp-card tp-stat-box">
                     <div className="tp-stat-val green">
-                      {showStats ? <AnimatedCounter value={TEACHER_INFO.stats.students} /> : "0"}
+                      {showStats ? <AnimatedCounter value={teacherData.stats.totalStudents} /> : "0"}
                     </div>
-                    <div className="tp-stat-lbl">Students Mentored</div>
-                  </div>
-                  <div className="tp-card tp-stat-box">
-                    <div className="tp-stat-val amber">
-                      {showStats ? <AnimatedCounter value={TEACHER_INFO.stats.publications} /> : "0"}
-                    </div>
-                    <div className="tp-stat-lbl">Publications</div>
+                    <div className="tp-stat-lbl">Students This Semester</div>
                   </div>
                 </div>
 
-                {/* Bio Panel */}
+                {/* Department Panel */}
                 <div className="tp-card tp-panel">
                   <div className="panel-header" style={{ marginBottom: "20px" }}>
-                    <h2 className="ct"><div className="ctbar"/>Biography</h2>
+                    <h2 className="ct"><div className="ctbar"/>Faculty Information</h2>
                   </div>
-                  <p className="tp-bio-text">{TEACHER_INFO.bio}</p>
-                </div>
-
-                {/* Publications Panel */}
-                <div className="tp-card tp-panel" style={{ flex: 1 }}>
-                  <div className="panel-header" style={{ marginBottom: "24px" }}>
-                    <h2 className="ct"><div className="ctbar"/>Recent Publications</h2>
-                  </div>
-                  
-                  <div className="tp-pub-list">
-                    {TEACHER_INFO.publications.map((pub, idx) => (
-                      <motion.div 
-                        key={pub.id} 
-                        className="tp-pub-item"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                      >
-                        <div className="tp-pub-year">{pub.year}</div>
-                        <div className="tp-pub-content">
-                          <div className="tp-pub-title">{pub.title}</div>
-                          <div className="tp-pub-journal">{pub.journal}</div>
-                        </div>
-                      </motion.div>
-                    ))}
+                  <div className="info-list">
+                    <div className="info-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span style={{ color: '#94a3b8', fontWeight: 600 }}>Employee ID</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 700, fontFamily: 'monospace' }}>{teacherData.employeeId}</span>
+                    </div>
+                    <div className="info-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span style={{ color: '#94a3b8', fontWeight: 600 }}>Department</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{teacherData.department}</span>
+                    </div>
+                    <div className="info-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span style={{ color: '#94a3b8', fontWeight: 600 }}>Email</span>
+                      <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{teacherData.email}</span>
+                    </div>
+                    <div className="info-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
+                      <span style={{ color: '#94a3b8', fontWeight: 600 }}>Role</span>
+                      <span style={{ color: '#1a78ff', fontWeight: 700, textTransform: 'capitalize' }}>{teacherData.role}</span>
+                    </div>
                   </div>
                 </div>
 
