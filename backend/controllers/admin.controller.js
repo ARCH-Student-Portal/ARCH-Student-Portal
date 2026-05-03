@@ -10,27 +10,7 @@ const AnnouncementAdapter = require('../patterns/AnnouncementAdapter');
 const PaginationIterator = require('../patterns/PaginationIterator');
 const EnrollmentState = require('../patterns/EnrollmentState');
 
-// admin.controller.js — postAnnouncement
-const postAnnouncement = async (req, res) => {
-  try {
-    const { title, body, type, category, course, weekNumber } = req.body;
 
-    const ann = await Announcement.create({
-      title,
-      body,
-      type,                        // now correctly "university" | "faculty"
-      category:    category || "notice",
-      createdBy:   req.user.id,    // from JWT via verifyToken
-      createdByModel: "Admin",     // hardcoded — admin route
-      course:      course || null,
-      weekNumber:  weekNumber || null,
-    });
-
-    res.status(201).json({ success: true, data: ann });
-  } catch (err) {
-    res.status(400).json({ error: true, message: err.message });
-  }
-};
 
 class AdminController {
     async getDashboard(req, res) {
@@ -370,10 +350,7 @@ async reactivateEnrollment(req, res) {
         }
     }
 
-    async deleteAnnouncement(req, res) {
-        
-        const ann = await AnnouncementRepo.deleteById(req.params.id);
-    if (!ann) return res.status(404).json({ message: 'Announcement not found' });
+async deleteAnnouncement(req, res) {
     try {
         const ann = await AnnouncementRepo.deleteById(req.params.id);
         if (!ann) return res.status(404).json({ message: 'Announcement not found' });
@@ -390,11 +367,11 @@ async reactivateEnrollment(req, res) {
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
+    
 
     
 }
-
-async postAnnouncement(req, res) {
+    async postAnnouncement(req, res) {
     try {
         const { title, body, type, course, weekNumber, category } = req.body;
         const announcement = await AnnouncementRepo.create({
@@ -417,6 +394,8 @@ async postAnnouncement(req, res) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 }
+
+
 }
 
 const controller = new AdminController();
