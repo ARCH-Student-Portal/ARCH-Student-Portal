@@ -4,40 +4,94 @@ import * as THREE from "three";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
 import { gsap } from "gsap";
+import StudentApi from "./config/studentApi";
 import "./StudentProfile.css";
 
-// ── STUDENT DATA ──
-const student = {
-  name:      "Areeb Bucha",
-  initials:  "AB",
-  rollNo:    "21K-3210",
-  program:   "BS Computer Science",
-  batch:     "Fall 2021",
-  section:   "Section A",
-  semester:  "7th Semester",
-  email:     "21k-3210@stu.nu.edu.pk",
-  phone:     "+92 300 1234567",
-  dob:       "15 March 2003",
-  cnic:      "35201-1234567-1",
-  guardian:  "Muhammad Bucha",
-  address:   "House 12, Block B, Johar Town, Lahore",
-  department:"Computer Science",
-  faculty:   "Faculty of Computing",
+// ── FALLBACK STUDENT DATA (used while loading or if API fails) ──
+const STUDENT_FALLBACK = {
+  name:       "",
+  initials:   "??",
+  rollNo:     "",
+  program:    "",
+  batch:      "",
+  section:    "",
+  semester:   "",
+  email:      "",
+  phone:      "",
+  dob:        "",
+  cnic:       "",
+  guardian:   "",
+  address:    "",
+  department: "",
+  faculty:    "",
 };
 
+// ── DERIVE INITIALS FROM NAME ──
+function getInitials(name = "") {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "??";
+}
+
 export default function StudentProfileV1() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const webglRef = useRef(null);
+  const navigate    = useNavigate();
+  const location    = useLocation();
+  const webglRef    = useRef(null);
   const introCanvasRef = useRef(null);
-  const introRef = useRef(null);
-  const appRef = useRef(null);
-  const sidebarRef = useRef(null);
-  const topbarRef = useRef(null);
-  const [collapse, setCollapse] = useState(false);
+  const introRef    = useRef(null);
+  const appRef      = useRef(null);
+  const sidebarRef  = useRef(null);
+  const topbarRef   = useRef(null);
 
-  // ── CINEMATIC INTRO ──
+  const [collapse, setCollapse] = useState(false);
+  const [student,  setStudent]  = useState(STUDENT_FALLBACK);
+  const [userName, setUserName] = useState("Loading...");
+  const [userId,   setUserId]   = useState("...");
+
+  // ── FETCH PROFILE ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    StudentApi.getProfile()
+      .then((res) => {
+        // Support both { student: {...} } and flat { name, ... } response shapes
+        const d = res?.student ?? res ?? {};
+
+        const name    = d.name       ?? "";
+        const rollNo  = d.rollNumber ?? d.studentId ?? d.rollNo ?? "";
+        const program = d.program    ?? d.degree    ?? "";
+        const dept    = d.department ?? d.dept      ?? "";
+        const faculty = d.faculty    ?? "";
+        const batch   = d.batch      ?? d.cohort    ?? "";
+        const semester= d.currentSemester
+                          ? `${d.currentSemester}${["th","st","nd","rd"][Math.min(d.currentSemester,3)] ?? "th"} Semester`
+                          : d.semester ?? "";
+        const section = d.section    ?? "";
+        const email   = d.email      ?? d.universityEmail ?? "";
+        const phone   = d.phone      ?? d.phoneNumber     ?? "";
+        const address = d.address    ?? d.residentialAddress ?? "";
+        const dob     = d.dateOfBirth
+                          ? new Date(d.dateOfBirth).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+                          : d.dob ?? "";
+        const cnic    = d.cnic       ?? d.nationalId ?? "";
+        const guardian= d.guardian   ?? d.guardianName ?? "";
+
+        setStudent({
+          name, rollNo, program, department: dept, faculty,
+          batch, semester, section, email, phone, address,
+          dob, cnic, guardian,
+          initials: getInitials(name),
+        });
+        setUserName(name || "Student");
+        setUserId(rollNo);
+      })
+      .catch((err) => {
+        console.error("StudentProfile: getProfile failed", err);
+      });
+  }, []);
+
+  // ── CINEMATIC INTRO ────────────────────────────────────────────────────────
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archIntroPlayed");
     if (hasPlayedIntro) {
@@ -51,14 +105,12 @@ export default function StudentProfileV1() {
       if (webglRef.current) {
         webglRef.current.style.display = "none";
       }
-      return; 
+      return;
     }
-
     const canvas = introCanvasRef.current;
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-
     const words = ["KNOWLEDGE","GRADES","CAMPUS","LECTURE","SEMESTER","THESIS","RESEARCH","LIBRARY","STUDENT","FACULTY","FAST","NUCES"];
     const particles = Array.from({ length: 60 }, () => ({
       x: Math.random() * canvas.width, y: Math.random() * canvas.height,
@@ -71,11 +123,9 @@ export default function StudentProfileV1() {
       x: Math.random() * canvas.width, y: Math.random() * canvas.height,
       r: Math.random() * 1.5, opacity: Math.random() * 0.6 + 0.1, twinkle: Math.random() * 0.02,
     }));
-
-    let animId, frame = 0;
+    let animId;
     const draw = () => {
       ctx.fillStyle = "rgba(0,4,14,0.18)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      frame++;
       stars.forEach((s) => {
         s.opacity += s.twinkle * (Math.random() > 0.5 ? 1 : -1);
         s.opacity = Math.max(0.05, Math.min(0.8, s.opacity));
@@ -93,7 +143,6 @@ export default function StudentProfileV1() {
       animId = requestAnimationFrame(draw);
     };
     ctx.fillStyle = "#00040e"; ctx.fillRect(0, 0, canvas.width, canvas.height); draw();
-
     const afterIntro = () => {
       cancelAnimationFrame(animId);
       sessionStorage.setItem("archIntroPlayed", "true");
@@ -109,7 +158,6 @@ export default function StudentProfileV1() {
         if (webglRef.current) webglRef.current.style.display = "none";
       }, 3000);
     };
-
     const tl = gsap.timeline({ delay: 0.4, onComplete: afterIntro });
     tl.to("#intro-line", { scaleX: 1, duration: 0.8, ease: "power3.out" }, 0)
       .to("#intro-logo", { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 0.5)
@@ -121,11 +169,10 @@ export default function StudentProfileV1() {
       .to("#intro-flash", { opacity: 1, duration: 0.08 }, 2.85)
       .to("#intro-flash", { opacity: 0, duration: 0.4 }, 2.93)
       .to(introRef.current, { opacity: 0, duration: 0.35 }, 2.88);
-
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── THREE.JS BACKGROUND ──
+  // ── THREE.JS BACKGROUND ───────────────────────────────────────────────────
   useEffect(() => {
     if (sessionStorage.getItem("archIntroPlayed")) return;
     const canvas = webglRef.current;
@@ -134,16 +181,13 @@ export default function StudentProfileV1() {
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0xf4f8ff, 1);
-    
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0xe9f2ff, 0.014);
     const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200);
     camera.position.set(0, 2, 10);
-
     scene.add(new THREE.AmbientLight(0x0033aa, 0.8));
     const dirLight = new THREE.DirectionalLight(0x4488ff, 1.2); dirLight.position.set(5, 10, 5); scene.add(dirLight);
     const pointLight = new THREE.PointLight(0x0066ff, 2, 30); pointLight.position.set(0, 5, 0); scene.add(pointLight);
-
     const objects = [];
     const mkAtom = (x, y, z, scale, color) => {
       const g = new THREE.Group();
@@ -156,7 +200,6 @@ export default function StudentProfileV1() {
       objects.push({ mesh: g, type: "atom", speed: Math.random() * 0.005 + 0.003, phase: Math.random() * Math.PI * 2, rotSpeed: Math.random() * 0.01 + 0.005 });
     };
     mkAtom(-4, 0, -3, 1.4, 0x4499ff); mkAtom(3, -1, -5, 1.8, 0x2277ff);
-
     const COUNT = 250;
     const ptPos = new Float32Array(COUNT * 3); const ptCol = new Float32Array(COUNT * 3); const ptVel = [];
     for (let i = 0; i < COUNT; i++) {
@@ -166,11 +209,9 @@ export default function StudentProfileV1() {
     }
     const ptGeo = new THREE.BufferGeometry(); ptGeo.setAttribute("position", new THREE.BufferAttribute(ptPos, 3)); ptGeo.setAttribute("color", new THREE.BufferAttribute(ptCol, 3));
     scene.add(new THREE.Points(ptGeo, new THREE.PointsMaterial({ size: 0.06, transparent: true, opacity: 0.7, vertexColors: true })));
-
     let nmx = 0, nmy = 0;
     const onMove = (e) => { nmx = (e.clientX / W) * 2 - 1; nmy = -(e.clientY / H) * 2 + 1; };
     document.addEventListener("mousemove", onMove);
-
     let t = 0, animId;
     const loop = () => {
       animId = requestAnimationFrame(loop); t += 0.008;
@@ -201,9 +242,7 @@ export default function StudentProfileV1() {
         <div className="mesh-blob blob-2" />
         <div className="mesh-blob blob-3" />
       </div>
-
       <canvas id="webgl" ref={webglRef} />
-
       <div id="intro" ref={introRef}>
         <canvas id="intro-canvas" ref={introCanvasRef} />
         <div id="intro-line" />
@@ -211,19 +250,16 @@ export default function StudentProfileV1() {
         <div id="intro-sub">Student Profile</div>
         <div id="intro-flash" />
       </div>
-
       <div id="app" ref={appRef}>
-        
         <Sidebar
-          ref={sidebarRef}  // <--- ADD THIS LINE
+          ref={sidebarRef}
           sections={STUDENT_NAV}
           logoLabel="Student Portal"
-          userName="Areeb Bucha"
-          userId="21K-3210"
+          userName={userName}
+          userId={userId}
           collapse={collapse}
-          onToggle={() => setCollapse(c => !c)}
+          onToggle={() => setCollapse((c) => !c)}
         />
-
         <div id="main">
           <div id="topbar" ref={topbarRef}>
             <div className="tb-glow" />
@@ -236,10 +272,8 @@ export default function StudentProfileV1() {
               </div>
             </div>
           </div>
-
           <div id="scroll">
             <div className="profile-container">
-              
               {/* HERO CARD */}
               <div className="glass-card sc profile-hero-card">
                 <div className="hero-avatar">{student.initials}</div>
@@ -252,8 +286,7 @@ export default function StudentProfileV1() {
 
               {/* INFO GRID */}
               <div className="profile-grid">
-                
-                {/* ACADEMIC VECTOR */}
+                {/* ACADEMIC DETAILS */}
                 <div className="glass-card sc">
                   <div className="card-header">
                     <div className="ch-bar" />
@@ -330,9 +363,7 @@ export default function StudentProfileV1() {
                     </div>
                   </div>
                 </div>
-
               </div>
-
             </div>
           </div>
         </div>
