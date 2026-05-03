@@ -4,7 +4,6 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import { AnimatePresence, motion } from "framer-motion";
 import "./StudentMarks.css";
-import { useCourses, MARKS_DATA } from "./CourseContext";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
 import GradeDistribution from "./Components/Student/GradeDistributions";
@@ -19,6 +18,8 @@ import {
   getLetterGrade,
 } from "./Utilities/GradeUtils";
 import StudentApi from "./config/studentApi";
+
+const MARKS_DATA = {};
 
 // ── TYPE NAME MAP: backend type → frontend section label ─────────────────────
 const TYPE_TO_SECTION = {
@@ -105,7 +106,6 @@ export default function StudentMarks() {
   const tr  = useRef(null);
   const sidebarRef = useRef(null);
 
-  const { enrolled } = useCourses();
 
   const [collapse, setCollapse] = useState(false);
   const [sc,  ssc]  = useState(null);
@@ -177,7 +177,7 @@ export default function StudentMarks() {
   }, []);
 
   // ── RESOLVE: use API data if available, fall back to CourseContext/MARKS_DATA
-  const resolvedEnrolled = apiEnrolled.length > 0 ? apiEnrolled : enrolled;
+  const resolvedEnrolled = apiEnrolled;
 
   function getMarksMeta(courseCode) {
     if (apiMarks[courseCode]) return apiMarks[courseCode];

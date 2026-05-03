@@ -3,7 +3,7 @@ import { AnimatePresence } from "framer-motion";
 
 // ── SHARED ──
 import LoginPage from "./LoginPage";
-import { CourseProvider } from "./CourseContext";
+
 import PageShell from "./Components/shared/PageShell";
 
 // ── STUDENT ──
@@ -81,9 +81,7 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <CourseProvider>
         <AnimatedRoutes />
-      </CourseProvider>
     </BrowserRouter>
   );
 }
