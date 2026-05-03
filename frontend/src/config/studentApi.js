@@ -15,6 +15,13 @@ const StudentApi = {
             body: JSON.stringify({ identifier, password })
         }).then(r => r.json()),
 
+    signup: (name, password) =>
+        fetch(`${BASE_URL}/auth/student/signup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, password })
+        }).then(r => r.json()),
+
     getProfile: () =>
         fetch(`${BASE_URL}/student/profile`, { headers: headers() }).then(r => r.json()),
 

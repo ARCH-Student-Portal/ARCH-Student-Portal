@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const Student = require('./models/Student');
+const PendingRegistration = require('./models/PendingRegistration');
 const Teacher = require('./models/Teacher');
 const Admin = require('./models/Admin');
 const Course = require('./models/Course');
@@ -16,11 +17,15 @@ const seed = async () => {
 
     // clear everything
     await Student.deleteMany({});
+    await PendingRegistration.deleteMany({});
     await Teacher.deleteMany({});
     await Admin.deleteMany({});
     await Course.deleteMany({});
     await Enrollment.deleteMany({});
     await Announcement.deleteMany({});
+
+    try { await Student.collection.dropIndex('email_1'); } catch (e) {}
+    try { await PendingRegistration.collection.dropIndex('email_1'); } catch (e) {}
 
     const hashedPassword = await bcrypt.hash('test1234', 10);
 
