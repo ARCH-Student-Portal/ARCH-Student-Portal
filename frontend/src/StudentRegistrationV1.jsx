@@ -6,8 +6,65 @@ import "./StudentDashV1.css";
 import "./StudentRegistrationV1.css";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
-import { useCourses, useEnrolledStats, useAvailableFiltered } from "./CourseContext";
 import StudentApi from "./config/studentApi";
+
+const MANDATORY_COURSES = ["CS-3001", "CS-2012"];
+
+function adaptEnrolled(c, idx) {
+  const schedule = c.schedule ?? [];
+  const time = schedule.length > 0
+    ? `${schedule[0].day} ${schedule[0].startTime}${schedule[0].endTime ? " – " + schedule[0].endTime : ""}`
+    : "";
+  return {
+    id:           c.enrollmentId ?? `e-${idx}`,
+    enrollmentId: c.enrollmentId ?? null,
+    code:         c.courseCode   ?? "",
+    name:         c.name         ?? "",
+    credits:      c.creditHours  ?? 3,
+    price:        c.fee          ?? 0,
+    prof:         c.teacher?.name ?? "",
+    slot:         c.section      ?? "",
+    time,
+    mandatory:    MANDATORY_COURSES.includes(c.courseCode),
+  };
+}
+
+function adaptAvailable(course, enrolledCodes, enrolledSlots) {
+  return course.sections.map((sec, idx) => {
+    const slot = sec.sectionName ?? "";
+    const schedule = sec.schedule ?? [];
+    const time = schedule.length > 0
+      ? `${schedule[0].day} ${schedule[0].startTime}${schedule[0].endTime ? " – " + schedule[0].endTime : ""}`
+      : "";
+    let status    = sec.seatsAvailable <= 0 ? "full" : "open";
+    let clashWith = null;
+    if (enrolledSlots.has(slot) && slot) {
+      status    = "clash";
+      clashWith = [...enrolledSlots].find(s => s === slot) ?? null;
+    } else if (!(course.prereqMet ?? true)) {
+      status = "locked";
+    }
+    return {
+      id:        `${course.courseCode}-${sec.sectionId ?? idx}`,
+      courseId:  course.courseId,
+      sectionId: sec.sectionId,
+      code:      course.courseCode,
+      name:      course.name,
+      credits:   course.creditHours,
+      price:     course.fee,
+      prof:      sec.teacher   ?? "",
+      slot,
+      time,
+      seats:     sec.seatsAvailable ?? 0,
+      maxSeats:  sec.totalSeats     ?? 0,
+      mandatory: MANDATORY_COURSES.includes(course.courseCode),
+      req:       course.prerequisites?.length > 0 ? course.prerequisites[0] : null,
+      prereqMet: course.prereqMet ?? true,
+      status,
+      clashWith,
+    };
+  });
+}
 
 const MIN_CREDITS = 12;
 const MAX_CREDITS = 18;
@@ -41,15 +98,68 @@ export default function StudentRegistrationV1() {
     }).catch(() => {});
   }, []);
 
-  // ── CONTEXT ───────────────────────────────────────────────────────────────
-  const { enrolled, loading, enrollCourse, dropCourse } = useCourses();
-  const [search, setSearch] = useState("");
+  const [enrolled, setEnrolled]       = useState([]);
+  const [availablePool, setAvailablePool]  = useState([]);
+  const [loading, setLoading]        = useState(true);
+  const [search, setSearch]         = useState("");
 
-  // ── OBSERVER: computed stats ──────────────────────────────────────────────
-  const { totalCredits, totalTuition, mandatoryMissing, prerequisiteErrors } = useEnrolledStats();
+  const fetchAll = async () => {
+    setLoading(true);
+    try {
+      const [enrolledRes, availableRes] = await Promise.all([
+        StudentApi.getCourses(),
+        StudentApi.getAvailableCourses(),
+      ]);
+      const enrolledList = (enrolledRes?.courses ?? []).map(adaptEnrolled);
+      setEnrolled(enrolledList);
+      const enrolledCodes = new Set(enrolledList.map(c => c.code));
+      const enrolledSlots = new Set(enrolledList.map(c => c.slot).filter(Boolean));
+      setAvailablePool(
+        (availableRes?.courses ?? [])
+          .filter(c => !enrolledCodes.has(c.courseCode))
+          .flatMap(c => adaptAvailable(c, enrolledCodes, enrolledSlots))
+      );
+    } catch (err) {
+      console.error("fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // ── OBSERVER: filtered available ──────────────────────────────────────────
-  const available = useAvailableFiltered(search);
+  useEffect(() => { fetchAll(); }, []);
+
+  // ── COMPUTED ──────────────────────────────────────────────────────────────
+  const totalCredits      = enrolled.reduce((acc, c) => acc + (c.credits ?? 0), 0);
+  const totalTuition      = enrolled.reduce((acc, c) => acc + (c.price   ?? 0), 0);
+  const mandatoryMissing  = MANDATORY_COURSES.filter(code => !enrolled.some(e => e.code === code));
+  const prerequisiteErrors = enrolled.filter(c => c.req && !enrolled.some(e => e.code === c.req));
+
+  const enrolledCodes = new Set(enrolled.map(c => c.code));
+  const enrolledSlots = new Set(enrolled.map(c => c.slot).filter(Boolean));
+
+  const available = availablePool
+    .filter(c => !enrolledCodes.has(c.code))
+    .map(course => {
+      let status    = course.seats <= 0 ? "full" : "open";
+      let clashWith = null;
+      if (enrolledSlots.has(course.slot) && course.slot) {
+        status    = "clash";
+        clashWith = enrolled.find(e => e.slot === course.slot)?.code ?? null;
+      } else if (!course.prereqMet) {
+        status = "locked";
+      }
+      return { ...course, status, clashWith };
+    })
+    .filter(course => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        course.code.toLowerCase().includes(q) ||
+        course.name.toLowerCase().includes(q) ||
+        course.prof.toLowerCase().includes(q) ||
+        course.slot.toLowerCase().includes(q)
+      );
+    });
 
   // ── HANDLERS ─────────────────────────────────────────────────────────────
   const handleEnroll = async (course) => {
@@ -59,7 +169,9 @@ export default function StudentRegistrationV1() {
     }
     setActionLoading(true);
     try {
-      await enrollCourse(course);
+      const res = await StudentApi.enrollCourse(course.courseId, course.sectionId, "Spring 2025");
+      if (res.message && res.message !== "Enrolled successfully") throw new Error(res.message);
+      await fetchAll();
     } catch (err) {
       const msgMap = {
         ALREADY_ENROLLED:  "You are already enrolled in this course.",
@@ -76,7 +188,10 @@ export default function StudentRegistrationV1() {
   const handleDrop = async (course) => {
     setActionLoading(true);
     try {
-      await dropCourse(course);
+      if (!course.enrollmentId) throw new Error("No enrollment ID — cannot drop");
+      const res = await StudentApi.dropCourse(course.enrollmentId);
+      if (res.message && res.message !== "Course dropped successfully") throw new Error(res.message);
+      await fetchAll();
     } catch (err) {
       setModalConfig({ isOpen: true, title: "Drop Failed", message: err.message, type: "error" });
     } finally {
