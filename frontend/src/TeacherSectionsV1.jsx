@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
@@ -6,10 +6,9 @@ import { motion } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
 import { TEACHER_NAV } from "./config/TeacherNav";
+import TeacherApi from "./config/teacherApi";
 
-// IMPORT THE TEACHER SHELL CSS TO KEEP THE LAYOUT PERFECT
 import "./TeacherDashV1.css";
-// IMPORT THE SPECIFIC CSS FOR THE SECTIONS PAGE
 import "./TeacherSections.css";
 
 export default function TeacherSectionsV1() {
@@ -21,118 +20,204 @@ export default function TeacherSectionsV1() {
   const appRef = useRef(null);
   const sidebarRef = useRef(null);
   const topbarRef = useRef(null);
+
   const [collapse, setCollapse] = useState(false);
-  const [activeTab, setActiveTab] = useState("CS-3001");
   const [showStats, setShowStats] = useState(false);
 
-  const sectionsData = {
-    "CS-3001": {
-      name: "Object Oriented Analysis & Design",
-      code: "CS-3001 · Section A",
-      time: "Mon / Wed · 13:00 - 14:30",
-      totalStudents: 38,
-      avgAttendance: 88,
-      students: [
-        { id: "21K-3001", name: "Ali Khan", att: "92%", grade: "A", status: "ok" },
-        { id: "21K-3045", name: "Sara Ahmed", att: "85%", grade: "B+", status: "ok" },
-        { id: "21K-3112", name: "Usman Tariq", att: "74%", grade: "C", status: "warn" },
-        { id: "21K-3210", name: "Areeb Bucha", att: "96%", grade: "A+", status: "ok" },
-        { id: "21K-3344", name: "Hassan Raza", att: "62%", grade: "D", status: "danger" },
-      ]
-    },
-    "CS-2010": {
-      name: "Data Structures & Algorithms",
-      code: "CS-2010 · Section B",
-      time: "Tue / Thu · 08:00 - 09:30",
-      totalStudents: 42,
-      avgAttendance: 76,
-      students: [
-        { id: "22K-4011", name: "Bilal Hasan", att: "78%", grade: "B", status: "ok" },
-        { id: "22K-4099", name: "Maha Syed", att: "82%", grade: "B+", status: "ok" },
-        { id: "22K-4122", name: "Zainab Noor", att: "68%", grade: "C-", status: "warn" },
-      ]
-    }
-  };
+  // ── API STATE ──
+  const [sections, setSections] = useState([]);         // [{id, name, code, time, ...}]
+  const [activeTab, setActiveTab] = useState(null);     // section id string
+  const [sectionDetail, setSectionDetail] = useState(null); // { students, gradebook }
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const activeData = sectionsData[activeTab];
+  // ── FETCH ALL SECTIONS ON MOUNT ──
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    TeacherApi.getSections()
+      .then((res) => {
+        if (cancelled) return;
+        // Backend may wrap in { data: [...] } or return array directly
+        const list = Array.isArray(res) ? res : res?.data ?? [];
+        setSections(list);
+        if (list.length > 0) setActiveTab(list[0].id ?? list[0]._id ?? list[0].sectionId);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Failed to load sections. Check connection or login.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── FETCH STUDENTS + GRADEBOOK WHEN TAB CHANGES ──
+  useEffect(() => {
+    if (!activeTab) return;
+    let cancelled = false;
+    setDetailLoading(true);
+    setSectionDetail(null);
+
+    Promise.all([
+      TeacherApi.getSectionStudents(activeTab),
+      TeacherApi.getGradebook(activeTab),
+      TeacherApi.getAttendance(activeTab),
+    ])
+      .then(([studRes, gradeRes, attRes]) => {
+        if (cancelled) return;
+
+        const students = Array.isArray(studRes) ? studRes : studRes?.data ?? [];
+        const grades   = Array.isArray(gradeRes) ? gradeRes : gradeRes?.data ?? [];
+        const att      = Array.isArray(attRes)   ? attRes   : attRes?.data   ?? [];
+
+        // Merge by studentId
+        const gradeMap = {};
+        grades.forEach((g) => { gradeMap[g.studentId ?? g.id] = g.grade ?? g.letterGrade ?? "—"; });
+
+        const attMap = {};
+        // attendance entry shape varies; compute % from records if needed
+        att.forEach((a) => {
+          if (a.attendancePercent !== undefined) {
+            attMap[a.studentId ?? a.id] = `${a.attendancePercent}%`;
+          } else if (a.present !== undefined && a.total !== undefined) {
+            attMap[a.studentId ?? a.id] = `${Math.round((a.present / a.total) * 100)}%`;
+          } else {
+            attMap[a.studentId ?? a.id] = a.attendance ?? "—";
+          }
+        });
+
+        const merged = students.map((s) => {
+          const sid = s.id ?? s._id ?? s.studentId;
+          const attPct = attMap[sid] ?? "—";
+          const attNum = parseInt(attPct);
+          const status = isNaN(attNum) ? "ok" : attNum < 70 ? "danger" : attNum < 80 ? "warn" : "ok";
+          return {
+            id: s.rollNumber ?? s.rollNo ?? sid,
+            name: s.name ?? `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim(),
+            att: attPct,
+            grade: gradeMap[sid] ?? "—",
+            status,
+          };
+        });
+
+        // Section-level stats
+        const totalStudents = merged.length;
+        const validAtts = merged.map((s) => parseInt(s.att)).filter((n) => !isNaN(n));
+        const avgAttendance = validAtts.length
+          ? Math.round(validAtts.reduce((a, b) => a + b, 0) / validAtts.length)
+          : 0;
+
+        setSectionDetail({ students: merged, totalStudents, avgAttendance });
+      })
+      .catch(() => {
+        if (!cancelled) setSectionDetail({ students: [], totalStudents: 0, avgAttendance: 0 });
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
+  // ── DERIVE ACTIVE SECTION META ──
+  const activeSection = sections.find(
+    (s) => (s.id ?? s._id ?? s.sectionId) === activeTab
+  );
 
   // ── CINEMATIC INTRO ──
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archTeacherIntroPlayed");
 
-  if (hasPlayedIntro) {
-    // 1. Force React state to show the stats
-    setShowStats(true);
-
-    // 2. Safely apply styles only if the elements exist in the DOM
-    if (introRef.current) introRef.current.style.display = "none";
-    if (appRef.current) appRef.current.style.opacity = 1;
-    if (sidebarRef.current) sidebarRef.current.style.transform = "translateX(0)";
-    if (topbarRef.current) topbarRef.current.style.opacity = 1;
-
-    // 3. Safely handle the WebGL background
-    if (webglRef.current) {
-      webglRef.current.style.opacity = 0;
-      webglRef.current.style.display = "none";
+    if (hasPlayedIntro) {
+      setShowStats(true);
+      if (introRef.current) introRef.current.style.display = "none";
+      if (appRef.current) appRef.current.style.opacity = 1;
+      if (sidebarRef.current) sidebarRef.current.style.transform = "translateX(0)";
+      if (topbarRef.current) topbarRef.current.style.opacity = 1;
+      if (webglRef.current) {
+        webglRef.current.style.opacity = 0;
+        webglRef.current.style.display = "none";
+      }
+      return;
     }
-    return; 
-  }
 
     const canvas = introCanvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
     const words = [
       "FACULTY","TEACHING","SYLLABUS","LECTURE","SEMESTER",
       "RESEARCH","PUBLICATIONS","ALERTS","STUDENT","GRADES",
       "EXAM","EVALUATION","RUBRIC","SCIENCE","ENGINEERING",
-      "FAST","NUCES","PORTAL","ACADEMIC","FUTURE"
+      "FAST","NUCES","PORTAL","ACADEMIC","FUTURE",
     ];
 
     const particles = Array.from({ length: 60 }, () => ({
-      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
       word: words[Math.floor(Math.random() * words.length)],
-      opacity: Math.random() * 0.4 + 0.05, speed: Math.random() * 0.8 + 0.2,
-      size: Math.floor(Math.random() * 10) + 10, flicker: Math.random() * 0.025 + 0.005,
+      opacity: Math.random() * 0.4 + 0.05,
+      speed: Math.random() * 0.8 + 0.2,
+      size: Math.floor(Math.random() * 10) + 10,
+      flicker: Math.random() * 0.025 + 0.005,
       hue: Math.random() > 0.6 ? "255,255,255" : Math.random() > 0.5 ? "100,180,255" : "60,140,255",
     }));
 
     const stars = Array.from({ length: 200 }, () => ({
-      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-      r: Math.random() * 1.5, opacity: Math.random() * 0.6 + 0.1, twinkle: Math.random() * 0.02,
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.5,
+      opacity: Math.random() * 0.6 + 0.1,
+      twinkle: Math.random() * 0.02,
     }));
 
     let animId;
     const draw = () => {
-      ctx.fillStyle = "rgba(0,4,14,0.18)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(0,4,14,0.18)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       stars.forEach((s) => {
         s.opacity += s.twinkle * (Math.random() > 0.5 ? 1 : -1);
         s.opacity = Math.max(0.05, Math.min(0.8, s.opacity));
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(180,210,255,${s.opacity})`; ctx.fill();
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(180,210,255,${s.opacity})`;
+        ctx.fill();
       });
       particles.forEach((p) => {
-        p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
+        p.y -= p.speed * 0.4;
+        p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
         p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
-        if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; p.word = words[Math.floor(Math.random() * words.length)]; }
-        ctx.font = `${p.size}px 'Inter', sans-serif`; 
+        if (p.y < -30) {
+          p.y = canvas.height + 20;
+          p.x = Math.random() * canvas.width;
+          p.word = words[Math.floor(Math.random() * words.length)];
+        }
+        ctx.font = `${p.size}px 'Inter', sans-serif`;
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
-        ctx.letterSpacing = "0.15em"; ctx.fillText(p.word, p.x, p.y);
+        ctx.letterSpacing = "0.15em";
+        ctx.fillText(p.word, p.x, p.y);
       });
       animId = requestAnimationFrame(draw);
     };
-    ctx.fillStyle = "#00040e"; ctx.fillRect(0, 0, canvas.width, canvas.height); draw();
+    ctx.fillStyle = "#00040e";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    draw();
 
     const afterIntro = () => {
       cancelAnimationFrame(animId);
-      sessionStorage.setItem("archTeacherIntroPlayed", "true"); 
+      sessionStorage.setItem("archTeacherIntroPlayed", "true");
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out", delay: 0.05 });
       gsap.to(topbarRef.current, { opacity: 1, duration: 0.7, delay: 0.4 });
-      
       setTimeout(() => setShowStats(true), 600);
-
       gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
       setTimeout(() => { if (webglRef.current) webglRef.current.style.display = "none"; }, 3000);
     };
@@ -158,17 +243,47 @@ export default function TeacherSectionsV1() {
     if (!canvas) return;
     let W = window.innerWidth, H = window.innerHeight;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(W, H); renderer.setClearColor(0xf4f8ff, 1);
-    const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200); camera.position.set(0, 2, 10);
+    renderer.setSize(W, H);
+    renderer.setClearColor(0xf4f8ff, 1);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200);
+    camera.position.set(0, 2, 10);
     scene.add(new THREE.AmbientLight(0x0033aa, 0.8));
-    let nmx = 0, nmy = 0; const onMove = (e) => { nmx = (e.clientX / W) * 2 - 1; nmy = -(e.clientY / H) * 2 + 1; }; document.addEventListener("mousemove", onMove);
+    let nmx = 0, nmy = 0;
+    const onMove = (e) => {
+      nmx = (e.clientX / W) * 2 - 1;
+      nmy = -(e.clientY / H) * 2 + 1;
+    };
+    document.addEventListener("mousemove", onMove);
     let animId;
     const loop = () => {
-      animId = requestAnimationFrame(loop); camera.position.x += (nmx * 0.6 - camera.position.x) * 0.015; camera.position.y += (nmy * 0.4 + 2 - camera.position.y) * 0.015; camera.lookAt(0, 0, 0); renderer.render(scene, camera);
+      animId = requestAnimationFrame(loop);
+      camera.position.x += (nmx * 0.6 - camera.position.x) * 0.015;
+      camera.position.y += (nmy * 0.4 + 2 - camera.position.y) * 0.015;
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
     };
-    loop(); return () => { cancelAnimationFrame(animId); document.removeEventListener("mousemove", onMove); };
+    loop();
+    return () => {
+      cancelAnimationFrame(animId);
+      document.removeEventListener("mousemove", onMove);
+    };
   }, []);
 
+  // ── HELPERS ──
+  const getSectionLabel = (s) =>
+    s.courseCode ?? s.code ?? s.sectionCode ?? s.id ?? s._id ?? "Section";
+
+  const getSectionName = (s) =>
+    s.courseName ?? s.name ?? s.title ?? "Untitled Course";
+
+  const getSectionMeta = (s) => {
+    const code = s.sectionCode ?? s.code ?? "";
+    const time = s.schedule ?? s.time ?? s.timeslot ?? "";
+    return [code, time].filter(Boolean).join("  |  ");
+  };
+
+  // ── RENDER ──
   return (
     <>
       <div className="mesh-bg">
@@ -188,8 +303,6 @@ export default function TeacherSectionsV1() {
       </div>
 
       <div id="app" ref={appRef}>
-        
-        {/* UNIFIED SIDEBAR */}
         <Sidebar
           ref={sidebarRef}
           sections={TEACHER_NAV}
@@ -197,153 +310,229 @@ export default function TeacherSectionsV1() {
           userName="Dr. Ahmed"
           userId="EMP-8492"
           collapse={collapse}
-          onToggle={() => setCollapse(c => !c)}
+          onToggle={() => setCollapse((c) => !c)}
         />
 
         <div id="main">
-          
-          {/* UNIFIED TOPBAR */}
           <div id="topbar" ref={topbarRef}>
             <div className="tb-glow" />
             <div className="pg-title"><span>My Sections</span></div>
             <div className="tb-r">
-              <motion.div whileHover={{ scale: 1.05 }} className="sem-chip">Spring 2025</motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="notif-bell">🔔<span className="notif-dot"/></motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} className="sem-chip">
+                Spring 2025
+              </motion.div>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="notif-bell"
+              >
+                🔔<span className="notif-dot" />
+              </motion.div>
             </div>
           </div>
 
           <div id="scroll">
             <div className="dash-container">
-              
-              {/* HEAVY TABS */}
-              <div className="marks-tab-container">
-                {Object.keys(sectionsData).map(k => (
-                  <motion.button 
-                    key={k} 
-                    className={`marks-tab ${activeTab === k ? "active" : ""}`} 
-                    onClick={() => setActiveTab(k)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {k}
-                  </motion.button>
-                ))}
-              </div>
 
-              <div className="dash-grid">
-                
-                {/* LEFT CARD: COMMAND BOARD */}
-                <motion.div 
-                  key={`left-${activeTab}`}
-                  initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}
-                  className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '32px'}}
-                  whileHover={{ y: -4, boxShadow: "0 16px 40px rgba(0,0,0,0.12)" }}
-                >
-                  <div className="panel-header"><h2 className="ct"><div className="ctbar"/>Section Overview</h2></div>
-                  
-                  <div className="ts-course-header">
-                    <h3 className="ts-course-name">{activeData.name}</h3>
-                    <p className="ts-course-code">{activeData.code} &nbsp;&nbsp;|&nbsp;&nbsp; {activeData.time}</p>
-                  </div>
-                  
-                  <div className="ts-viz-box">
-                    <div className="ts-viz-info">
-                      <div className="ts-viz-stat">
-                        <div className="ts-stat-label">Total Students</div>
-                        <h3>
-                          {showStats ? <AnimatedCounter value={activeData.totalStudents} /> : "0"}
-                        </h3>
-                      </div>
-                      <div className="ts-viz-stat">
-                        <div className="ts-stat-label">Avg Attendance</div>
-                        <h3>
-                          {showStats ? <AnimatedCounter value={activeData.avgAttendance} /> : "0"}
-                          <span style={{fontSize: '42px', color: 'var(--blue)', marginLeft: '4px'}}>%</span>
-                        </h3>
-                      </div>
-                    </div>
-                    {/* SCALED ISOMETRIC CHART */}
-                    <div className="ts-iso-chart">
-                      <motion.div className="iso-bar" initial={{ height: 0 }} animate={{ height: '90%' }} transition={{ duration: 1, delay: 0.2 }}>
-                        <div className="iso-top"/><div className="iso-face"/>
-                        <div className="iso-lbl">A</div>
-                      </motion.div>
-                      <motion.div className="iso-bar bar-b" initial={{ height: 0 }} animate={{ height: '60%' }} transition={{ duration: 1, delay: 0.3 }}>
-                        <div className="iso-top"/><div className="iso-face"/>
-                        <div className="iso-lbl">B</div>
-                      </motion.div>
-                      <motion.div className="iso-bar bar-c" initial={{ height: 0 }} animate={{ height: '40%' }} transition={{ duration: 1, delay: 0.4 }}>
-                        <div className="iso-top"/><div className="iso-face"/>
-                        <div className="iso-lbl">C</div>
-                      </motion.div>
-                      <motion.div className="iso-bar bar-f" initial={{ height: 0 }} animate={{ height: '15%' }} transition={{ duration: 1, delay: 0.5 }}>
-                        <div className="iso-top"/><div className="iso-face"/>
-                        <div className="iso-lbl">F</div>
-                      </motion.div>
-                    </div>
+              {/* ── GLOBAL LOADING / ERROR ── */}
+              {loading && (
+                <div className="ts-state-msg">Loading sections…</div>
+              )}
+
+              {!loading && error && (
+                <div className="ts-state-msg ts-error">{error}</div>
+              )}
+
+              {!loading && !error && sections.length === 0 && (
+                <div className="ts-state-msg">No sections assigned.</div>
+              )}
+
+              {/* ── TABS (only when sections exist) ── */}
+              {!loading && !error && sections.length > 0 && (
+                <>
+                  <div className="marks-tab-container">
+                    {sections.map((s) => {
+                      const sid = s.id ?? s._id ?? s.sectionId;
+                      return (
+                        <motion.button
+                          key={sid}
+                          className={`marks-tab ${activeTab === sid ? "active" : ""}`}
+                          onClick={() => setActiveTab(sid)}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {getSectionLabel(s)}
+                        </motion.button>
+                      );
+                    })}
                   </div>
 
-                  <div className="ts-actions">
-                    <motion.button 
-                      className="ts-btn btn-primary" 
-                      onClick={() => navigate('/teacher/attendance')}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                  <div className="dash-grid">
+
+                    {/* ── LEFT CARD: SECTION OVERVIEW ── */}
+                    <motion.div
+                      key={`left-${activeTab}`}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="glass-card"
+                      style={{ display: "flex", flexDirection: "column", gap: "32px" }}
+                      whileHover={{ y: -4, boxShadow: "0 16px 40px rgba(0,0,0,0.12)" }}
                     >
-                      Mark Attendance →
-                    </motion.button>
-                    <motion.button 
-                      className="ts-btn btn-secondary" 
-                      onClick={() => navigate('/teacher/gradebook')}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      Enter Grades →
-                    </motion.button>
-                  </div>
-                </motion.div>
+                      <div className="panel-header">
+                        <h2 className="ct">
+                          <div className="ctbar" />Section Overview
+                        </h2>
+                      </div>
 
-                {/* RIGHT CARD: CLASS ROSTER */}
-                <motion.div 
-                  key={`right-${activeTab}`}
-                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}
-                  className="glass-card" style={{ padding: 0, overflow: 'hidden' }}
-                  whileHover={{ y: -4, boxShadow: "0 16px 40px rgba(0,0,0,0.12)" }}
-                >
-                  <div className="panel-header" style={{ padding: '32px 40px 16px' }}>
-                    <h2 className="ct"><div className="ctbar"/>Class Roster</h2>
-                  </div>
-                  
-                  <div className="ts-roster-header">
-                    <div className="tr-id">Roll No</div>
-                    <div className="tr-name">Student Identity</div>
-                    <div className="tr-att">Att %</div>
-                    <div className="tr-grd">Grade</div>
-                  </div>
-                  
-                  <div className="ts-roster-list">
-                    {activeData.students.map((s,i) => (
-                      <motion.div 
-                        className="ts-roster-row" 
-                        key={i}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.1 * i }}
-                        whileHover={{ x: 6, backgroundColor: "rgba(18,78,170,.06)", borderColor: "rgba(18,78,170,.15)" }}
-                      >
-                        <div className="tr-id">{s.id}</div>
-                        <div className="tr-name">
-                          <div className="tr-avatar">{s.name.charAt(0)}</div>
-                          {s.name}
+                      {activeSection && (
+                        <div className="ts-course-header">
+                          <h3 className="ts-course-name">{getSectionName(activeSection)}</h3>
+                          <p className="ts-course-code">{getSectionMeta(activeSection)}</p>
                         </div>
-                        <div className={`tr-att status-${s.status}`}>{s.att}</div>
-                        <div className="tr-grd">{s.grade}</div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
+                      )}
 
-              </div>
+                      {detailLoading ? (
+                        <div className="ts-state-msg">Loading details…</div>
+                      ) : sectionDetail ? (
+                        <>
+                          <div className="ts-viz-box">
+                            <div className="ts-viz-info">
+                              <div className="ts-viz-stat">
+                                <div className="ts-stat-label">Total Students</div>
+                                <h3>
+                                  {showStats
+                                    ? <AnimatedCounter value={sectionDetail.totalStudents} />
+                                    : "0"}
+                                </h3>
+                              </div>
+                              <div className="ts-viz-stat">
+                                <div className="ts-stat-label">Avg Attendance</div>
+                                <h3>
+                                  {showStats
+                                    ? <AnimatedCounter value={sectionDetail.avgAttendance} />
+                                    : "0"}
+                                  <span style={{ fontSize: "42px", color: "var(--blue)", marginLeft: "4px" }}>%</span>
+                                </h3>
+                              </div>
+                            </div>
+
+                            {/* ISOMETRIC CHART — grade distribution from real data */}
+                            {(() => {
+                              const gradeGroups = { A: 0, B: 0, C: 0, F: 0 };
+                              sectionDetail.students.forEach(({ grade }) => {
+                                if (!grade || grade === "—") return;
+                                const g = grade.charAt(0).toUpperCase();
+                                if (g in gradeGroups) gradeGroups[g]++;
+                              });
+                              const max = Math.max(...Object.values(gradeGroups), 1);
+                              const heights = {
+                                A: `${Math.round((gradeGroups.A / max) * 90) || 5}%`,
+                                B: `${Math.round((gradeGroups.B / max) * 90) || 5}%`,
+                                C: `${Math.round((gradeGroups.C / max) * 90) || 5}%`,
+                                F: `${Math.round((gradeGroups.F / max) * 90) || 5}%`,
+                              };
+                              return (
+                                <div className="ts-iso-chart">
+                                  {[["A", ""], ["B", "bar-b"], ["C", "bar-c"], ["F", "bar-f"]].map(([lbl, cls], i) => (
+                                    <motion.div
+                                      key={lbl}
+                                      className={`iso-bar ${cls}`}
+                                      initial={{ height: 0 }}
+                                      animate={{ height: heights[lbl] }}
+                                      transition={{ duration: 1, delay: 0.2 + i * 0.1 }}
+                                    >
+                                      <div className="iso-top" />
+                                      <div className="iso-face" />
+                                      <div className="iso-lbl">{lbl}</div>
+                                    </motion.div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          <div className="ts-actions">
+                            <motion.button
+                              className="ts-btn btn-primary"
+                              onClick={() => navigate("/teacher/attendance")}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              Mark Attendance →
+                            </motion.button>
+                            <motion.button
+                              className="ts-btn btn-secondary"
+                              onClick={() => navigate("/teacher/gradebook")}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              Enter Grades →
+                            </motion.button>
+                          </div>
+                        </>
+                      ) : null}
+                    </motion.div>
+
+                    {/* ── RIGHT CARD: CLASS ROSTER ── */}
+                    <motion.div
+                      key={`right-${activeTab}`}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="glass-card"
+                      style={{ padding: 0, overflow: "hidden" }}
+                      whileHover={{ y: -4, boxShadow: "0 16px 40px rgba(0,0,0,0.12)" }}
+                    >
+                      <div className="panel-header" style={{ padding: "32px 40px 16px" }}>
+                        <h2 className="ct"><div className="ctbar" />Class Roster</h2>
+                      </div>
+
+                      {detailLoading ? (
+                        <div className="ts-state-msg" style={{ padding: "40px" }}>Loading roster…</div>
+                      ) : sectionDetail && sectionDetail.students.length === 0 ? (
+                        <div className="ts-state-msg" style={{ padding: "40px" }}>No students enrolled.</div>
+                      ) : sectionDetail ? (
+                        <>
+                          <div className="ts-roster-header">
+                            <div className="tr-id">Roll No</div>
+                            <div className="tr-name">Student Identity</div>
+                            <div className="tr-att">Att %</div>
+                            <div className="tr-grd">Grade</div>
+                          </div>
+
+                          <div className="ts-roster-list">
+                            {sectionDetail.students.map((s, i) => (
+                              <motion.div
+                                className="ts-roster-row"
+                                key={s.id ?? i}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.1 * i }}
+                                whileHover={{
+                                  x: 6,
+                                  backgroundColor: "rgba(18,78,170,.06)",
+                                  borderColor: "rgba(18,78,170,.15)",
+                                }}
+                              >
+                                <div className="tr-id">{s.id}</div>
+                                <div className="tr-name">
+                                  <div className="tr-avatar">{s.name?.charAt(0) ?? "?"}</div>
+                                  {s.name}
+                                </div>
+                                <div className={`tr-att status-${s.status}`}>{s.att}</div>
+                                <div className="tr-grd">{s.grade}</div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+                    </motion.div>
+
+                  </div>
+                </>
+              )}
+
             </div>
           </div>
         </div>

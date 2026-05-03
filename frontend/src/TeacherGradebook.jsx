@@ -2,53 +2,13 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { motion, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
 import { TEACHER_NAV } from "./config/TeacherNav";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
-import "./TeacherDashV1.css"; // Core shell layout
-import "./TeacherGradebook.css"; // Gradebook specifics
-
-// ── DATA ────────────────────────────────────────────────────────────────────
-const SECTIONS_DATA = {
-  "CS-3001": {
-    name: "Object Oriented Analysis & Design",
-    code: "CS-3001 · Sec A",
-    assessments: [
-      { key: "q1",   label: "Q1",   max: 10 },
-      { key: "q2",   label: "Q2",   max: 10 },
-      { key: "asgn", label: "ASGN", max: 20 },
-      { key: "mid",  label: "MID",  max: 30 },
-      { key: "final",label: "FIN",  max: 50 },
-    ],
-    students: [
-      { id: "21K-3001", name: "Ali Khan",      init: "AK", att: "92%", attCls: "att-ok",   scores: { q1: 9,  q2: 8,  asgn: 18, mid: 25, final: null } },
-      { id: "21K-3045", name: "Sara Ahmed",    init: "SA", att: "85%", attCls: "att-ok",   scores: { q1: 7,  q2: 9,  asgn: 17, mid: 22, final: null } },
-      { id: "21K-3112", name: "Usman Tariq",   init: "UT", att: "74%", attCls: "att-warn", scores: { q1: 5,  q2: 6,  asgn: 12, mid: 16, final: null } },
-      { id: "21K-3198", name: "Hira Baig",     init: "HB", att: "96%", attCls: "att-ok",   scores: { q1: 10, q2: 10, asgn: 19, mid: 27, final: null } },
-      { id: "21K-3210", name: "Zain Raza",     init: "ZR", att: "61%", attCls: "att-bad",  scores: { q1: 4,  q2: 5,  asgn: 10, mid: 13, final: null } },
-      { id: "21K-3277", name: "Mehwish Noor",  init: "MN", att: "88%", attCls: "att-ok",   scores: { q1: 8,  q2: 7,  asgn: 16, mid: 24, final: null } },
-      { id: "21K-3340", name: "Bilal Hassan",  init: "BH", att: "79%", attCls: "att-warn", scores: { q1: 6,  q2: 8,  asgn: 14, mid: 19, final: null } },
-    ],
-  },
-  "CS-2010": {
-    name: "Data Structures & Algorithms",
-    code: "CS-2010 · Sec B",
-    assessments: [
-      { key: "q1",   label: "Q1",   max: 10 },
-      { key: "q2",   label: "Q2",   max: 10 },
-      { key: "asgn", label: "ASGN", max: 20 },
-      { key: "mid",  label: "MID",  max: 30 },
-      { key: "final",label: "FIN",  max: 50 },
-    ],
-    students: [
-      { id: "22K-4011", name: "Bilal Hasan",   init: "BH", att: "78%", attCls: "att-warn", scores: { q1: 7,  q2: 8,  asgn: 15, mid: 20, final: null } },
-      { id: "22K-4099", name: "Maha Syed",     init: "MS", att: "82%", attCls: "att-ok",   scores: { q1: 9,  q2: 8,  asgn: 18, mid: 24, final: null } },
-      { id: "22K-4130", name: "Hamza Qureshi", init: "HQ", att: "91%", attCls: "att-ok",   scores: { q1: 10, q2: 9,  asgn: 19, mid: 27, final: null } },
-      { id: "22K-4202", name: "Ayesha Malik",  init: "AM", att: "67%", attCls: "att-bad",  scores: { q1: 4,  q2: 6,  asgn: 11, mid: 15, final: null } },
-    ],
-  },
-};
+import TeacherApi from "./config/teacherApi";
+import "./TeacherDashV1.css";
+import "./TeacherGradebook.css";
 
 // ── GRADE CALC ────────────────────────────────────────────────────────────
 function computeTotal(scores, assessments) {
@@ -73,6 +33,47 @@ function getGrade(pct) {
 function gradeClass(g) {
   return "grade-" + g.replace("+", "-plus");
 }
+
+// ── NORMALIZE API RESPONSE ────────────────────────────────────────────────
+// Adapts backend shape → internal SECTIONS_DATA shape.
+// Backend gradebook expected shape (adjust keys if backend differs):
+// {
+//   sectionId, name, code,
+//   assessments: [{ key, label, max }],
+//   students: [{ id, name, init, att, attCls, scores: { [key]: number|null } }]
+// }
+function normalizeSections(sectionsArr, gradebooksMap) {
+  const out = {};
+  sectionsArr.forEach((sec) => {
+    const gb = gradebooksMap[sec.id] || {};
+    const assessments = gb.assessments || [
+      { key: "q1",    label: "Q1",   max: 10 },
+      { key: "q2",    label: "Q2",   max: 10 },
+      { key: "asgn",  label: "ASGN", max: 20 },
+      { key: "mid",   label: "MID",  max: 30 },
+      { key: "final", label: "FIN",  max: 50 },
+    ];
+    const students = (gb.students || []).map((s) => ({
+      id:      s.id       || s.studentId || s.rollNo || "–",
+      name:    s.name     || s.studentName || "Unknown",
+      init:    s.init     || ((s.name || "??").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()),
+      att:     s.att      || s.attendance || "–",
+      attCls:  s.attCls   || (
+        parseFloat(s.att || s.attendance) >= 85 ? "att-ok" :
+        parseFloat(s.att || s.attendance) >= 70 ? "att-warn" : "att-bad"
+      ),
+      scores:  s.scores   || assessments.reduce((acc, a) => ({ ...acc, [a.key]: null }), {}),
+    }));
+    out[sec.id] = {
+      name:        sec.name        || sec.courseName || sec.id,
+      code:        sec.code        || `${sec.id} · Sec ${sec.section || "A"}`,
+      assessments,
+      students,
+    };
+  });
+  return out;
+}
+
 // ── COMPONENT ─────────────────────────────────────────────────────────────
 export default function TeacherGradebook() {
   const navigate  = useNavigate();
@@ -82,31 +83,91 @@ export default function TeacherGradebook() {
   const introRef  = useRef(null);
   const appRef    = useRef(null);
   const topbarRef = useRef(null);
-  const [collapse, setCollapse] = useState(false);
-  const [showStats, setShowStats] = useState(false);
+
+  const [collapse, setCollapse]     = useState(false);
+  const [showStats, setShowStats]   = useState(false);
   const [introPlayed, setIntroPlayed] = useState(
     () => !!sessionStorage.getItem("archTeacherIntroPlayed")
   );
 
-  const [activeSection, setActiveSection] = useState("CS-3001");
-  const [scores, setScores]  = useState(() => {
-    const out = {};
-    Object.entries(SECTIONS_DATA).forEach(([sec, data]) => {
-      out[sec] = {};
-      data.students.forEach(s => { out[sec][s.id] = { ...s.scores }; });
-    });
-    return out;
-  });
-  const [unsaved, setUnsaved]   = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [search, setSearch]     = useState("");
+  // ── API STATE ──
+  const [sectionsData, setSectionsData] = useState({});
+  const [loading, setLoading]           = useState(true);
+  const [apiError, setApiError]         = useState(null);
 
-  const sectionData  = SECTIONS_DATA[activeSection];
-  const assessments  = sectionData.assessments;
+  const [activeSection, setActiveSection] = useState(null);
+  const [scores, setScores]   = useState({});
+  const [unsaved, setUnsaved] = useState(false);
+  const [showToast, setShowToast]   = useState(false);
+  const [toastMsg, setToastMsg]     = useState("Grades synced to secure server");
+  const [search, setSearch]         = useState("");
+
+  // ── FETCH SECTIONS + GRADEBOOKS ──
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setApiError(null);
+      try {
+        const sectionsRes = await TeacherApi.getSections();
+        // Handles { data: [...] } or plain array
+        const sectionsArr = Array.isArray(sectionsRes)
+          ? sectionsRes
+          : sectionsRes.data || sectionsRes.sections || [];
+
+        if (!sectionsArr.length) {
+          if (!cancelled) { setSectionsData({}); setLoading(false); }
+          return;
+        }
+
+        // Fetch all gradebooks in parallel
+        const gbResults = await Promise.allSettled(
+          sectionsArr.map((s) => TeacherApi.getGradebook(s.id))
+        );
+
+        const gradebooksMap = {};
+        sectionsArr.forEach((s, i) => {
+          const res = gbResults[i];
+          if (res.status === "fulfilled") {
+            // Handles { data: {...} } or plain object
+            gradebooksMap[s.id] = res.value?.data || res.value || {};
+          }
+        });
+
+        const normalized = normalizeSections(sectionsArr, gradebooksMap);
+
+        // Build scores state from normalized data
+        const scoresInit = {};
+        Object.entries(normalized).forEach(([secId, data]) => {
+          scoresInit[secId] = {};
+          data.students.forEach((s) => {
+            scoresInit[secId][s.id] = { ...s.scores };
+          });
+        });
+
+        if (!cancelled) {
+          setSectionsData(normalized);
+          setScores(scoresInit);
+          setActiveSection(Object.keys(normalized)[0] || null);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setApiError(err.message || "Failed to load gradebook");
+          setLoading(false);
+        }
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const sectionData  = activeSection ? sectionsData[activeSection] : null;
+  const assessments  = sectionData?.assessments || [];
   const maxPts       = maxTotal(assessments);
 
   // ── FILTER STUDENTS ──
-  const students = sectionData.students.filter(s =>
+  const students = (sectionData?.students || []).filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
     s.id.toLowerCase().includes(search.toLowerCase())
   );
@@ -114,7 +175,7 @@ export default function TeacherGradebook() {
   // ── SCORE EDIT ──
   const handleScore = useCallback((studentId, key, val, max) => {
     const num = val === "" ? null : Math.min(Number(val), max);
-    setScores(prev => ({
+    setScores((prev) => ({
       ...prev,
       [activeSection]: {
         ...prev[activeSection],
@@ -124,18 +185,57 @@ export default function TeacherGradebook() {
     setUnsaved(true);
   }, [activeSection]);
 
-  // ── SAVE ──
-  const handleSave = () => {
-    setUnsaved(false);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2500);
+  // ── SAVE → API ──
+  const handleSave = async () => {
+    if (!activeSection) return;
+    try {
+      // Build payload: array of { studentId, scores: { key: value } }
+      const payload = Object.entries(scores[activeSection]).map(([studentId, s]) => ({
+        studentId,
+        scores: s,
+      }));
+      await TeacherApi.updateGrades(activeSection, { grades: payload });
+      setUnsaved(false);
+      setToastMsg("Grades synced to secure server");
+    } catch (err) {
+      setToastMsg("Save failed — check connection");
+    } finally {
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2500);
+    }
+  };
+
+  // ── EXPORT CSV ──
+  const handleExport = () => {
+    if (!sectionData) return;
+    const headers = ["Roll No.", "Student", ...assessments.map((a) => a.label), "Total", "Grade"];
+    const rows = students.map((s) => {
+      const rowScores = scores[activeSection]?.[s.id] || {};
+      const total = computeTotal(rowScores, assessments);
+      const pct   = (total / maxPts) * 100;
+      return [
+        s.id,
+        s.name,
+        ...assessments.map((a) => rowScores[a.key] ?? ""),
+        total,
+        getGrade(pct),
+      ];
+    });
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = `gradebook_${activeSection}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // ── GRADE DISTRIBUTION ──
   const distribution = (() => {
     let A=0, B=0, C=0, DF=0;
-    students.forEach(s => {
-      const total = computeTotal(scores[activeSection][s.id], assessments);
+    students.forEach((s) => {
+      const total = computeTotal(scores[activeSection]?.[s.id] || {}, assessments);
       const pct   = (total / maxPts) * 100;
       const g     = getGrade(pct);
       if      (g === "A+" || g === "A")  A++;
@@ -149,36 +249,31 @@ export default function TeacherGradebook() {
 
   // ── SUMMARY STATS ──
   const avgScore = (() => {
-    if (!students.length) return 0;
-    const sum = students.reduce((acc, s) => acc + computeTotal(scores[activeSection][s.id], assessments), 0);
-    return ((sum / students.length / maxPts) * 100);
+    if (!students.length || !activeSection) return 0;
+    const sum = students.reduce(
+      (acc, s) => acc + computeTotal(scores[activeSection]?.[s.id] || {}, assessments), 0
+    );
+    return (sum / students.length / maxPts) * 100;
   })();
   const highestScore = (() => {
-    if (!students.length) return 0;
+    if (!students.length || !activeSection) return 0;
     return students.reduce((mx, s) => {
-      const t = computeTotal(scores[activeSection][s.id], assessments);
+      const t = computeTotal(scores[activeSection]?.[s.id] || {}, assessments);
       return t > mx ? t : mx;
     }, 0);
   })();
-  const passingCount = students.filter(s => {
-    const pct = (computeTotal(scores[activeSection][s.id], assessments) / maxPts) * 100;
+  const passingCount = students.filter((s) => {
+    const pct = (computeTotal(scores[activeSection]?.[s.id] || {}, assessments) / maxPts) * 100;
     return pct >= 50;
   }).length;
 
   // ── CINEMATIC INTRO ──
   useEffect(() => {
-    // If intro already played, just set stats visible — no DOM manipulation needed
-    // because introPlayed state already conditionally hides the intro overlay in JSX
-    if (introPlayed) {
-      setShowStats(true);
-      return;
-    }
-
+    if (introPlayed) { setShowStats(true); return; }
     const canvas = introCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-
     const words = ["FACULTY","TEACHING","SYLLABUS","LECTURE","SEMESTER","RESEARCH","PUBLICATIONS","ALERTS","STUDENT","GRADES","EXAM","EVALUATION","RUBRIC"];
     const particles = Array.from({ length: 60 }, () => ({
       x: Math.random() * canvas.width, y: Math.random() * canvas.height,
@@ -187,7 +282,6 @@ export default function TeacherGradebook() {
       size: Math.floor(Math.random() * 10) + 10, flicker: Math.random() * 0.025 + 0.005,
       hue: Math.random() > 0.6 ? "255,255,255" : "60,140,255",
     }));
-
     let animId;
     const draw = () => {
       ctx.fillStyle = "rgba(0,4,14,0.18)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -195,19 +289,18 @@ export default function TeacherGradebook() {
         p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
         p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
         if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; p.word = words[Math.floor(Math.random() * words.length)]; }
-        ctx.font = `${p.size}px 'Inter', sans-serif`; 
+        ctx.font = `${p.size}px 'Inter', sans-serif`;
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.fillText(p.word, p.x, p.y);
       });
       animId = requestAnimationFrame(draw);
     };
     draw();
-
     const afterIntro = () => {
       cancelAnimationFrame(animId);
       sessionStorage.setItem("archTeacherIntroPlayed", "true");
-      setIntroPlayed(true); // triggers re-render to hide intro overlay via JSX
-      if (appRef.current)    gsap.to(appRef.current,   { opacity: 1, duration: 0.6 });
+      setIntroPlayed(true);
+      if (appRef.current)    gsap.to(appRef.current,    { opacity: 1, duration: 0.6 });
       if (topbarRef.current) gsap.to(topbarRef.current, { opacity: 1, duration: 0.7 });
       setTimeout(() => setShowStats(true), 600);
       if (webglRef.current) {
@@ -215,7 +308,6 @@ export default function TeacherGradebook() {
         setTimeout(() => { if (webglRef.current) webglRef.current.style.display = "none"; }, 3000);
       }
     };
-
     const tl = gsap.timeline({ delay: 0.4, onComplete: afterIntro });
     if (introRef.current) {
       tl.to("#intro-line", { scaleX: 1, duration: 0.8, ease: "power3.out" }, 0)
@@ -223,10 +315,7 @@ export default function TeacherGradebook() {
         .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4)
         .to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4)
         .to(introRef.current, { opacity: 0, duration: 0.35 }, 2.88);
-    } else {
-      afterIntro();
-    }
-
+    } else { afterIntro(); }
     return () => cancelAnimationFrame(animId);
   }, [introPlayed]);
 
@@ -238,16 +327,26 @@ export default function TeacherGradebook() {
     let W = window.innerWidth, H = window.innerHeight;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setSize(W, H); renderer.setClearColor(0xf4f8ff, 1);
-    const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200); camera.position.set(0, 2, 10);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200);
+    camera.position.set(0, 2, 10);
     scene.add(new THREE.AmbientLight(0x0033aa, 0.8));
-    let nmx = 0, nmy = 0; const onMove = (e) => { nmx = (e.clientX / W) * 2 - 1; nmy = -(e.clientY / H) * 2 + 1; }; document.addEventListener("mousemove", onMove);
+    let nmx = 0, nmy = 0;
+    const onMove = (e) => { nmx = (e.clientX / W) * 2 - 1; nmy = -(e.clientY / H) * 2 + 1; };
+    document.addEventListener("mousemove", onMove);
     let animId;
     const loop = () => {
-      animId = requestAnimationFrame(loop); camera.position.x += (nmx * 0.6 - camera.position.x) * 0.015; camera.position.y += (nmy * 0.4 + 2 - camera.position.y) * 0.015; camera.lookAt(0, 0, 0); renderer.render(scene, camera);
+      animId = requestAnimationFrame(loop);
+      camera.position.x += (nmx * 0.6 - camera.position.x) * 0.015;
+      camera.position.y += (nmy * 0.4 + 2 - camera.position.y) * 0.015;
+      camera.lookAt(0, 0, 0);
+      renderer.render(scene, camera);
     };
-    loop(); return () => { cancelAnimationFrame(animId); document.removeEventListener("mousemove", onMove); };
+    loop();
+    return () => { cancelAnimationFrame(animId); document.removeEventListener("mousemove", onMove); };
   }, []);
 
+  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <>
       <div className="mesh-bg">
@@ -267,7 +366,7 @@ export default function TeacherGradebook() {
       )}
 
       <div id="app" ref={appRef} style={{ opacity: 1 }}>
-        
+
         {/* ── SIDEBAR ── */}
         <Sidebar
           sections={TEACHER_NAV}
@@ -275,7 +374,7 @@ export default function TeacherGradebook() {
           userName="Dr. Ahmed"
           userId="EMP-8492"
           collapse={collapse}
-          onToggle={() => setCollapse(c => !c)}
+          onToggle={() => setCollapse((c) => !c)}
         />
 
         {/* ── MAIN ── */}
@@ -286,14 +385,19 @@ export default function TeacherGradebook() {
             <div className="tb-r">
               <AnimatePresence>
                 {unsaved && (
-                  <motion.div initial={{opacity:0, scale:0.8}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.8}} className="gb-unsaved-badge">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
+                    className="gb-unsaved-badge"
+                  >
                     <span className="gb-unsaved-dot" />
                     UNSAVED CHANGES
                   </motion.div>
                 )}
               </AnimatePresence>
               <motion.div whileHover={{ scale: 1.05 }} className="sem-chip">Spring 2025</motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="notif-bell">🔔<span className="notif-dot"/></motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="notif-bell">
+                🔔<span className="notif-dot" />
+              </motion.div>
             </div>
           </div>
 
@@ -305,196 +409,219 @@ export default function TeacherGradebook() {
               className="dash-container"
             >
 
-              {/* ── CONTROLS ── */}
-              <div className="gb-controls">
-                <div className="marks-tab-container">
-                  {Object.keys(SECTIONS_DATA).map(sec => (
-                    <motion.button
-                      key={sec}
-                      className={`marks-tab ${activeSection === sec ? "active" : ""}`}
-                      onClick={() => { setActiveSection(sec); setSearch(""); }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {sec}
-                    </motion.button>
-                  ))}
+              {/* ── LOADING / ERROR STATES ── */}
+              {loading && (
+                <div style={{ padding: "60px", textAlign: "center", color: "var(--dimmer)", fontSize: 16 }}>
+                  Loading gradebook…
                 </div>
-
-                <div className="gb-right-controls">
-                  <div className="gb-search">
-                    <span>🔍</span>
-                    <input
-                      placeholder="Search student…"
-                      value={search}
-                      onChange={e => setSearch(e.target.value)}
-                    />
-                  </div>
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="gb-btn-export" onClick={() => {}}>
-                    ↓ Export CSV
-                  </motion.button>
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`gb-btn-save ${unsaved ? "active-save" : ""}`} onClick={handleSave} disabled={!unsaved}>
-                    ✓ Save Grades
-                  </motion.button>
+              )}
+              {!loading && apiError && (
+                <div style={{ padding: "60px", textAlign: "center", color: "#ff4d6a", fontSize: 15 }}>
+                  ⚠ {apiError}
                 </div>
-              </div>
+              )}
+              {!loading && !apiError && !activeSection && (
+                <div style={{ padding: "60px", textAlign: "center", color: "var(--dimmer)", fontSize: 15 }}>
+                  No sections assigned.
+                </div>
+              )}
 
-              {/* ── SUMMARY STRIP ── */}
-              <div className="gb-summary">
-                <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                  <div className="gb-stat-label">Class Average</div>
-                  <div className={`gb-stat-value ${parseFloat(avgScore) >= 70 ? "green" : parseFloat(avgScore) >= 50 ? "amber" : "red"}`}>
-                    {showStats ? <AnimatedCounter value={avgScore} decimals={1} suffix="%" /> : "0.0%"}
-                  </div>
-                  <div className="gb-stat-sub">out of {maxPts} pts</div>
-                </motion.div>
-                <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                  <div className="gb-stat-label">Students</div>
-                  <div className="gb-stat-value">
-                    {showStats ? <AnimatedCounter value={sectionData.students.length} /> : "0"}
-                  </div>
-                  <div className="gb-stat-sub">{sectionData.code}</div>
-                </motion.div>
-                <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                  <div className="gb-stat-label">Passing</div>
-                  <div className="gb-stat-value green">
-                    {showStats ? <AnimatedCounter value={passingCount} /> : "0"}
-                  </div>
-                  <div className="gb-stat-sub">≥ 50% threshold</div>
-                </motion.div>
-                <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                  <div className="gb-stat-label">Highest Score</div>
-                  <div className="gb-stat-value">
-                    {showStats ? <AnimatedCounter value={highestScore} /> : "0"}
-                  </div>
-                  <div className="gb-stat-sub">out of {maxPts} pts</div>
-                </motion.div>
-              </div>
-
-              {/* ── GRADEBOOK TABLE ── */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeSection}
-                  className="glass-card gb-table-wrap"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="panel-header" style={{ marginBottom: '24px' }}>
-                    <h2 className="ct"><div className="ctbar"/>Assessment Entry</h2>
-                  </div>
-
-                  {/* HEADER */}
-                  <div className="gb-table-head">
-                    <div className="gb-col-hd left">Roll No.</div>
-                    <div className="gb-col-hd left">Student Identity</div>
-                    {assessments.map(a => (
-                      <div key={a.key} className="gb-col-hd editable-hd">
-                        {a.label}
-                        <span className="hd-max">/{a.max}</span>
-                      </div>
-                    ))}
-                    <div className="gb-col-hd">Total</div>
-                    <div className="gb-col-hd">Grade</div>
-                  </div>
-
-                  {/* ROWS */}
-                  <div className="gb-roster">
-                    {students.length === 0 ? (
-                      <div style={{ padding: "40px", textAlign: "center", color: "var(--dimmer)", fontSize: 16 }}>
-                        No students match "{search}"
-                      </div>
-                    ) : students.map((s, idx) => {
-                      const rowScores = scores[activeSection][s.id];
-                      const total     = computeTotal(rowScores, assessments);
-                      const pct       = (total / maxPts) * 100;
-                      const grade     = getGrade(pct);
-
-                      return (
-                        <motion.div
-                          className="gb-row hov-target"
-                          key={s.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.2, delay: idx * 0.05 }}
-                          whileHover={{ backgroundColor: "rgba(26,100,255,0.05)" }}
+              {!loading && !apiError && activeSection && sectionData && (
+                <>
+                  {/* ── CONTROLS ── */}
+                  <div className="gb-controls">
+                    <div className="marks-tab-container">
+                      {Object.keys(sectionsData).map((sec) => (
+                        <motion.button
+                          key={sec}
+                          className={`marks-tab ${activeSection === sec ? "active" : ""}`}
+                          onClick={() => { setActiveSection(sec); setSearch(""); }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                         >
-                          {/* Roll */}
-                          <div className="gb-cell left gb-roll">{s.id}</div>
-
-                          {/* Name */}
-                          <div className="gb-cell left">
-                            <div className="gb-name-cell">
-                              <div className="gb-avatar">{s.init}</div>
-                              <div>
-                                <div className="gb-student-name">{s.name}</div>
-                                <div className="gb-student-att">
-                                  Att: <span className={s.attCls}>{s.att}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Score Inputs */}
-                          {assessments.map(a => {
-                            const val = rowScores[a.key];
-                            const isInvalid = val !== null && val !== "" && (Number(val) > a.max || Number(val) < 0);
-                            return (
-                              <div className="gb-cell" key={a.key}>
-                                <input
-                                  className={`gb-score-input${isInvalid ? " invalid" : ""}`}
-                                  type="number"
-                                  min={0}
-                                  max={a.max}
-                                  placeholder="–"
-                                  value={val === null ? "" : val}
-                                  onChange={e => handleScore(s.id, a.key, e.target.value, a.max)}
-                                />
-                              </div>
-                            );
-                          })}
-
-                          {/* Total */}
-                          <div className="gb-cell">
-                            <div className="gb-total-cell">{total}<span className="gb-total-max">/{maxPts}</span></div>
-                          </div>
-
-                          {/* Grade */}
-                          <div className="gb-cell">
-                            <span className={`gb-grade-pill ${gradeClass(grade)}`}>{grade}</span>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
-                  {/* DISTRIBUTION BAR */}
-                  <div className="gb-dist-wrap">
-                    <div className="gb-dist-label">Grade Distribution</div>
-                    <div className="gb-dist-bar">
-                      <div className="dist-seg dist-a"   style={{ width: `${(distribution.A  / distribution.n) * 100}%` }} />
-                      <div className="dist-seg dist-b"   style={{ width: `${(distribution.B  / distribution.n) * 100}%` }} />
-                      <div className="dist-seg dist-c"   style={{ width: `${(distribution.C  / distribution.n) * 100}%` }} />
-                      <div className="dist-seg dist-df"  style={{ width: `${(distribution.DF / distribution.n) * 100}%` }} />
-                    </div>
-                    <div className="gb-dist-legend">
-                      {[
-                        { cls: "dist-a",  color: "#00c853", label: `A (${distribution.A})`  },
-                        { cls: "dist-b",  color: "#1a78ff", label: `B (${distribution.B})`  },
-                        { cls: "dist-c",  color: "#ffab00", label: `C (${distribution.C})`  },
-                        { cls: "dist-df", color: "#ff4d6a", label: `D/F (${distribution.DF})` },
-                      ].map(d => (
-                        <div className="dl-item" key={d.label}>
-                          <div className="dl-dot" style={{ background: d.color }} />
-                          {d.label}
-                        </div>
+                          {sec}
+                        </motion.button>
                       ))}
                     </div>
+
+                    <div className="gb-right-controls">
+                      <div className="gb-search">
+                        <span>🔍</span>
+                        <input
+                          placeholder="Search student…"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                        className="gb-btn-export"
+                        onClick={handleExport}
+                      >
+                        ↓ Export CSV
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                        className={`gb-btn-save ${unsaved ? "active-save" : ""}`}
+                        onClick={handleSave}
+                        disabled={!unsaved}
+                      >
+                        ✓ Save Grades
+                      </motion.button>
+                    </div>
                   </div>
 
-                </motion.div>
-              </AnimatePresence>
+                  {/* ── SUMMARY STRIP ── */}
+                  <div className="gb-summary">
+                    <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                      <div className="gb-stat-label">Class Average</div>
+                      <div className={`gb-stat-value ${parseFloat(avgScore) >= 70 ? "green" : parseFloat(avgScore) >= 50 ? "amber" : "red"}`}>
+                        {showStats ? <AnimatedCounter value={avgScore} decimals={1} suffix="%" /> : "0.0%"}
+                      </div>
+                      <div className="gb-stat-sub">out of {maxPts} pts</div>
+                    </motion.div>
+                    <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                      <div className="gb-stat-label">Students</div>
+                      <div className="gb-stat-value">
+                        {showStats ? <AnimatedCounter value={sectionData.students.length} /> : "0"}
+                      </div>
+                      <div className="gb-stat-sub">{sectionData.code}</div>
+                    </motion.div>
+                    <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                      <div className="gb-stat-label">Passing</div>
+                      <div className="gb-stat-value green">
+                        {showStats ? <AnimatedCounter value={passingCount} /> : "0"}
+                      </div>
+                      <div className="gb-stat-sub">≥ 50% threshold</div>
+                    </motion.div>
+                    <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                      <div className="gb-stat-label">Highest Score</div>
+                      <div className="gb-stat-value">
+                        {showStats ? <AnimatedCounter value={highestScore} /> : "0"}
+                      </div>
+                      <div className="gb-stat-sub">out of {maxPts} pts</div>
+                    </motion.div>
+                  </div>
+
+                  {/* ── GRADEBOOK TABLE ── */}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeSection}
+                      className="glass-card gb-table-wrap"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="panel-header" style={{ marginBottom: "24px" }}>
+                        <h2 className="ct"><div className="ctbar" />Assessment Entry</h2>
+                      </div>
+
+                      {/* HEADER */}
+                      <div className="gb-table-head">
+                        <div className="gb-col-hd left">Roll No.</div>
+                        <div className="gb-col-hd left">Student Identity</div>
+                        {assessments.map((a) => (
+                          <div key={a.key} className="gb-col-hd editable-hd">
+                            {a.label}
+                            <span className="hd-max">/{a.max}</span>
+                          </div>
+                        ))}
+                        <div className="gb-col-hd">Total</div>
+                        <div className="gb-col-hd">Grade</div>
+                      </div>
+
+                      {/* ROWS */}
+                      <div className="gb-roster">
+                        {students.length === 0 ? (
+                          <div style={{ padding: "40px", textAlign: "center", color: "var(--dimmer)", fontSize: 16 }}>
+                            {search ? `No students match "${search}"` : "No students in section."}
+                          </div>
+                        ) : students.map((s, idx) => {
+                          const rowScores = scores[activeSection]?.[s.id] || {};
+                          const total     = computeTotal(rowScores, assessments);
+                          const pct       = (total / maxPts) * 100;
+                          const grade     = getGrade(pct);
+
+                          return (
+                            <motion.div
+                              className="gb-row hov-target"
+                              key={s.id}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.2, delay: idx * 0.05 }}
+                              whileHover={{ backgroundColor: "rgba(26,100,255,0.05)" }}
+                            >
+                              <div className="gb-cell left gb-roll">{s.id}</div>
+                              <div className="gb-cell left">
+                                <div className="gb-name-cell">
+                                  <div className="gb-avatar">{s.init}</div>
+                                  <div>
+                                    <div className="gb-student-name">{s.name}</div>
+                                    <div className="gb-student-att">
+                                      Att: <span className={s.attCls}>{s.att}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {assessments.map((a) => {
+                                const val = rowScores[a.key];
+                                const isInvalid = val !== null && val !== "" && (Number(val) > a.max || Number(val) < 0);
+                                return (
+                                  <div className="gb-cell" key={a.key}>
+                                    <input
+                                      className={`gb-score-input${isInvalid ? " invalid" : ""}`}
+                                      type="number"
+                                      min={0}
+                                      max={a.max}
+                                      placeholder="–"
+                                      value={val === null ? "" : val}
+                                      onChange={(e) => handleScore(s.id, a.key, e.target.value, a.max)}
+                                    />
+                                  </div>
+                                );
+                              })}
+
+                              <div className="gb-cell">
+                                <div className="gb-total-cell">{total}<span className="gb-total-max">/{maxPts}</span></div>
+                              </div>
+                              <div className="gb-cell">
+                                <span className={`gb-grade-pill ${gradeClass(grade)}`}>{grade}</span>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+
+                      {/* DISTRIBUTION BAR */}
+                      <div className="gb-dist-wrap">
+                        <div className="gb-dist-label">Grade Distribution</div>
+                        <div className="gb-dist-bar">
+                          <div className="dist-seg dist-a"  style={{ width: `${(distribution.A  / distribution.n) * 100}%` }} />
+                          <div className="dist-seg dist-b"  style={{ width: `${(distribution.B  / distribution.n) * 100}%` }} />
+                          <div className="dist-seg dist-c"  style={{ width: `${(distribution.C  / distribution.n) * 100}%` }} />
+                          <div className="dist-seg dist-df" style={{ width: `${(distribution.DF / distribution.n) * 100}%` }} />
+                        </div>
+                        <div className="gb-dist-legend">
+                          {[
+                            { cls: "dist-a",  color: "#00c853", label: `A (${distribution.A})`   },
+                            { cls: "dist-b",  color: "#1a78ff", label: `B (${distribution.B})`   },
+                            { cls: "dist-c",  color: "#ffab00", label: `C (${distribution.C})`   },
+                            { cls: "dist-df", color: "#ff4d6a", label: `D/F (${distribution.DF})` },
+                          ].map((d) => (
+                            <div className="dl-item" key={d.label}>
+                              <div className="dl-dot" style={{ background: d.color }} />
+                              {d.label}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                    </motion.div>
+                  </AnimatePresence>
+                </>
+              )}
 
             </motion.div>
           </div>
@@ -512,7 +639,7 @@ export default function TeacherGradebook() {
             transition={{ duration: 0.3, type: "spring" }}
           >
             <div className="toast-icon">✓</div>
-            Grades synced to secure server
+            {toastMsg}
           </motion.div>
         )}
       </AnimatePresence>
