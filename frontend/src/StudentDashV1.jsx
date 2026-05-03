@@ -24,7 +24,6 @@ export default function StudentDashV1() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // fetch dashboard data
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
@@ -42,15 +41,11 @@ export default function StudentDashV1() {
 
         setDashData({ gpa, courses, notices, attendance });
 
-        // avg attendance
         const avgAtt = attendance.length > 0
           ? Math.round(attendance.reduce((sum, a) => sum + (a.percentage ?? 0), 0) / attendance.length)
           : 0;
-
-        // at risk count
         const atRisk = attendance.filter(a => a.percentage < 75).length;
 
-        // countUp with real values
         countUp("v1", gpa?.cgpa ?? 0, 2, "", 1400);
         countUp("v2", gpa?.creditsCompleted ?? 0, 0, "", 1200);
         countUp("v3", courses.length, 0, "", 1000);
@@ -63,7 +58,6 @@ export default function StudentDashV1() {
           setText("d4", atRisk > 0 ? `${atRisk} course at risk` : "");
         }, 950);
 
-        // credit bar
         setTimeout(() => {
           const bd = document.getElementById("bar-done");
           const ba = document.getElementById("bar-active");
@@ -79,7 +73,6 @@ export default function StudentDashV1() {
     fetchDashboard();
   }, []);
 
-  // ── CINEMATIC INTRO ──
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archIntroPlayed");
 
@@ -89,16 +82,10 @@ export default function StudentDashV1() {
       appRef.current.classList.add("intro-done");
       sidebarRef.current.style.transform = "translateX(0)";
       topbarRef.current.style.opacity = 1;
-
       requestAnimationFrame(() => {
-        document.querySelectorAll(".sc").forEach((el) => {
-          gsap.set(el, { opacity: 1, y: 0 });
-        });
-        document.querySelectorAll(".glass-card").forEach((el) => {
-          gsap.set(el, { opacity: 1, y: 0 });
-        });
+        document.querySelectorAll(".sc").forEach((el) => gsap.set(el, { opacity: 1, y: 0 }));
+        document.querySelectorAll(".glass-card").forEach((el) => gsap.set(el, { opacity: 1, y: 0 }));
       });
-
       return;
     }
 
@@ -117,22 +104,16 @@ export default function StudentDashV1() {
     ];
 
     const particles = Array.from({ length: 60 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
       word: words[Math.floor(Math.random() * words.length)],
-      opacity: Math.random() * 0.4 + 0.05,
-      speed: Math.random() * 0.8 + 0.2,
-      size: Math.floor(Math.random() * 10) + 10,
-      flicker: Math.random() * 0.025 + 0.005,
+      opacity: Math.random() * 0.4 + 0.05, speed: Math.random() * 0.8 + 0.2,
+      size: Math.floor(Math.random() * 10) + 10, flicker: Math.random() * 0.025 + 0.005,
       hue: Math.random() > 0.6 ? "255,255,255" : Math.random() > 0.5 ? "100,180,255" : "60,140,255",
     }));
 
     const stars = Array.from({ length: 200 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      r: Math.random() * 1.5,
-      opacity: Math.random() * 0.6 + 0.1,
-      twinkle: Math.random() * 0.02,
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      r: Math.random() * 1.5, opacity: Math.random() * 0.6 + 0.1, twinkle: Math.random() * 0.02,
     }));
 
     let animId, frame = 0;
@@ -144,34 +125,23 @@ export default function StudentDashV1() {
       stars.forEach((s) => {
         s.opacity += s.twinkle * (Math.random() > 0.5 ? 1 : -1);
         s.opacity = Math.max(0.05, Math.min(0.8, s.opacity));
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(180,210,255,${s.opacity})`;
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(180,210,255,${s.opacity})`; ctx.fill();
       });
 
       particles.forEach((p) => {
-        p.y -= p.speed * 0.4;
-        p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
+        p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
         p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
-        if (p.y < -30) {
-          p.y = canvas.height + 20;
-          p.x = Math.random() * canvas.width;
-          p.word = words[Math.floor(Math.random() * words.length)];
-        }
+        if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; p.word = words[Math.floor(Math.random() * words.length)]; }
         ctx.font = `${p.size}px 'Inter', sans-serif`;
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
-        ctx.letterSpacing = "0.15em";
-        ctx.fillText(p.word, p.x, p.y);
+        ctx.letterSpacing = "0.15em"; ctx.fillText(p.word, p.x, p.y);
       });
 
       const scanY = ((frame * 1.8) % (canvas.height + 60)) - 30;
       const g = ctx.createLinearGradient(0, scanY - 4, 0, scanY + 4);
-      g.addColorStop(0, "transparent");
-      g.addColorStop(0.5, "rgba(80,160,255,0.12)");
-      g.addColorStop(1, "transparent");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, scanY - 4, canvas.width, 8);
+      g.addColorStop(0, "transparent"); g.addColorStop(0.5, "rgba(80,160,255,0.12)"); g.addColorStop(1, "transparent");
+      ctx.fillStyle = g; ctx.fillRect(0, scanY - 4, canvas.width, 8);
 
       [0.2, 0.5, 0.8].forEach((frac, i) => {
         const cx = canvas.width * frac;
@@ -179,30 +149,22 @@ export default function StudentDashV1() {
         colG.addColorStop(0, "transparent");
         colG.addColorStop(0.5, `rgba(60,120,255,${0.04 + Math.sin(frame * 0.02 + i) * 0.02})`);
         colG.addColorStop(1, "transparent");
-        ctx.fillStyle = colG;
-        ctx.fillRect(cx - 30, 0, 60, canvas.height);
+        ctx.fillStyle = colG; ctx.fillRect(cx - 30, 0, 60, canvas.height);
       });
 
       animId = requestAnimationFrame(draw);
     };
-    ctx.fillStyle = "#00040e";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    draw();
+    ctx.fillStyle = "#00040e"; ctx.fillRect(0, 0, canvas.width, canvas.height); draw();
 
     const afterIntro = () => {
       cancelAnimationFrame(animId);
       sessionStorage.setItem("archIntroPlayed", "true");
-
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out", delay: 0.05 });
       gsap.to(topbarRef.current, { opacity: 1, duration: 0.7, delay: 0.4 });
-      document.querySelectorAll(".sc").forEach((el, i) => {
-        gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.7)", delay: 0.6 + i * 0.1 });
-      });
-      document.querySelectorAll(".glass-card").forEach((el, i) => {
-        gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)", delay: 1.0 + i * 0.12 });
-      });
+      document.querySelectorAll(".sc").forEach((el, i) => gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.7)", delay: 0.6 + i * 0.1 }));
+      document.querySelectorAll(".glass-card").forEach((el, i) => gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)", delay: 1.0 + i * 0.12 }));
     };
 
     const tl = gsap.timeline({ delay: 0.4, onComplete: afterIntro });
