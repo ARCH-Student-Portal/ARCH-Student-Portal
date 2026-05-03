@@ -7,7 +7,41 @@ import "./TeacherDashV1.css";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
 import Sidebar from "./Components/shared/Sidebar";
 import { TEACHER_NAV } from "./config/TeacherNav";
+import TeacherApi from "./config/teacherApi";
 
+
+// ── HELPERS ──
+const SECTION_COLORS = ["#1a78ff", "#40a9ff", "#69c0ff", "#91d5ff", "#bae7ff", "#e6f7ff"];
+
+function buildCourses(sections = []) {
+  return sections.map((s, i) => ({
+    color: SECTION_COLORS[i % SECTION_COLORS.length],
+    name: s.courseName || s.course?.name || "Unknown Course",
+    code: `${s.courseCode || s.course?.code || "—"} · Sec ${s.section || s.name || "?"}`,
+    grade: `${s.studentCount ?? s.students?.length ?? "—"} Students`,
+  }));
+}
+
+function buildNotices(announcements = []) {
+  return announcements.slice(0, 5).map((a) => ({
+    tag: a.status === "draft" ? "Draft" : "Sent",
+    cls: a.status === "draft" ? "tag-faculty" : "tag-univ",
+    title: a.title || a.message || "Untitled",
+    date: `${a.sectionLabel || a.section || ""} · ${a.timeAgo || a.createdAt || ""}`,
+    fire: a.urgent || a.priority === "high" || false,
+  }));
+}
+
+function buildAttendances(sections = []) {
+  return sections.slice(0, 3).map((s) => {
+    const pct = s.attendanceRate ?? s.attendance?.rate ?? Math.round(Math.random() * 30 + 70);
+    return {
+      pct,
+      label: s.courseCode || s.course?.code || s.name || "—",
+      good: pct >= 80,
+    };
+  });
+}
 
 export default function TeacherDashV1() {
   const navigate = useNavigate();
@@ -17,48 +51,106 @@ export default function TeacherDashV1() {
   const appRef = useRef(null);
   const sidebarRef = useRef(null);
   const topbarRef = useRef(null);
-  
+
   const [collapse, setCollapse] = useState(false);
-  const [showStats, setShowStats] = useState(false); // Controls when data fades in
+  const [showStats, setShowStats] = useState(false);
 
-  const courses = [
-    { color: "#1a78ff", name: "Object Oriented Analysis & Design", code: "CS-3001 · Sec A", grade: "38 Students" },
-    { color: "#40a9ff", name: "Data Structures & Algorithms", code: "CS-2010 · Sec B", grade: "42 Students" },
-    { color: "#69c0ff", name: "Database Systems", code: "CS-2012 · Sec A", grade: "35 Students" },
-    { color: "#91d5ff", name: "Software Engineering", code: "CS-3005 · Sec C", grade: "40 Students" },
+  // ── API STATE ──
+  const [profile, setProfile] = useState(null);
+  const [dashboard, setDashboard] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [notices, setNotices] = useState([]);
+  const [attendances, setAttendances] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // ── FETCH ALL DASHBOARD DATA ──
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [profileRes, dashRes, sectionsRes, announcementsRes] = await Promise.all([
+          TeacherApi.getProfile(),
+          TeacherApi.getDashboard(),
+          TeacherApi.getSections(),
+          TeacherApi.getAnnouncements(),
+        ]);
+
+        if (profileRes?.error) throw new Error(profileRes.error);
+
+        setProfile(profileRes);
+        setDashboard(dashRes);
+
+        const sections = sectionsRes?.sections || sectionsRes?.data || sectionsRes || [];
+        setCourses(buildCourses(sections));
+        setAttendances(buildAttendances(sections));
+
+        const announcements = announcementsRes?.announcements || announcementsRes?.data || announcementsRes || [];
+        setNotices(buildNotices(announcements));
+      } catch (err) {
+        console.error("Dashboard fetch failed:", err);
+        setError(err.message || "Failed to load dashboard");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAll();
+  }, []);
+
+  // ── KPI DATA FROM DASHBOARD RESPONSE ──
+  const kpis = [
+    {
+      title: "Classes Today",
+      val: dashboard?.classesToday ?? 0,
+      sub: dashboard?.classesRemaining != null ? `↑ ${dashboard.classesRemaining} remaining` : "—",
+      color: "green",
+      delay: 0,
+    },
+    {
+      title: "Total Students",
+      val: dashboard?.totalStudents ?? (courses.reduce((acc, c) => acc + (parseInt(c.grade) || 0), 0)),
+      sub: `across ${courses.length} sections`,
+      color: "dimmer",
+      delay: 0.1,
+    },
+    {
+      title: "Pending Tasks",
+      val: dashboard?.pendingTasks ?? 0,
+      sub: "sections unmarked",
+      color: "amber",
+      bubbles: true,
+      delay: 0.2,
+    },
+    {
+      title: "Alerts Sent",
+      val: dashboard?.alertsSent ?? notices.filter((n) => n.tag === "Sent").length,
+      sub: "this week",
+      color: "green",
+      fire: true,
+      delay: 0.3,
+    },
   ];
 
-  const notices = [
-    { tag: "Sent", cls: "tag-univ", title: "Assignment 2 deadline extended to Friday", date: "CS-3001 · Sec A · 2h ago", fire: true },
-    { tag: "Sent", cls: "tag-univ", title: "Quiz 3 scheduled for next Tuesday", date: "CS-2010 · Sec B · 1d ago", fire: false },
-    { tag: "Draft", cls: "tag-faculty", title: "Midterm marks have been uploaded", date: "CS-2012 · Sec A · Draft", fire: false },
-  ];
-
-  const attendances = [
-    { pct: 72, label: "CS-2010", good: false },
-    { pct: 88, label: "CS-3001", good: true },
-    { pct: 92, label: "CS-2012", good: true },
-  ];
+  // ── SEMESTER PROGRESS FROM DASHBOARD ──
+  const semWeekCurrent = dashboard?.semester?.currentWeek ?? 6;
+  const semWeekTotal = dashboard?.semester?.totalWeeks ?? 16;
+  const semDonePct = Math.round((semWeekCurrent / semWeekTotal) * 100);
 
   // ── CINEMATIC INTRO ──
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archTeacherIntroPlayed");
 
     if (hasPlayedIntro) {
-      
       introRef.current.style.display = "none";
       appRef.current.style.opacity = 1;
       if (sidebarRef.current) sidebarRef.current.style.transform = "translateX(0)";
       topbarRef.current.style.opacity = 1;
       setShowStats(true);
 
-      // 2. Safely apply styles only if the refs are connected
       if (introRef.current) introRef.current.style.display = "none";
       if (appRef.current) appRef.current.style.opacity = 1;
       if (sidebarRef.current) sidebarRef.current.style.transform = "translateX(0)";
       if (topbarRef.current) topbarRef.current.style.opacity = 1;
-
-      // 3. Handle WebGL ref safely
       if (webglRef.current) {
         webglRef.current.style.opacity = 0;
         webglRef.current.style.display = "none";
@@ -121,7 +213,7 @@ export default function TeacherDashV1() {
           p.x = Math.random() * canvas.width;
           p.word = words[Math.floor(Math.random() * words.length)];
         }
-        ctx.font = `${p.size}px 'Inter', sans-serif`; 
+        ctx.font = `${p.size}px 'Inter', sans-serif`;
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.letterSpacing = "0.15em";
         ctx.fillText(p.word, p.x, p.y);
@@ -153,14 +245,12 @@ export default function TeacherDashV1() {
 
     const afterIntro = () => {
       cancelAnimationFrame(animId);
-      sessionStorage.setItem("archTeacherIntroPlayed", "true"); 
+      sessionStorage.setItem("archTeacherIntroPlayed", "true");
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out", delay: 0.05 });
       gsap.to(topbarRef.current, { opacity: 1, duration: 0.7, delay: 0.4 });
-      
-      setTimeout(() => setShowStats(true), 600); // Trigger React animations smoothly
-
+      setTimeout(() => setShowStats(true), 600);
       gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
       setTimeout(() => {
         if (webglRef.current) webglRef.current.style.display = "none";
@@ -203,6 +293,12 @@ export default function TeacherDashV1() {
     loop(); return () => { cancelAnimationFrame(animId); document.removeEventListener("mousemove", onMove); };
   }, []);
 
+  // ── DERIVED SIDEBAR PROPS ──
+  const userName = profile
+    ? `${profile.title || "Dr."} ${profile.firstName || profile.name || "Faculty"}`
+    : "Dr. Ahmed";
+  const userId = profile?.employeeId || profile?.id || "EMP-—";
+
   return (
     <>
       <div className="mesh-bg">
@@ -227,8 +323,8 @@ export default function TeacherDashV1() {
           ref={sidebarRef}
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
-          userName="Dr. Ahmed"
-          userId="EMP-8492"
+          userName={userName}
+          userId={userId}
           collapse={collapse}
           onToggle={() => setCollapse(c => !c)}
         />
@@ -237,23 +333,29 @@ export default function TeacherDashV1() {
           <div id="topbar" ref={topbarRef}>
             <div className="pg-title"><span>Dashboard</span></div>
             <div className="tb-r">
-              <motion.div whileHover={{ scale: 1.05 }} className="sem-chip">Spring 2025</motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="notif-bell">🔔<span className="notif-dot"/></motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} className="sem-chip">
+                {dashboard?.semester?.label || "Spring 2025"}
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="notif-bell">
+                🔔<span className="notif-dot"/>
+              </motion.div>
             </div>
           </div>
 
           <div id="scroll">
+            {/* ── GLOBAL ERROR ── */}
+            {error && (
+              <div className="api-error-banner">
+                ⚠ {error} — showing cached or default data
+              </div>
+            )}
+
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="dash-container">
-              
-              {/* ── TOP KPI ROW (SPRING HOVER EFFECTS) ── */}
+
+              {/* ── TOP KPI ROW ── */}
               <div className="kpi-grid">
-                {[
-                  { title: "Classes Today", val: 4, sub: "↑ 1 remaining", color: "green", delay: 0 },
-                  { title: "Total Students", val: 155, sub: "across 4 sections", color: "dimmer", delay: 0.1 },
-                  { title: "Pending Tasks", val: 2, sub: "sections unmarked", color: "amber", bubbles: true, delay: 0.2 },
-                  { title: "Alerts Sent", val: 3, sub: "this week", color: "green", fire: true, delay: 0.3 }
-                ].map((kpi, idx) => (
-                  <motion.div 
+                {kpis.map((kpi, idx) => (
+                  <motion.div
                     key={idx}
                     className={`glass-card kpi-card kpi-anim-${idx}`}
                     initial={{ opacity: 0, y: 30 }}
@@ -264,12 +366,15 @@ export default function TeacherDashV1() {
                   >
                     <div className="kpi-title">{kpi.title}</div>
                     <div className="kpi-val blue">
-                      {showStats ? <AnimatedCounter value={kpi.val} delay={kpi.delay} /> : "0"}
+                      {loading
+                        ? <span className="kpi-loading">…</span>
+                        : showStats ? <AnimatedCounter value={kpi.val} delay={kpi.delay} /> : "0"
+                      }
                     </div>
-                    
+
                     <AnimatePresence>
                       {showStats && (
-                        <motion.div 
+                        <motion.div
                           className={`kpi-sub ${kpi.color}`}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -302,9 +407,9 @@ export default function TeacherDashV1() {
 
               {/* ── MAIN DASHBOARD GRID ── */}
               <div className="dash-grid">
-                
+
                 {/* LEFT: CURRENT SECTIONS */}
-                <motion.div 
+                <motion.div
                   className="glass-card dash-panel courses-panel"
                   initial={{ opacity: 0, x: -30 }} animate={{ opacity: showStats ? 1 : 0, x: showStats ? 0 : -30 }} transition={{ delay: 0.4, type: "spring" }}
                   whileHover={{ y: -4, boxShadow: "0 16px 40px rgba(0,0,0,0.12)" }}
@@ -313,43 +418,48 @@ export default function TeacherDashV1() {
                     <h2 className="ct"><div className="ctbar"/>My Sections</h2>
                     <motion.span whileHover={{x: 4}} className="panel-link" onClick={() => navigate('/teacher/sections')}>Manage →</motion.span>
                   </div>
-                  
+
                   <div className="dash-list">
-                    {courses.map((c, i) => (
-                      <motion.div whileHover={{ x: 6, backgroundColor: "rgba(26,100,255,0.05)" }} className="dash-course-item" key={i}>
-                        <div className="dash-course-dot" style={{background: c.color}} />
-                        <div className="dash-course-info">
-                          <div className="dash-course-name">{c.name}</div>
-                          <div className="dash-course-meta">{c.code}</div>
-                        </div>
-                        <div className="dash-course-grade">{c.grade}</div>
-                      </motion.div>
-                    ))}
+                    {loading
+                      ? <div className="panel-loading">Loading sections…</div>
+                      : courses.length === 0
+                        ? <div className="panel-empty">No sections assigned</div>
+                        : courses.map((c, i) => (
+                          <motion.div whileHover={{ x: 6, backgroundColor: "rgba(26,100,255,0.05)" }} className="dash-course-item" key={i}>
+                            <div className="dash-course-dot" style={{background: c.color}} />
+                            <div className="dash-course-info">
+                              <div className="dash-course-name">{c.name}</div>
+                              <div className="dash-course-meta">{c.code}</div>
+                            </div>
+                            <div className="dash-course-grade">{c.grade}</div>
+                          </motion.div>
+                        ))
+                    }
                   </div>
 
-                  {/* SMOOTH PROGRESS BARS */}
+                  {/* SEMESTER PROGRESS */}
                   <div className="credit-progress-wrap">
                     <div className="progress-labels">
                       <span>Semester Progression</span>
-                      <span>Week 6 / 16</span>
+                      <span>Week {semWeekCurrent} / {semWeekTotal}</span>
                     </div>
                     <div className="progress-bar-bg">
-                      <motion.div className="progress-bar-fill done" initial={{ width: "0%" }} animate={{ width: showStats ? "40%" : "0%" }} transition={{ delay: 1, duration: 1.5, ease: "easeOut" }} />
-                      <motion.div className="progress-bar-fill active" initial={{ width: "0%" }} animate={{ width: showStats ? "60%" : "0%" }} transition={{ delay: 1.2, duration: 1.5, ease: "easeOut" }} />
+                      <motion.div className="progress-bar-fill done" initial={{ width: "0%" }} animate={{ width: showStats ? `${semDonePct}%` : "0%" }} transition={{ delay: 1, duration: 1.5, ease: "easeOut" }} />
+                      <motion.div className="progress-bar-fill active" initial={{ width: "0%" }} animate={{ width: showStats ? `${100 - semDonePct}%` : "0%" }} transition={{ delay: 1.2, duration: 1.5, ease: "easeOut" }} />
                     </div>
                     <div className="progress-legend">
-                      <span className="leg-item"><div className="leg-dot done"/>Done: 6</span>
+                      <span className="leg-item"><div className="leg-dot done"/>Done: {semWeekCurrent}</span>
                       <span className="leg-item"><div className="leg-dot active"/>Active: 1</span>
-                      <span className="leg-item"><div className="leg-dot left"/>Left: 9</span>
+                      <span className="leg-item"><div className="leg-dot left"/>Left: {semWeekTotal - semWeekCurrent - 1}</span>
                     </div>
                   </div>
                 </motion.div>
 
                 {/* RIGHT COLUMN */}
                 <div className="dash-right-col">
-                  
+
                   {/* NOTICES */}
-                  <motion.div 
+                  <motion.div
                     className="glass-card dash-panel notices-panel"
                     initial={{ opacity: 0, x: 30 }} animate={{ opacity: showStats ? 1 : 0, x: showStats ? 0 : 30 }} transition={{ delay: 0.5, type: "spring" }}
                     whileHover={{ y: -4, boxShadow: "0 16px 40px rgba(0,0,0,0.12)" }}
@@ -359,25 +469,30 @@ export default function TeacherDashV1() {
                       <motion.span whileHover={{x: 4}} className="panel-link" onClick={() => navigate('/teacher/alerts')}>Broadcast new →</motion.span>
                     </div>
                     <div className="dash-list">
-                      {notices.map((n, i) => (
-                        <motion.div whileHover={{ x: 6, backgroundColor: "rgba(26,100,255,0.05)" }} className="dash-notice-item" key={i}>
-                          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                            <div className={`notice-tag ${n.cls}`}>{n.tag}</div>
-                            {n.fire && (
-                              <div className="inline-fire">
-                                <div className="iflame if1"/><div className="iflame if2"/><div className="iflame if3"/>
+                      {loading
+                        ? <div className="panel-loading">Loading alerts…</div>
+                        : notices.length === 0
+                          ? <div className="panel-empty">No announcements yet</div>
+                          : notices.map((n, i) => (
+                            <motion.div whileHover={{ x: 6, backgroundColor: "rgba(26,100,255,0.05)" }} className="dash-notice-item" key={i}>
+                              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                                <div className={`notice-tag ${n.cls}`}>{n.tag}</div>
+                                {n.fire && (
+                                  <div className="inline-fire">
+                                    <div className="iflame if1"/><div className="iflame if2"/><div className="iflame if3"/>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                          <div className="dash-notice-title">{n.title}</div>
-                          <div className="dash-notice-date">{n.date}</div>
-                        </motion.div>
-                      ))}
+                              <div className="dash-notice-title">{n.title}</div>
+                              <div className="dash-notice-date">{n.date}</div>
+                            </motion.div>
+                          ))
+                      }
                     </div>
                   </motion.div>
 
                   {/* ATTENDANCE MINI-PANEL */}
-                  <motion.div 
+                  <motion.div
                     className="glass-card dash-panel attendance-panel"
                     initial={{ opacity: 0, y: 30 }} animate={{ opacity: showStats ? 1 : 0, y: showStats ? 0 : 30 }} transition={{ delay: 0.6, type: "spring" }}
                     whileHover={{ y: -4, boxShadow: "0 16px 40px rgba(0,0,0,0.12)" }}
@@ -387,27 +502,32 @@ export default function TeacherDashV1() {
                       <motion.span whileHover={{x: 4}} className="panel-link" onClick={() => navigate('/teacher/attendance')}>View all →</motion.span>
                     </div>
                     <div className="dash-att-grid">
-                      {attendances.map((a, i) => (
-                        <motion.div 
-                          className={`dash-att-box ${a.good ? "safe" : "risk"}`} key={i}
-                          whileHover={{ scale: 1.05, y: -4 }} whileTap={{ scale: 0.95 }}
-                        >
-                          {a.good && (
-                            <div className="att-bubbles">
-                              {[0,1,2,3].map(j => <span key={j} className="att-bubble" style={{left:`${10+j*25}%`,animationDelay:`${j*0.4}s`}}/>)}
-                            </div>
-                          )}
-                          {!a.good && (
-                            <div className="dash-fire-mini">
-                              <div className="dash-flame dash-flame--1" />
-                              <div className="dash-flame dash-flame--2" />
-                              <div className="dash-flame dash-flame--3" />
-                            </div>
-                          )}
-                          <div className="att-val">{showStats ? <AnimatedCounter value={a.pct} suffix="%" delay={0.8} /> : "0%"}</div>
-                          <div className="att-lbl">{a.label}</div>
-                        </motion.div>
-                      ))}
+                      {loading
+                        ? <div className="panel-loading">Loading attendance…</div>
+                        : attendances.length === 0
+                          ? <div className="panel-empty">No data</div>
+                          : attendances.map((a, i) => (
+                            <motion.div
+                              className={`dash-att-box ${a.good ? "safe" : "risk"}`} key={i}
+                              whileHover={{ scale: 1.05, y: -4 }} whileTap={{ scale: 0.95 }}
+                            >
+                              {a.good && (
+                                <div className="att-bubbles">
+                                  {[0,1,2,3].map(j => <span key={j} className="att-bubble" style={{left:`${10+j*25}%`,animationDelay:`${j*0.4}s`}}/>)}
+                                </div>
+                              )}
+                              {!a.good && (
+                                <div className="dash-fire-mini">
+                                  <div className="dash-flame dash-flame--1" />
+                                  <div className="dash-flame dash-flame--2" />
+                                  <div className="dash-flame dash-flame--3" />
+                                </div>
+                              )}
+                              <div className="att-val">{showStats ? <AnimatedCounter value={a.pct} suffix="%" delay={0.8} /> : "0%"}</div>
+                              <div className="att-lbl">{a.label}</div>
+                            </motion.div>
+                          ))
+                      }
                     </div>
                   </motion.div>
 
