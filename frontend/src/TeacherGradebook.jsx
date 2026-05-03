@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,7 +9,6 @@ import TeacherApi from "./config/teacherApi";
 import "./TeacherDashV1.css";
 import "./TeacherGradebook.css";
 
-// ── GRADE CALC ────────────────────────────────────────────────────────────
 function computeTotal(scores, assessments) {
   return assessments.reduce((sum, a) => {
     const v = scores[a.key];
@@ -34,14 +32,6 @@ function gradeClass(g) {
   return "grade-" + g.replace("+", "-plus");
 }
 
-// ── NORMALIZE API RESPONSE ────────────────────────────────────────────────
-// Adapts backend shape → internal SECTIONS_DATA shape.
-// Backend gradebook expected shape (adjust keys if backend differs):
-// {
-//   sectionId, name, code,
-//   assessments: [{ key, label, max }],
-//   students: [{ id, name, init, att, attCls, scores: { [key]: number|null } }]
-// }
 function normalizeSections(sectionsArr, gradebooksMap) {
   const out = {};
   sectionsArr.forEach((sec) => {
@@ -54,15 +44,15 @@ function normalizeSections(sectionsArr, gradebooksMap) {
       { key: "final", label: "FIN",  max: 50 },
     ];
     const students = (gb.students || []).map((s) => ({
-      id:      s.id       || s.studentId || s.rollNo || "–",
-      name:    s.name     || s.studentName || "Unknown",
-      init:    s.init     || ((s.name || "??").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()),
-      att:     s.att      || s.attendance || "–",
-      attCls:  s.attCls   || (
+      id:     s.id       || s.studentId || s.rollNo || "–",
+      name:   s.name     || s.studentName || "Unknown",
+      init:   s.init     || ((s.name || "??").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()),
+      att:    s.att      || s.attendance || "–",
+      attCls: s.attCls   || (
         parseFloat(s.att || s.attendance) >= 85 ? "att-ok" :
         parseFloat(s.att || s.attendance) >= 70 ? "att-warn" : "att-bad"
       ),
-      scores:  s.scores   || assessments.reduce((acc, a) => ({ ...acc, [a.key]: null }), {}),
+      scores: s.scores   || assessments.reduce((acc, a) => ({ ...acc, [a.key]: null }), {}),
     }));
     out[sec.id] = {
       name:        sec.name        || sec.courseName || sec.id,
@@ -74,35 +64,29 @@ function normalizeSections(sectionsArr, gradebooksMap) {
   return out;
 }
 
-// ── COMPONENT ─────────────────────────────────────────────────────────────
 export default function TeacherGradebook() {
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const webglRef  = useRef(null);
+  const webglRef       = useRef(null);
   const introCanvasRef = useRef(null);
-  const introRef  = useRef(null);
-  const appRef    = useRef(null);
-  const topbarRef = useRef(null);
+  const introRef       = useRef(null);
+  const appRef         = useRef(null);
+  const topbarRef      = useRef(null);
 
-  const [collapse, setCollapse]     = useState(false);
-  const [showStats, setShowStats]   = useState(false);
+  const [collapse,    setCollapse]    = useState(false);
+  const [showStats,   setShowStats]   = useState(false);
   const [introPlayed, setIntroPlayed] = useState(
     () => !!sessionStorage.getItem("archTeacherIntroPlayed")
   );
 
-  // ── API STATE ──
-  const [sectionsData, setSectionsData] = useState({});
-  const [loading, setLoading]           = useState(true);
-  const [apiError, setApiError]         = useState(null);
+  const [sectionsData,   setSectionsData]   = useState({});
+  const [loading,        setLoading]        = useState(true);
+  const [apiError,       setApiError]       = useState(null);
+  const [activeSection,  setActiveSection]  = useState(null);
+  const [scores,         setScores]         = useState({});
+  const [unsaved,        setUnsaved]        = useState(false);
+  const [showToast,      setShowToast]      = useState(false);
+  const [toastMsg,       setToastMsg]       = useState("Grades synced to secure server");
+  const [search,         setSearch]         = useState("");
 
-  const [activeSection, setActiveSection] = useState(null);
-  const [scores, setScores]   = useState({});
-  const [unsaved, setUnsaved] = useState(false);
-  const [showToast, setShowToast]   = useState(false);
-  const [toastMsg, setToastMsg]     = useState("Grades synced to secure server");
-  const [search, setSearch]         = useState("");
-
-  // ── FETCH SECTIONS + GRADEBOOKS ──
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -110,7 +94,6 @@ export default function TeacherGradebook() {
       setApiError(null);
       try {
         const sectionsRes = await TeacherApi.getSections();
-        // Handles { data: [...] } or plain array
         const sectionsArr = Array.isArray(sectionsRes)
           ? sectionsRes
           : sectionsRes.data || sectionsRes.sections || [];
@@ -120,7 +103,6 @@ export default function TeacherGradebook() {
           return;
         }
 
-        // Fetch all gradebooks in parallel
         const gbResults = await Promise.allSettled(
           sectionsArr.map((s) => TeacherApi.getGradebook(s.id))
         );
@@ -129,14 +111,12 @@ export default function TeacherGradebook() {
         sectionsArr.forEach((s, i) => {
           const res = gbResults[i];
           if (res.status === "fulfilled") {
-            // Handles { data: {...} } or plain object
             gradebooksMap[s.id] = res.value?.data || res.value || {};
           }
         });
 
         const normalized = normalizeSections(sectionsArr, gradebooksMap);
 
-        // Build scores state from normalized data
         const scoresInit = {};
         Object.entries(normalized).forEach(([secId, data]) => {
           scoresInit[secId] = {};
@@ -162,17 +142,15 @@ export default function TeacherGradebook() {
     return () => { cancelled = true; };
   }, []);
 
-  const sectionData  = activeSection ? sectionsData[activeSection] : null;
-  const assessments  = sectionData?.assessments || [];
-  const maxPts       = maxTotal(assessments);
+  const sectionData = activeSection ? sectionsData[activeSection] : null;
+  const assessments = sectionData?.assessments || [];
+  const maxPts      = maxTotal(assessments);
 
-  // ── FILTER STUDENTS ──
   const students = (sectionData?.students || []).filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
     s.id.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ── SCORE EDIT ──
   const handleScore = useCallback((studentId, key, val, max) => {
     const num = val === "" ? null : Math.min(Number(val), max);
     setScores((prev) => ({
@@ -185,11 +163,9 @@ export default function TeacherGradebook() {
     setUnsaved(true);
   }, [activeSection]);
 
-  // ── SAVE → API ──
   const handleSave = async () => {
     if (!activeSection) return;
     try {
-      // Build payload: array of { studentId, scores: { key: value } }
       const payload = Object.entries(scores[activeSection]).map(([studentId, s]) => ({
         studentId,
         scores: s,
@@ -197,7 +173,7 @@ export default function TeacherGradebook() {
       await TeacherApi.updateGrades(activeSection, { grades: payload });
       setUnsaved(false);
       setToastMsg("Grades synced to secure server");
-    } catch (err) {
+    } catch {
       setToastMsg("Save failed — check connection");
     } finally {
       setShowToast(true);
@@ -205,7 +181,6 @@ export default function TeacherGradebook() {
     }
   };
 
-  // ── EXPORT CSV ──
   const handleExport = () => {
     if (!sectionData) return;
     const headers = ["Roll No.", "Student", ...assessments.map((a) => a.label), "Total", "Grade"];
@@ -213,48 +188,37 @@ export default function TeacherGradebook() {
       const rowScores = scores[activeSection]?.[s.id] || {};
       const total = computeTotal(rowScores, assessments);
       const pct   = (total / maxPts) * 100;
-      return [
-        s.id,
-        s.name,
-        ...assessments.map((a) => rowScores[a.key] ?? ""),
-        total,
-        getGrade(pct),
-      ];
+      return [s.id, s.name, ...assessments.map((a) => rowScores[a.key] ?? ""), total, getGrade(pct)];
     });
-    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const csv  = [headers, ...rows].map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    a.href = url;
-    a.download = `gradebook_${activeSection}.csv`;
-    a.click();
+    a.href = url; a.download = `gradebook_${activeSection}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
-  // ── GRADE DISTRIBUTION ──
   const distribution = (() => {
     let A=0, B=0, C=0, DF=0;
     students.forEach((s) => {
       const total = computeTotal(scores[activeSection]?.[s.id] || {}, assessments);
       const pct   = (total / maxPts) * 100;
       const g     = getGrade(pct);
-      if      (g === "A+" || g === "A")  A++;
-      else if (g === "B+" || g === "B")  B++;
-      else if (g === "C+" || g === "C")  C++;
-      else                               DF++;
+      if      (g === "A+" || g === "A") A++;
+      else if (g === "B+" || g === "B") B++;
+      else if (g === "C+" || g === "C") C++;
+      else                              DF++;
     });
     const n = students.length || 1;
     return { A, B, C, DF, n };
   })();
 
-  // ── SUMMARY STATS ──
   const avgScore = (() => {
     if (!students.length || !activeSection) return 0;
-    const sum = students.reduce(
-      (acc, s) => acc + computeTotal(scores[activeSection]?.[s.id] || {}, assessments), 0
-    );
+    const sum = students.reduce((acc, s) => acc + computeTotal(scores[activeSection]?.[s.id] || {}, assessments), 0);
     return (sum / students.length / maxPts) * 100;
   })();
+
   const highestScore = (() => {
     if (!students.length || !activeSection) return 0;
     return students.reduce((mx, s) => {
@@ -262,12 +226,13 @@ export default function TeacherGradebook() {
       return t > mx ? t : mx;
     }, 0);
   })();
+
   const passingCount = students.filter((s) => {
     const pct = (computeTotal(scores[activeSection]?.[s.id] || {}, assessments) / maxPts) * 100;
     return pct >= 50;
   }).length;
 
-  // ── CINEMATIC INTRO ──
+  // ── CINEMATIC INTRO ── (introPlayed in dep array fixes the exhaustive-deps warning)
   useEffect(() => {
     if (introPlayed) { setShowStats(true); return; }
     const canvas = introCanvasRef.current;
@@ -319,7 +284,6 @@ export default function TeacherGradebook() {
     return () => cancelAnimationFrame(animId);
   }, [introPlayed]);
 
-  // ── THREE.JS BACKGROUND ──
   useEffect(() => {
     if (introPlayed) return;
     const canvas = webglRef.current;
@@ -327,7 +291,7 @@ export default function TeacherGradebook() {
     let W = window.innerWidth, H = window.innerHeight;
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setSize(W, H); renderer.setClearColor(0xf4f8ff, 1);
-    const scene = new THREE.Scene();
+    const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200);
     camera.position.set(0, 2, 10);
     scene.add(new THREE.AmbientLight(0x0033aa, 0.8));
@@ -339,20 +303,16 @@ export default function TeacherGradebook() {
       animId = requestAnimationFrame(loop);
       camera.position.x += (nmx * 0.6 - camera.position.x) * 0.015;
       camera.position.y += (nmy * 0.4 + 2 - camera.position.y) * 0.015;
-      camera.lookAt(0, 0, 0);
-      renderer.render(scene, camera);
+      camera.lookAt(0, 0, 0); renderer.render(scene, camera);
     };
     loop();
     return () => { cancelAnimationFrame(animId); document.removeEventListener("mousemove", onMove); };
-  }, []);
+  }, [introPlayed]);
 
-  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <>
       <div className="mesh-bg">
-        <div className="mesh-blob blob-1" />
-        <div className="mesh-blob blob-2" />
-        <div className="mesh-blob blob-3" />
+        <div className="mesh-blob blob-1" /><div className="mesh-blob blob-2" /><div className="mesh-blob blob-3" />
       </div>
 
       <canvas id="webgl" ref={webglRef} style={{ display: introPlayed ? "none" : undefined }} />
@@ -366,8 +326,6 @@ export default function TeacherGradebook() {
       )}
 
       <div id="app" ref={appRef} style={{ opacity: 1 }}>
-
-        {/* ── SIDEBAR ── */}
         <Sidebar
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
@@ -377,7 +335,6 @@ export default function TeacherGradebook() {
           onToggle={() => setCollapse((c) => !c)}
         />
 
-        {/* ── MAIN ── */}
         <div id="main">
           <div id="topbar" ref={topbarRef}>
             <div className="tb-glow" />
@@ -385,12 +342,8 @@ export default function TeacherGradebook() {
             <div className="tb-r">
               <AnimatePresence>
                 {unsaved && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}
-                    className="gb-unsaved-badge"
-                  >
-                    <span className="gb-unsaved-dot" />
-                    UNSAVED CHANGES
+                  <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="gb-unsaved-badge">
+                    <span className="gb-unsaved-dot" />UNSAVED CHANGES
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -402,76 +355,38 @@ export default function TeacherGradebook() {
           </div>
 
           <div id="scroll">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="dash-container"
-            >
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="dash-container">
 
-              {/* ── LOADING / ERROR STATES ── */}
               {loading && (
-                <div style={{ padding: "60px", textAlign: "center", color: "var(--dimmer)", fontSize: 16 }}>
-                  Loading gradebook…
-                </div>
+                <div style={{ padding: "60px", textAlign: "center", color: "var(--dimmer)", fontSize: 16 }}>Loading gradebook…</div>
               )}
               {!loading && apiError && (
-                <div style={{ padding: "60px", textAlign: "center", color: "#ff4d6a", fontSize: 15 }}>
-                  ⚠ {apiError}
-                </div>
+                <div style={{ padding: "60px", textAlign: "center", color: "#ff4d6a", fontSize: 15 }}>⚠ {apiError}</div>
               )}
               {!loading && !apiError && !activeSection && (
-                <div style={{ padding: "60px", textAlign: "center", color: "var(--dimmer)", fontSize: 15 }}>
-                  No sections assigned.
-                </div>
+                <div style={{ padding: "60px", textAlign: "center", color: "var(--dimmer)", fontSize: 15 }}>No sections assigned.</div>
               )}
 
               {!loading && !apiError && activeSection && sectionData && (
                 <>
-                  {/* ── CONTROLS ── */}
                   <div className="gb-controls">
                     <div className="marks-tab-container">
                       {Object.keys(sectionsData).map((sec) => (
-                        <motion.button
-                          key={sec}
-                          className={`marks-tab ${activeSection === sec ? "active" : ""}`}
-                          onClick={() => { setActiveSection(sec); setSearch(""); }}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
+                        <motion.button key={sec} className={`marks-tab ${activeSection === sec ? "active" : ""}`} onClick={() => { setActiveSection(sec); setSearch(""); }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                           {sec}
                         </motion.button>
                       ))}
                     </div>
-
                     <div className="gb-right-controls">
                       <div className="gb-search">
                         <span>🔍</span>
-                        <input
-                          placeholder="Search student…"
-                          value={search}
-                          onChange={(e) => setSearch(e.target.value)}
-                        />
+                        <input placeholder="Search student…" value={search} onChange={(e) => setSearch(e.target.value)} />
                       </div>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                        className="gb-btn-export"
-                        onClick={handleExport}
-                      >
-                        ↓ Export CSV
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                        className={`gb-btn-save ${unsaved ? "active-save" : ""}`}
-                        onClick={handleSave}
-                        disabled={!unsaved}
-                      >
-                        ✓ Save Grades
-                      </motion.button>
+                      <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="gb-btn-export" onClick={handleExport}>↓ Export CSV</motion.button>
+                      <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`gb-btn-save ${unsaved ? "active-save" : ""}`} onClick={handleSave} disabled={!unsaved}>✓ Save Grades</motion.button>
                     </div>
                   </div>
 
-                  {/* ── SUMMARY STRIP ── */}
                   <div className="gb-summary">
                     <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                       <div className="gb-stat-label">Class Average</div>
@@ -482,56 +397,35 @@ export default function TeacherGradebook() {
                     </motion.div>
                     <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                       <div className="gb-stat-label">Students</div>
-                      <div className="gb-stat-value">
-                        {showStats ? <AnimatedCounter value={sectionData.students.length} /> : "0"}
-                      </div>
+                      <div className="gb-stat-value">{showStats ? <AnimatedCounter value={sectionData.students.length} /> : "0"}</div>
                       <div className="gb-stat-sub">{sectionData.code}</div>
                     </motion.div>
                     <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                       <div className="gb-stat-label">Passing</div>
-                      <div className="gb-stat-value green">
-                        {showStats ? <AnimatedCounter value={passingCount} /> : "0"}
-                      </div>
+                      <div className="gb-stat-value green">{showStats ? <AnimatedCounter value={passingCount} /> : "0"}</div>
                       <div className="gb-stat-sub">≥ 50% threshold</div>
                     </motion.div>
                     <motion.div className="glass-card gb-stat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                       <div className="gb-stat-label">Highest Score</div>
-                      <div className="gb-stat-value">
-                        {showStats ? <AnimatedCounter value={highestScore} /> : "0"}
-                      </div>
+                      <div className="gb-stat-value">{showStats ? <AnimatedCounter value={highestScore} /> : "0"}</div>
                       <div className="gb-stat-sub">out of {maxPts} pts</div>
                     </motion.div>
                   </div>
 
-                  {/* ── GRADEBOOK TABLE ── */}
                   <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeSection}
-                      className="glass-card gb-table-wrap"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
+                    <motion.div key={activeSection} className="glass-card gb-table-wrap" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
                       <div className="panel-header" style={{ marginBottom: "24px" }}>
                         <h2 className="ct"><div className="ctbar" />Assessment Entry</h2>
                       </div>
-
-                      {/* HEADER */}
                       <div className="gb-table-head">
                         <div className="gb-col-hd left">Roll No.</div>
                         <div className="gb-col-hd left">Student Identity</div>
                         {assessments.map((a) => (
-                          <div key={a.key} className="gb-col-hd editable-hd">
-                            {a.label}
-                            <span className="hd-max">/{a.max}</span>
-                          </div>
+                          <div key={a.key} className="gb-col-hd editable-hd">{a.label}<span className="hd-max">/{a.max}</span></div>
                         ))}
                         <div className="gb-col-hd">Total</div>
                         <div className="gb-col-hd">Grade</div>
                       </div>
-
-                      {/* ROWS */}
                       <div className="gb-roster">
                         {students.length === 0 ? (
                           <div style={{ padding: "40px", textAlign: "center", color: "var(--dimmer)", fontSize: 16 }}>
@@ -542,59 +436,34 @@ export default function TeacherGradebook() {
                           const total     = computeTotal(rowScores, assessments);
                           const pct       = (total / maxPts) * 100;
                           const grade     = getGrade(pct);
-
                           return (
-                            <motion.div
-                              className="gb-row hov-target"
-                              key={s.id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ duration: 0.2, delay: idx * 0.05 }}
-                              whileHover={{ backgroundColor: "rgba(26,100,255,0.05)" }}
-                            >
+                            <motion.div className="gb-row hov-target" key={s.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: idx * 0.05 }} whileHover={{ backgroundColor: "rgba(26,100,255,0.05)" }}>
                               <div className="gb-cell left gb-roll">{s.id}</div>
                               <div className="gb-cell left">
                                 <div className="gb-name-cell">
                                   <div className="gb-avatar">{s.init}</div>
                                   <div>
                                     <div className="gb-student-name">{s.name}</div>
-                                    <div className="gb-student-att">
-                                      Att: <span className={s.attCls}>{s.att}</span>
-                                    </div>
+                                    <div className="gb-student-att">Att: <span className={s.attCls}>{s.att}</span></div>
                                   </div>
                                 </div>
                               </div>
-
                               {assessments.map((a) => {
                                 const val = rowScores[a.key];
                                 const isInvalid = val !== null && val !== "" && (Number(val) > a.max || Number(val) < 0);
                                 return (
                                   <div className="gb-cell" key={a.key}>
-                                    <input
-                                      className={`gb-score-input${isInvalid ? " invalid" : ""}`}
-                                      type="number"
-                                      min={0}
-                                      max={a.max}
-                                      placeholder="–"
-                                      value={val === null ? "" : val}
-                                      onChange={(e) => handleScore(s.id, a.key, e.target.value, a.max)}
-                                    />
+                                    <input className={`gb-score-input${isInvalid ? " invalid" : ""}`} type="number" min={0} max={a.max} placeholder="–" value={val === null ? "" : val} onChange={(e) => handleScore(s.id, a.key, e.target.value, a.max)} />
                                   </div>
                                 );
                               })}
-
-                              <div className="gb-cell">
-                                <div className="gb-total-cell">{total}<span className="gb-total-max">/{maxPts}</span></div>
-                              </div>
-                              <div className="gb-cell">
-                                <span className={`gb-grade-pill ${gradeClass(grade)}`}>{grade}</span>
-                              </div>
+                              <div className="gb-cell"><div className="gb-total-cell">{total}<span className="gb-total-max">/{maxPts}</span></div></div>
+                              <div className="gb-cell"><span className={`gb-grade-pill ${gradeClass(grade)}`}>{grade}</span></div>
                             </motion.div>
                           );
                         })}
                       </div>
 
-                      {/* DISTRIBUTION BAR */}
                       <div className="gb-dist-wrap">
                         <div className="gb-dist-label">Grade Distribution</div>
                         <div className="gb-dist-bar">
@@ -605,41 +474,30 @@ export default function TeacherGradebook() {
                         </div>
                         <div className="gb-dist-legend">
                           {[
-                            { cls: "dist-a",  color: "#00c853", label: `A (${distribution.A})`   },
-                            { cls: "dist-b",  color: "#1a78ff", label: `B (${distribution.B})`   },
-                            { cls: "dist-c",  color: "#ffab00", label: `C (${distribution.C})`   },
+                            { cls: "dist-a",  color: "#00c853", label: `A (${distribution.A})`    },
+                            { cls: "dist-b",  color: "#1a78ff", label: `B (${distribution.B})`    },
+                            { cls: "dist-c",  color: "#ffab00", label: `C (${distribution.C})`    },
                             { cls: "dist-df", color: "#ff4d6a", label: `D/F (${distribution.DF})` },
                           ].map((d) => (
                             <div className="dl-item" key={d.label}>
-                              <div className="dl-dot" style={{ background: d.color }} />
-                              {d.label}
+                              <div className="dl-dot" style={{ background: d.color }} />{d.label}
                             </div>
                           ))}
                         </div>
                       </div>
-
                     </motion.div>
                   </AnimatePresence>
                 </>
               )}
-
             </motion.div>
           </div>
         </div>
       </div>
 
-      {/* ── SAVED TOAST ── */}
       <AnimatePresence>
         {showToast && (
-          <motion.div
-            className="gb-toast"
-            initial={{ opacity: 0, y: 40, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 40, scale: 0.9 }}
-            transition={{ duration: 0.3, type: "spring" }}
-          >
-            <div className="toast-icon">✓</div>
-            {toastMsg}
+          <motion.div className="gb-toast" initial={{ opacity: 0, y: 40, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.9 }} transition={{ duration: 0.3, type: "spring" }}>
+            <div className="toast-icon">✓</div>{toastMsg}
           </motion.div>
         )}
       </AnimatePresence>
