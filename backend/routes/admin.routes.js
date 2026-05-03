@@ -71,5 +71,10 @@ router.post('/announcements', postAnnouncement);
 router.delete('/announcements/:id', deleteAnnouncement);  // ADD
 router.patch('/announcements/:id', updateAnnouncement);  // ADD
 
+const { getPendingRegistrations, approveRegistration, rejectRegistration } = require('../controllers/pendingRegistration.controller');
+router.get('/pending-registrations', getPendingRegistrations);
+router.post('/pending-registrations/:id/approve', approveRegistration);
+router.post('/pending-registrations/:id/reject', rejectRegistration);
+
 
 module.exports = router;

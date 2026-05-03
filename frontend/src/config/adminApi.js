@@ -9,11 +9,11 @@ const headers = () => ({
 
 const AdminApi = {
     login: (identifier, password) =>
-    fetch(`${BASE_URL}/auth/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password })
-    }).then(r => r.json()),
+        fetch(`${BASE_URL}/auth/admin/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier, password })
+        }).then(r => r.json()),
 
     getDashboard: () =>
         fetch(`${BASE_URL}/admin/dashboard`, { headers: headers() }).then(r => r.json()),
@@ -136,25 +136,24 @@ const AdminApi = {
             headers: headers(),
             body: JSON.stringify(data)
         }).then(r => r.json()),
-    
-    updateAnnouncement: (id, data) =>
-        fetch(`${BASE_URL}/admin/announcements/${id}`, {
-            method: 'PATCH',
+
+    // ── PENDING REGISTRATIONS ─────────────────────────────────────────────────
+    getPendingRegistrations: () =>
+        fetch(`${BASE_URL}/admin/pending-registrations`, { headers: headers() }).then(r => r.json()),
+
+    approveRegistration: (id, data) =>
+        // data = { rollNumber, department, program, semester, section, batch, email, password (pre-hashed kept), ... }
+        fetch(`${BASE_URL}/admin/pending-registrations/${id}/approve`, {
+            method: 'POST',
             headers: headers(),
             body: JSON.stringify(data)
         }).then(r => r.json()),
 
-    deleteAnnouncement: (id) => {
-        console.log("DELETE id sent to API:", id); // verify not undefined
-        return fetch(`${BASE_URL}/admin/announcements/${id}`, {
-            method: 'DELETE',
+    rejectRegistration: (id) =>
+        fetch(`${BASE_URL}/admin/pending-registrations/${id}/reject`, {
+            method: 'POST',
             headers: headers()
-        }).then(async r => {
-            const text = await r.text();
-            try { return JSON.parse(text); }
-            catch { throw new Error(text.slice(0, 120)); } // surface HTML error
-        });
-    },
+        }).then(r => r.json()),
 };
 
 export default AdminApi;
