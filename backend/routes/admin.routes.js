@@ -24,6 +24,7 @@ const {
     getAnnouncements,
     postAnnouncement,
     deleteAnnouncement,
+    updateAnnouncement,  // ADD
     completeEnrollment,
     dropEnrollment,
     reactivateEnrollment
@@ -68,5 +69,7 @@ router.patch('/enrollments/:id/reactivate', reactivateEnrollment);
 router.get('/announcements', getAnnouncements);
 router.post('/announcements', postAnnouncement);
 router.delete('/announcements/:id', deleteAnnouncement);  // ADD
+router.patch('/announcements/:id', updateAnnouncement);  // ADD
+
 
 module.exports = router;

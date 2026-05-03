@@ -15,8 +15,15 @@ class AnnouncementRepository {
     async deleteById(id) {
         return Announcement.findByIdAndDelete(id);
     }
+
+    async updateById(id, data) {
+        return Announcement.findByIdAndUpdate(id, data, { new: true })
+            .populate('createdBy', 'name')
+            .populate('course', 'courseCode name');
+    }
+
     // findForStudent must include university-wide (course: null) announcements
-    static async findForStudent(enrolledCourseIds, week) {
+    async findForStudent(enrolledCourseIds, week) {
     const query = {
         $or: [
         { type: 'university' },                    // all students see these
