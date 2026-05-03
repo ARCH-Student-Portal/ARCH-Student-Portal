@@ -153,10 +153,10 @@ export default function AdminAnnouncements() {
       const payload = {
         title:      form.title,
         body:       form.body,
-        type:       form.annType,      // "university" | "faculty"
-        category:   form.category,     // "notice" | "mid" | "final" | "activity"
+        type:       form.annType,
+        category:   form.category,
         weekNumber: form.weekNumber ?? null,
-        course:     form.course     ?? null,
+        course:     form.course ?? null,
       };
 
       const tempId = `temp-${Date.now()}`;
@@ -165,25 +165,42 @@ export default function AdminAnnouncements() {
       setCompose(null);
 
       try {
-        const res = await AdminApi.postAnnouncement(payload); // payload not form
-        if (res?.error || res?.message?.toLowerCase().includes("error")) {
-          throw new Error(res.message || "Failed to post");
-        }
+        const res = await AdminApi.postAnnouncement(payload);
+        if (res?.error || res?.message?.toLowerCase().includes("error")) throw new Error(res.message || "Failed to post");
         const serverRecord = res?.announcement ?? res?.data ?? res;
         setAnnouncements(prev =>
-          prev.map(a => a.id === tempId
-            ? { ...optimistic, ...serverRecord, _pending: false }
-            : a)
+          prev.map(a => a.id === tempId ? { ...optimistic, ...serverRecord, _pending: false } : a)
         );
         pushToast("Announcement posted!");
       } catch (err) {
         setAnnouncements(prev => prev.filter(a => a.id !== tempId));
         pushToast(err.message || "Failed to post.", "error");
       }
+
     } else {
-      setAnnouncements(prev => prev.map(a => a.id === form.id ? { ...form } : a));
+      const payload = {
+        title:      form.title,
+        body:       form.body,
+        type:       form.annType ?? form.type,
+        category:   form.category,
+        weekNumber: form.weekNumber ?? null,
+        course:     form.course ?? null,
+      };
+
+      const prevState = announcements;
+      setAnnouncements(prev => prev.map(a => a.id === form.id ? { ...a, ...form, _pending: true } : a));
       setCompose(null);
-      pushToast("Updated locally.", "warning");
+
+      try {
+        const res = await AdminApi.updateAnnouncement(form.id, payload);
+        if (res?.error || res?.message?.toLowerCase().includes("error")) throw new Error(res.message || "Failed to update");
+        const updated = res?.announcement ?? res?.data ?? res;
+        setAnnouncements(prev => prev.map(a => a.id === form.id ? { ...a, ...updated, _pending: false } : a));
+        pushToast("Announcement updated!");
+      } catch (err) {
+        setAnnouncements(prevState);
+        pushToast(err.message || "Failed to update.", "error");
+      }
     }
 
     setSaving(false);

@@ -136,6 +136,13 @@ const AdminApi = {
             headers: headers(),
             body: JSON.stringify(data)
         }).then(r => r.json()),
+    
+    updateAnnouncement: (id, data) =>
+        fetch(`${BASE_URL}/admin/announcements/${id}`, {
+            method: 'PATCH',
+            headers: headers(),
+            body: JSON.stringify(data)
+        }).then(r => r.json()),
 
     deleteAnnouncement: (id) => {
         console.log("DELETE id sent to API:", id); // verify not undefined

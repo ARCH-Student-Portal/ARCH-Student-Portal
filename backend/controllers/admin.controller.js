@@ -357,6 +357,19 @@ async reactivateEnrollment(req, res) {
         }
     }
 
+    async updateAnnouncement(req, res) {
+        try {
+            const allowed = ['title', 'body', 'type', 'category', 'weekNumber', 'course'];
+            const updates = {};
+            allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+            const ann = await AnnouncementRepo.updateById(req.params.id, updates);
+            if (!ann) return res.status(404).json({ message: 'Announcement not found' });
+            res.status(200).json({ announcement: AnnouncementAdapter.adapt(ann) });
+        } catch (err) {
+            res.status(500).json({ message: 'Server error', error: err.message });
+        }
+    }
+
     async deleteAnnouncement(req, res) {
         
         const ann = await AnnouncementRepo.deleteById(req.params.id);
@@ -430,6 +443,7 @@ module.exports = {
     postAnnouncement: controller.postAnnouncement.bind(controller),
     completeEnrollment: controller.completeEnrollment.bind(controller),
     deleteAnnouncement: controller.deleteAnnouncement.bind(controller),
+    updateAnnouncement: controller.updateAnnouncement.bind(controller),
 dropEnrollment: controller.dropEnrollment.bind(controller),
 reactivateEnrollment: controller.reactivateEnrollment.bind(controller)
 };
