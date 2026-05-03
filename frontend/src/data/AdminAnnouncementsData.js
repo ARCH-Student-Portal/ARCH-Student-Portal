@@ -44,4 +44,13 @@ export const INITIAL_ANNOUNCEMENTS = [
   },
 ];
 
-export const EMPTY_FORM = { type: "announcement", title: "", body: "", from: "Admin Office", audience: "All Students" };
+export const EMPTY_FORM = {
+  title:      "",
+  body:       "",
+  annType:    "university",   // → schema `type`
+  category:   "notice",       // → schema `category`
+  audience:   "All Students", // display only
+  weekNumber: null,
+  course:     null,
+  pinned:     false,
+};
