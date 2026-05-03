@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 import { motion, AnimatePresence } from "framer-motion"; 
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
+import StudentApi from "./config/studentApi";
 import "./StudentAcademicV1.css"; 
 
 export default function StudentAcademicV1() {
@@ -21,49 +22,87 @@ export default function StudentAcademicV1() {
   const [collapse, setCollapse] = useState(false);
   const [activeTab, setActiveTab] = useState("gpa");
 
-  // Expanded Mock Data
-  const academicData = {
-    cgpa: 3.82,
-    credits: { done: 86, active: 15, remaining: 35, total: 136 },
-    semesters: [
-      { name: "Fall 22", gpa: 2.81, courses: [{name: "Intro to CS", grade: "B-", credits: 3}, {name: "Calculus I", grade: "C+", credits: 3}] },
-      { name: "Spr 23", gpa: 3.12, courses: [{name: "OOP", grade: "A-", credits: 4}, {name: "Physics", grade: "B", credits: 3}] },
-      { name: "Fall 23", gpa: 3.29, courses: [{name: "Data Structures", grade: "A", credits: 4}, {name: "Linear Algebra", grade: "B+", credits: 3}] },
-      { name: "Spr 24", gpa: 3.54, courses: [{name: "Database Systems", grade: "A", credits: 4}, {name: "Operating Systems", grade: "A-", credits: 4}] },
-      { name: "Fall 24", gpa: 3.75, courses: [{name: "Computer Networks", grade: "A", credits: 3}, {name: "Software Eng", grade: "A", credits: 3}] },
-      { name: "Spr 25", gpa: 3.82, courses: [{name: "AI", grade: "A", credits: 3}, {name: "Final Year Project", grade: "A", credits: 6}] },
-    ]
-  };
+  // ── API STATE ──
+  const [academicData, setAcademicData] = useState(null);
+  const [gradeDistribution, setGradeDistribution] = useState([]);
+  const [selectedSem, setSelectedSem] = useState(null);
+  const [userName, setUserName] = useState("Loading...");
+  const [userId, setUserId] = useState("...");
+  const [loading, setLoading] = useState(true);
 
-  const getGradeDistribution = () => {
-    const counts = {};
-    academicData.semesters.forEach(sem => {
-      if (sem.courses) {
-        sem.courses.forEach(course => {
-          counts[course.grade] = (counts[course.grade] || 0) + (course.credits || 3);
-        });
+  // ── FETCH ALL DATA ──
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [profileRes, gpaRes, gradesRes] = await Promise.all([
+          StudentApi.getProfile(),
+          StudentApi.getGPA(),
+          StudentApi.getGrades(),
+        ]);
+
+        // Profile → sidebar
+        if (profileRes && profileRes.name) {
+          setUserName(profileRes.name);
+          setUserId(profileRes.rollNumber || profileRes.studentId || "");
+        }
+
+        // GPA → cgpa, credits, semesters
+        if (gpaRes) {
+          const built = {
+            cgpa: gpaRes.cgpa ?? 0,
+            credits: {
+              done:      gpaRes.credits?.completed  ?? gpaRes.credits?.done      ?? 0,
+              active:    gpaRes.credits?.inProgress ?? gpaRes.credits?.active    ?? 0,
+              remaining: gpaRes.credits?.remaining  ?? 0,
+              total:     gpaRes.credits?.total      ?? 0,
+            },
+            semesters: (gpaRes.semesters ?? []).map(sem => ({
+              name:    sem.name ?? sem.semester ?? "",
+              gpa:     sem.gpa  ?? 0,
+              courses: (sem.courses ?? []).map(c => ({
+                name:    c.name    ?? c.courseName ?? "",
+                grade:   c.grade   ?? "",
+                credits: c.credits ?? 3,
+              })),
+            })),
+          };
+          setAcademicData(built);
+          if (built.semesters.length > 0) {
+            setSelectedSem(built.semesters[built.semesters.length - 1]);
+          }
+        }
+
+        // Grades → pie chart distribution
+        if (gradesRes) {
+          const list = Array.isArray(gradesRes) ? gradesRes : (gradesRes.grades ?? gradesRes.courses ?? []);
+          const counts = {};
+          list.forEach(item => {
+            const grade   = item.grade ?? item.letterGrade ?? "";
+            const credits = item.credits ?? item.creditHours ?? 3;
+            if (grade) counts[grade] = (counts[grade] || 0) + credits;
+          });
+          const gradeOrder = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"];
+          const dist = Object.keys(counts)
+            .map(grade => ({ name: grade, value: counts[grade] }))
+            .sort((a, b) => gradeOrder.indexOf(a.name) - gradeOrder.indexOf(b.name));
+          setGradeDistribution(dist);
+        }
+
+      } catch (err) {
+        console.error("StudentAcademicV1 fetch error:", err);
+      } finally {
+        setLoading(false);
       }
-    });
+    };
 
-    const gradeOrder = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F"];
-
-    return Object.keys(counts)
-      .map(grade => ({
-        name: grade,
-        value: counts[grade]
-      }))
-      .sort((a, b) => gradeOrder.indexOf(a.name) - gradeOrder.indexOf(b.name));
-  };
-
-  const gradeDistribution = getGradeDistribution();
-  const [selectedSem, setSelectedSem] = useState(academicData.semesters[academicData.semesters.length - 1]);
+    fetchAll();
+  }, []);
 
   const getStanding = (gpa) => {
-    if (gpa >= 3.5) return { label: "Excellent Standing", cls: "std-excel", bubble: true, fire: false };
-    if (gpa >= 2.5) return { label: "Good Standing", cls: "std-good", bubble: false, fire: false };
-    return { label: "At Risk", cls: "std-risk", bubble: false, fire: true };
+    if (gpa >= 3.5) return { label: "Excellent Standing", cls: "std-excel", bubble: true,  fire: false };
+    if (gpa >= 2.5) return { label: "Good Standing",      cls: "std-good",  bubble: false, fire: false };
+    return             { label: "At Risk",                cls: "std-risk",  bubble: false, fire: true  };
   };
-  const standing = getStanding(academicData.cgpa);
 
   // ── CINEMATIC INTRO & FOCUS MODE TRANSITION ──
   useEffect(() => {
@@ -82,7 +121,6 @@ export default function StudentAcademicV1() {
       document.querySelectorAll(".glass-card").forEach((el, i) => {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: i * 0.1 });
       });
-      countUp("cgpa-val", academicData.cgpa, 2, "", 1000);
       return; 
     }
 
@@ -128,7 +166,6 @@ export default function StudentAcademicV1() {
       document.querySelectorAll(".glass-card").forEach((el, i) => {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)", delay: 0.2 + i * 0.1 });
       });
-      countUp("cgpa-val", academicData.cgpa, 2, "", 1500);
     };
 
     const tl = gsap.timeline({ delay: 0.2, onComplete: afterIntro });
@@ -145,7 +182,13 @@ export default function StudentAcademicV1() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // 3D Background (Only runs during intro)
+  // ── countUp triggered once academicData is ready ──
+  useEffect(() => {
+    if (!academicData) return;
+    countUp("cgpa-val", academicData.cgpa, 2, "", 1500);
+  }, [academicData]);
+
+  // ── 3D Background (Only runs during intro) ──
   useEffect(() => {
     if (sessionStorage.getItem("archIntroPlayed")) return;
 
@@ -217,12 +260,23 @@ export default function StudentAcademicV1() {
     requestAnimationFrame(tick);
   }
 
-  const sidebarSections = [
-    ["Overview", [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
-    ["Courses",[["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
-    ["Communication",[["◉","Notices","/student/notices"]]],
-    ["Account",[["◌","Profile","/student/profile"]]],
-  ];
+  // ── LOADING GUARD ──
+  if (loading || !academicData || !selectedSem) {
+    return (
+      <>
+        <div className="mesh-bg">
+          <div className="mesh-blob blob-1" />
+          <div className="mesh-blob blob-2" />
+          <div className="mesh-blob blob-3" />
+        </div>
+        <div id="app" style={{ opacity: 1, display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+          <div style={{ color: "#1a78ff", fontSize: "1.2rem", fontFamily: "Inter, sans-serif" }}>Loading academic data...</div>
+        </div>
+      </>
+    );
+  }
+
+  const standing = getStanding(academicData.cgpa);
 
   return (
     <>
@@ -244,11 +298,11 @@ export default function StudentAcademicV1() {
 
       <div id="app" ref={appRef}>
         <Sidebar
-          ref={sidebarRef}  // <--- ADD THIS LINE
+          ref={sidebarRef}
           sections={STUDENT_NAV}
           logoLabel="Student Portal"
-          userName="Areeb Bucha"
-          userId="21K-3210"
+          userName={userName}
+          userId={userId}
           collapse={collapse}
           onToggle={() => setCollapse(c => !c)}
         />
@@ -397,7 +451,6 @@ export default function StudentAcademicV1() {
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '380px', width: '100%'}}>
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          {/* ── THE GRADIENT PANELS ARE FULLY RESTORED ── */}
                           <defs>
                             <linearGradient id="grad-A" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="#69f0ae" />
@@ -430,12 +483,10 @@ export default function StudentAcademicV1() {
                             label={({name, value}) => `${name} (${value} Cr)`} 
                             labelLine={{ stroke: '#1a78ff', strokeWidth: 1, opacity: 0.5 }}
                           >
-                            {/* ── MAPPING EACH GRADE TO ITS DISTINCT COLOR PANEL ── */}
                             {gradeDistribution.map((entry, index) => {
-                              let gradUrl = "url(#grad-B)"; // Default to Blue for B's
-                              if (entry.name.includes("A")) gradUrl = "url(#grad-A)"; // Green for A's
-                              if (entry.name.includes("C")) gradUrl = "url(#grad-C)"; // Orange for C's
-                              
+                              let gradUrl = "url(#grad-B)";
+                              if (entry.name.includes("A")) gradUrl = "url(#grad-A)";
+                              if (entry.name.includes("C")) gradUrl = "url(#grad-C)";
                               return <Cell key={`cell-${index}`} fill={gradUrl} />;
                             })}
                           </Pie>

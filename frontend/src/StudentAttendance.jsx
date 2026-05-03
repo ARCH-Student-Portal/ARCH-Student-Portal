@@ -5,215 +5,61 @@ import { gsap } from "gsap";
 import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
+import StudentApi from "./config/studentApi";
 import "./StudentAttendance.css";
 
-// ── MOCK DATA ──────────────────────────────────────────────────────────────────
-const attendanceData = [
-  {
-    id: 1,
-    course: "Artificial Intelligence",
-    code: "CS-471",
-    credits: 3,
-    total: 32,
-    attended: 29,
-    classes: [
-      { date: "Jan 13", topic: "Introduction to AI", status: "present" },
-      { date: "Jan 15", topic: "Search Algorithms", status: "present" },
-      { date: "Jan 20", topic: "Uninformed Search", status: "present" },
-      { date: "Jan 22", topic: "Informed Search", status: "absent" },
-      { date: "Jan 27", topic: "A* Algorithm", status: "present" },
-      { date: "Jan 29", topic: "CSP", status: "present" },
-      { date: "Feb 3",  topic: "Propositional Logic", status: "present" },
-      { date: "Feb 5",  topic: "First-Order Logic", status: "present" },
-      { date: "Feb 10", topic: "Planning", status: "present" },
-      { date: "Feb 12", topic: "Uncertain Knowledge", status: "present" },
-      { date: "Feb 17", topic: "Bayesian Networks", status: "present" },
-      { date: "Feb 19", topic: "Hidden Markov Models", status: "present" },
-      { date: "Feb 24", topic: "Machine Learning Intro", status: "present" },
-      { date: "Feb 26", topic: "Decision Trees", status: "absent" },
-      { date: "Mar 3",  topic: "Neural Networks", status: "present" },
-      { date: "Mar 5",  topic: "Backpropagation", status: "present" },
-      { date: "Mar 10", topic: "CNNs", status: "present" },
-      { date: "Mar 12", topic: "RNNs", status: "present" },
-      { date: "Mar 17", topic: "NLP Basics", status: "present" },
-      { date: "Mar 19", topic: "Transformers", status: "present" },
-      { date: "Mar 24", topic: "Reinforcement Learning", status: "present" },
-      { date: "Mar 26", topic: "Q-Learning", status: "present" },
-      { date: "Mar 31", topic: "Ethics in AI", status: "present" },
-      { date: "Apr 2",  topic: "Adversarial Attacks", status: "present" },
-      { date: "Apr 7",  topic: "Explainable AI", status: "present" },
-      { date: "Apr 9",  topic: "Computer Vision", status: "present" },
-      { date: "Apr 14", topic: "Object Detection", status: "present" },
-      { date: "Apr 16", topic: "GANs", status: "present" },
-      { date: "Apr 21", topic: "Revision I", status: "present" },
-      { date: "Apr 23", topic: "Revision II", status: "present" },
-      { date: "Apr 28", topic: "Mock Exam", status: "present" },
-      { date: "Apr 30", topic: "Final Review", status: "present" },
-    ],
-  },
-  {
-    id: 2,
-    course: "Final Year Project",
-    code: "CS-491",
-    credits: 6,
-    total: 28,
-    attended: 25,
-    classes: [
-      { date: "Jan 13", topic: "Project Kickoff", status: "present" },
-      { date: "Jan 20", topic: "Literature Review", status: "present" },
-      { date: "Jan 27", topic: "Proposal Draft", status: "present" },
-      { date: "Feb 3",  topic: "Proposal Defense", status: "present" },
-      { date: "Feb 10", topic: "System Design", status: "absent" },
-      { date: "Feb 17", topic: "DB Schema", status: "present" },
-      { date: "Feb 24", topic: "Backend Setup", status: "present" },
-      { date: "Mar 3",  topic: "API Design", status: "present" },
-      { date: "Mar 10", topic: "Frontend Integration", status: "present" },
-      { date: "Mar 17", topic: "Sprint Review I", status: "present" },
-      { date: "Mar 24", topic: "Testing Phase I", status: "present" },
-      { date: "Mar 31", topic: "Sprint Review II", status: "absent" },
-      { date: "Apr 7",  topic: "Testing Phase II", status: "present" },
-      { date: "Apr 14", topic: "Documentation", status: "present" },
-      { date: "Apr 21", topic: "Pre-Defense Demo", status: "present" },
-      { date: "Apr 28", topic: "Final Defense", status: "absent" },
-      { date: "Jan 15", topic: "Scope Discussion", status: "present" },
-      { date: "Jan 22", topic: "Tech Stack Decision", status: "present" },
-      { date: "Jan 29", topic: "Wireframing", status: "present" },
-      { date: "Feb 5",  topic: "Milestone 1 Check", status: "present" },
-      { date: "Feb 12", topic: "Data Collection", status: "present" },
-      { date: "Feb 19", topic: "Model Training", status: "present" },
-      { date: "Feb 26", topic: "Evaluation Metrics", status: "present" },
-      { date: "Mar 5",  topic: "Peer Review", status: "present" },
-      { date: "Mar 12", topic: "Supervisor Meeting", status: "present" },
-      { date: "Mar 19", topic: "Risk Assessment", status: "present" },
-      { date: "Mar 26", topic: "Deployment Setup", status: "present" },
-      { date: "Apr 2",  topic: "Final Presentation Prep", status: "present" },
-    ],
-  },
-  {
-    id: 3,
-    course: "Software Project Management",
-    code: "CS-461",
-    credits: 3,
-    total: 30,
-    attended: 19,
-    classes: [
-      { date: "Jan 13", topic: "PM Overview", status: "present" },
-      { date: "Jan 15", topic: "SDLC Models", status: "absent" },
-      { date: "Jan 20", topic: "Agile Basics", status: "present" },
-      { date: "Jan 22", topic: "Scrum Framework", status: "absent" },
-      { date: "Jan 27", topic: "Kanban", status: "present" },
-      { date: "Jan 29", topic: "Project Charter", status: "absent" },
-      { date: "Feb 3",  topic: "WBS", status: "present" },
-      { date: "Feb 5",  topic: "Gantt Charts", status: "absent" },
-      { date: "Feb 10", topic: "Risk Management", status: "present" },
-      { date: "Feb 12", topic: "Stakeholder Analysis", status: "absent" },
-      { date: "Feb 17", topic: "Cost Estimation", status: "present" },
-      { date: "Feb 19", topic: "Resource Planning", status: "present" },
-      { date: "Feb 24", topic: "Quality Assurance", status: "absent" },
-      { date: "Feb 26", topic: "Change Management", status: "present" },
-      { date: "Mar 3",  topic: "Communications Plan", status: "absent" },
-      { date: "Mar 5",  topic: "Sprint Planning", status: "present" },
-      { date: "Mar 10", topic: "Retrospectives", status: "present" },
-      { date: "Mar 12", topic: "Project Closure", status: "absent" },
-      { date: "Mar 17", topic: "Case Study I", status: "present" },
-      { date: "Mar 19", topic: "Case Study II", status: "present" },
-      { date: "Mar 24", topic: "Procurement", status: "absent" },
-      { date: "Mar 26", topic: "Contracts", status: "present" },
-      { date: "Mar 31", topic: "Legal & Compliance", status: "absent" },
-      { date: "Apr 2",  topic: "Ethics in PM", status: "present" },
-      { date: "Apr 7",  topic: "Earned Value Mgmt", status: "present" },
-      { date: "Apr 9",  topic: "Revision I", status: "absent" },
-      { date: "Apr 14", topic: "Revision II", status: "present" },
-      { date: "Apr 16", topic: "Mock Exam", status: "present" },
-      { date: "Apr 21", topic: "Final Review", status: "present" },
-      { date: "Apr 23", topic: "Q&A Session", status: "absent" },
-    ],
-  },
-  {
-    id: 4,
-    course: "Information Security",
-    code: "CS-452",
-    credits: 3,
-    total: 30,
-    attended: 27,
-    classes: [
-      { date: "Jan 13", topic: "CIA Triad", status: "present" },
-      { date: "Jan 15", topic: "Threat Models", status: "present" },
-      { date: "Jan 20", topic: "Cryptography Basics", status: "present" },
-      { date: "Jan 22", topic: "Symmetric Encryption", status: "present" },
-      { date: "Jan 27", topic: "Asymmetric Encryption", status: "present" },
-      { date: "Jan 29", topic: "Hashing", status: "present" },
-      { date: "Feb 3",  topic: "Digital Signatures", status: "present" },
-      { date: "Feb 5",  topic: "PKI", status: "present" },
-      { date: "Feb 10", topic: "TLS/SSL", status: "present" },
-      { date: "Feb 12", topic: "Firewalls & IDS", status: "absent" },
-      { date: "Feb 17", topic: "Network Attacks", status: "present" },
-      { date: "Feb 19", topic: "Social Engineering", status: "present" },
-      { date: "Feb 24", topic: "Malware Analysis", status: "present" },
-      { date: "Feb 26", topic: "Web Security", status: "present" },
-      { date: "Mar 3",  topic: "SQL Injection", status: "present" },
-      { date: "Mar 5",  topic: "XSS & CSRF", status: "present" },
-      { date: "Mar 10", topic: "Penetration Testing", status: "present" },
-      { date: "Mar 12", topic: "Ethical Hacking", status: "present" },
-      { date: "Mar 17", topic: "Forensics", status: "present" },
-      { date: "Mar 19", topic: "Incident Response", status: "absent" },
-      { date: "Mar 24", topic: "Cloud Security", status: "present" },
-      { date: "Mar 26", topic: "Zero Trust", status: "present" },
-      { date: "Mar 31", topic: "Security Policies", status: "present" },
-      { date: "Apr 2",  topic: "Compliance", status: "present" },
-      { date: "Apr 7",  topic: "Risk Assessment", status: "present" },
-      { date: "Apr 9",  topic: "Blockchain Security", status: "absent" },
-      { date: "Apr 14", topic: "IoT Security", status: "present" },
-      { date: "Apr 16", topic: "Revision I", status: "present" },
-      { date: "Apr 21", topic: "Revision II", status: "present" },
-      { date: "Apr 23", topic: "Final Review", status: "present" },
-    ],
-  },
-  {
-    id: 5,
-    course: "Technical Writing",
-    code: "HU-301",
-    credits: 2,
-    total: 26,
-    attended: 24,
-    classes: [
-      { date: "Jan 14", topic: "Writing Fundamentals", status: "present" },
-      { date: "Jan 21", topic: "Technical Reports", status: "present" },
-      { date: "Jan 28", topic: "Documentation Standards", status: "present" },
-      { date: "Feb 4",  topic: "Audience Analysis", status: "present" },
-      { date: "Feb 11", topic: "Grammar & Style", status: "present" },
-      { date: "Feb 18", topic: "Proposals", status: "present" },
-      { date: "Feb 25", topic: "Manuals & SOPs", status: "present" },
-      { date: "Mar 4",  topic: "Research Papers", status: "absent" },
-      { date: "Mar 11", topic: "Presentation Skills", status: "present" },
-      { date: "Mar 18", topic: "Email Etiquette", status: "present" },
-      { date: "Mar 25", topic: "CV & Cover Letters", status: "present" },
-      { date: "Apr 1",  topic: "Editing & Proofreading", status: "present" },
-      { date: "Apr 8",  topic: "Peer Review Workshop", status: "present" },
-      { date: "Apr 15", topic: "Technical Descriptions", status: "present" },
-      { date: "Apr 22", topic: "Final Paper Workshop", status: "present" },
-      { date: "Jan 16", topic: "Clarity & Conciseness", status: "present" },
-      { date: "Jan 23", topic: "Paragraph Structure", status: "present" },
-      { date: "Jan 30", topic: "Memo Writing", status: "present" },
-      { date: "Feb 6",  topic: "Visuals in Writing", status: "absent" },
-      { date: "Feb 13", topic: "Case Analysis", status: "present" },
-      { date: "Feb 20", topic: "Academic Citations", status: "present" },
-      { date: "Feb 27", topic: "Lab Reports", status: "present" },
-      { date: "Mar 6",  topic: "Abstracts & Summaries", status: "present" },
-      { date: "Mar 13", topic: "Revision Techniques", status: "present" },
-      { date: "Mar 20", topic: "Industry Writing", status: "present" },
-      { date: "Apr 29", topic: "Final Review", status: "present" },
-    ],
-  },
-];
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const getPct  = (c) => Math.round((c.attended / (c.total || 1)) * 100);
+const isRisk  = (c) => getPct(c) < 75;
 
-// ── HELPERS ────────────────────────────────────────────────────────────────────
-const getPct = (c) => Math.round((c.attended / c.total) * 100);
-const isRisk = (c) => getPct(c) < 75;
+// Format a date value from classLog into "Jan 13" style
+function fmtDate(raw) {
+  if (!raw) return "";
+  const d = new Date(raw);
+  if (isNaN(d)) return String(raw);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
+// Adapt a single classLog entry to the shape the UI expects
+function adaptLogEntry(entry, idx) {
+  // Possible backend field names handled defensively
+  const status = (entry.status ?? entry.attendance ?? "present").toLowerCase();
+  const topic  = entry.topic ?? entry.description ?? entry.title ?? `Lecture ${idx + 1}`;
+  const date   = entry.date
+    ? fmtDate(entry.date)
+    : entry.lectureDate
+    ? fmtDate(entry.lectureDate)
+    : entry.createdAt
+    ? fmtDate(entry.createdAt)
+    : `Class ${idx + 1}`;
+  return { date, topic, status: status === "absent" ? "absent" : "present" };
+}
+
+// Build the attendance data array from API responses
+function buildAttendanceData(attendanceArr, coursesArr) {
+  // Map courseCode → creditHours from getCourses
+  const creditMap = {};
+  (coursesArr ?? []).forEach((c) => {
+    if (c.courseCode) creditMap[c.courseCode] = c.creditHours ?? 0;
+  });
+
+  return attendanceArr.map((a, idx) => ({
+    id:       idx + 1,
+    course:   a.courseName  ?? a.courseCode ?? "Unknown Course",
+    code:     a.courseCode  ?? "",
+    credits:  creditMap[a.courseCode] ?? a.creditHours ?? 0,
+    total:    a.totalLectures    ?? 0,
+    attended: a.attendedLectures ?? 0,
+    classes:  Array.isArray(a.classLog)
+                ? a.classLog.map(adaptLogEntry)
+                : [],
+  }));
+}
+
+// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 export default function StudentAttendance() {
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const webglRef       = useRef(null);
   const introCanvasRef = useRef(null);
@@ -221,23 +67,49 @@ export default function StudentAttendance() {
   const appRef         = useRef(null);
   const sidebarRef     = useRef(null);
 
-  const [collapse,     setCollapse]     = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState(attendanceData[0]);
+  const [collapse,       setCollapse]       = useState(false);
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [userName,       setUserName]       = useState("Loading...");
+  const [userId,         setUserId]         = useState("...");
 
-  // ── CINEMATIC INTRO & FOCUS MODE TRANSITION ──
+  // ── FETCH ──────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    Promise.all([
+      StudentApi.getProfile(),
+      StudentApi.getAttendance(),
+      StudentApi.getCourses(),
+    ])
+      .then(([profileRes, attendanceRes, coursesRes]) => {
+        // Profile → Sidebar
+        const d = profileRes?.student ?? profileRes ?? {};
+        setUserName(d.name ?? "Student");
+        setUserId(d.rollNumber ?? d.studentId ?? d.rollNo ?? "");
+
+        // Build attendance data
+        const raw     = attendanceRes?.attendance ?? [];
+        const courses = coursesRes?.courses       ?? [];
+        const built   = buildAttendanceData(raw, courses);
+        setAttendanceData(built);
+        if (built.length > 0) setSelectedCourse(built[0]);
+      })
+      .catch((err) => console.error("StudentAttendance fetch error:", err));
+  }, []);
+
+  const pct    = selectedCourse ? getPct(selectedCourse)  : 0;
+  const atRisk = selectedCourse ? isRisk(selectedCourse)  : false;
+
+  // ── CINEMATIC INTRO ────────────────────────────────────────────────────────
   useEffect(() => {
     const hasPlayed = sessionStorage.getItem("archIntroPlayed");
     if (hasPlayed) {
       introRef.current.style.display = "none";
       appRef.current.style.opacity   = 1;
       sidebarRef.current.style.transform = "translateX(0)";
-      
-      // INSTANTLY KILL 3D BACKGROUND FOR FOCUS MODE
       if (webglRef.current) {
         webglRef.current.style.opacity = 0;
         webglRef.current.style.display = "none";
       }
-
       document.querySelectorAll(".glass-card").forEach((el, i) =>
         gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: i * 0.08 })
       );
@@ -265,7 +137,7 @@ export default function StudentAttendance() {
         p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
         p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
         if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; }
-        ctx.font = `${p.size}px 'Inter', sans-serif`; /* Enforced UNIFIED FONT */
+        ctx.font = `${p.size}px 'Inter', sans-serif`;
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.fillText(p.word, p.x, p.y);
       });
@@ -279,13 +151,8 @@ export default function StudentAttendance() {
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out" });
-      
-      // FADE OUT 3D BACKGROUND FOR UX FOCUS
       gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
-      setTimeout(() => {
-        if (webglRef.current) webglRef.current.style.display = "none";
-      }, 3000);
-
+      setTimeout(() => { if (webglRef.current) webglRef.current.style.display = "none"; }, 3000);
       document.querySelectorAll(".glass-card").forEach((el, i) =>
         gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)", delay: 0.2 + i * 0.1 })
       );
@@ -305,10 +172,9 @@ export default function StudentAttendance() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // ── THREE.JS BACKGROUND (Only runs during intro now) ──
+  // ── THREE.JS BACKGROUND ───────────────────────────────────────────────────
   useEffect(() => {
     if (sessionStorage.getItem("archIntroPlayed")) return;
-
     const canvas = webglRef.current;
     if (!canvas) return;
     let W = window.innerWidth, H = window.innerHeight;
@@ -317,11 +183,9 @@ export default function StudentAttendance() {
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 200);
     camera.position.set(0, 2, 10);
-
     scene.add(new THREE.AmbientLight(0x0033aa, 0.8));
     const dirLight = new THREE.DirectionalLight(0x4488ff, 1.2);
     dirLight.position.set(5, 10, 5); scene.add(dirLight);
-
     const objects = [];
     const mk = (geo, mat, x, y, z, rs) => {
       const mesh = new THREE.Mesh(geo, mat);
@@ -335,11 +199,9 @@ export default function StudentAttendance() {
     const rGeo = new THREE.TorusGeometry(1.5, 0.02, 16, 100);
     const rMat = new THREE.MeshPhongMaterial({ color: 0x40a9ff, transparent: true, opacity: 0.3 });
     mk(rGeo, rMat, 0, 4, -9, 0.01); mk(rGeo, rMat, -7, -1, -6, -0.008); mk(rGeo, rMat, 7, 4, -7, 0.009);
-
     let nmx = 0, nmy = 0;
     const onMove = (e) => { nmx = (e.clientX / W) * 2 - 1; nmy = -(e.clientY / H) * 2 + 1; };
     document.addEventListener("mousemove", onMove);
-
     let t = 0, animId;
     const loop = () => {
       animId = requestAnimationFrame(loop); t += 0.008;
@@ -352,24 +214,12 @@ export default function StudentAttendance() {
       camera.lookAt(0, 0, 0); renderer.render(scene, camera);
     };
     loop();
-
     return () => { cancelAnimationFrame(animId); document.removeEventListener("mousemove", onMove); };
   }, []);
 
-  // ── SIDEBAR DATA ───────────────────────────────────────────────────────────
-  const sidebarSections = [
-    ["Overview",      [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
-    ["Courses",       [["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
-    ["Communication", [["◉","Notices","/student/notices"]]],
-    ["Account",       [["◌","Profile","/student/profile"]]],
-  ];
-
-  const pct    = getPct(selectedCourse);
-  const atRisk = isRisk(selectedCourse);
-
+  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* ── NEW APPLE/STRIPE FLUID MESH BACKGROUND ── */}
       <div className="mesh-bg">
         <div className="mesh-blob blob-1" />
         <div className="mesh-blob blob-2" />
@@ -378,7 +228,6 @@ export default function StudentAttendance() {
 
       <canvas id="att-webgl" ref={webglRef} />
 
-      {/* Intro */}
       <div id="att-intro" ref={introRef}>
         <canvas id="att-intro-canvas" ref={introCanvasRef} />
         <div id="att-intro-line"  />
@@ -388,19 +237,16 @@ export default function StudentAttendance() {
       </div>
 
       <div id="app" ref={appRef}>
-
-        {/* ── SIDEBAR ── */}
         <Sidebar
-          ref={sidebarRef}  // <--- ADD THIS LINE
+          ref={sidebarRef}
           sections={STUDENT_NAV}
           logoLabel="Student Portal"
-          userName="Areeb Bucha"
-          userId="21K-3210"
+          userName={userName}
+          userId={userId}
           collapse={collapse}
-          onToggle={() => setCollapse(c => !c)}
+          onToggle={() => setCollapse((c) => !c)}
         />
 
-        {/* ── MAIN ── */}
         <div id="main">
           <div id="topbar">
             <div className="pg-title"><span>Attendance</span></div>
@@ -415,17 +261,22 @@ export default function StudentAttendance() {
               {/* ── LEFT: Course List ── */}
               <div className="att-course-list glass-card" style={{ opacity: 1, transform: "none" }}>
                 <div className="ch">
-                  <div className="ct"><div className="ctbar"/>Courses</div>
+                  <div className="ct"><div className="ctbar" />Courses</div>
                   <div className="att-summary-chip">
-                    {attendanceData.filter(c => !isRisk(c)).length}/{attendanceData.length} on track
+                    {attendanceData.filter((c) => !isRisk(c)).length}/{attendanceData.length} on track
                   </div>
                 </div>
 
                 <div className="att-course-items">
+                  {attendanceData.length === 0 && (
+                    <div style={{ padding: "24px", color: "var(--text-sub)", opacity: 0.6, textAlign: "center" }}>
+                      Loading attendance…
+                    </div>
+                  )}
                   {attendanceData.map((course) => {
                     const cp    = getPct(course);
                     const risk  = isRisk(course);
-                    const isSel = selectedCourse.id === course.id;
+                    const isSel = selectedCourse?.id === course.id;
                     return (
                       <div
                         key={course.id}
@@ -435,7 +286,10 @@ export default function StudentAttendance() {
                         <div className="att-course-row-top">
                           <div className="att-course-info">
                             <div className="att-course-name">{course.course}</div>
-                            <div className="att-course-meta">{course.code} · {course.credits} Cr</div>
+                            <div className="att-course-meta">
+                              {course.code}
+                              {course.credits ? ` · ${course.credits} Cr` : ""}
+                            </div>
                           </div>
                           <div className={`att-pct-badge${risk ? " red" : " green"}`}>{cp}%</div>
                         </div>
@@ -444,7 +298,6 @@ export default function StudentAttendance() {
                             className={`att-mini-bar-fill${risk ? " red" : " green"}`}
                             style={{ width: `${cp}%` }}
                           />
-                          {/* 75% threshold line */}
                           <div className="att-threshold-line" />
                         </div>
                         <div className="att-mini-counts">
@@ -459,95 +312,111 @@ export default function StudentAttendance() {
               </div>
 
               {/* ── RIGHT: Class Detail ── */}
-              <div className="att-detail-col">
+              {selectedCourse && (
+                <div className="att-detail-col">
 
-                {/* Header card */}
-                <div className="glass-card att-detail-header" style={{ opacity: 1, transform: "none" }}>
-                  <div className="att-dh-top">
-                    <div>
-                      <div className="att-dh-title">{selectedCourse.course}</div>
-                      <div className="att-dh-meta">{selectedCourse.code} · {selectedCourse.credits} Credit Hours · Spring 2025</div>
-                    </div>
-                    {/* ENFORCED HERO RETRO PIXEL FONT MASSIVE SIZING */}
-                    <div className={`att-big-pct${atRisk ? " red" : " green"}`}>{pct}%</div>
-                  </div>
-
-                  {/* Big attendance bar */}
-                  <div className="att-big-bar-wrap">
-                    <div className="att-big-bar-track">
-                      <motion.div
-                        key={selectedCourse.id + "-bar"}
-                        className={`att-big-bar-fill${atRisk ? " red" : " green"}`}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.9, ease: "easeOut" }}
-                      />
-                      <div className="att-big-threshold" title="75% minimum" />
-                    </div>
-                    <div className="att-bar-labels">
-                      <span className={atRisk ? "lbl-red" : "lbl-green"}>
-                        {atRisk ? "⚠ Below minimum attendance" : "✓ Attendance satisfactory"}
-                      </span>
-                      <span className="lbl-dim">{selectedCourse.attended}/{selectedCourse.total} classes</span>
-                    </div>
-                  </div>
-
-                  {/* Stat pills */}
-                  <div className="att-stat-row">
-                    <div className="att-stat-pill green">
-                      <span className="att-stat-num">{selectedCourse.attended}</span>
-                      <span className="att-stat-lbl">Present</span>
-                    </div>
-                    <div className="att-stat-pill red">
-                      <span className="att-stat-num">{selectedCourse.total - selectedCourse.attended}</span>
-                      <span className="att-stat-lbl">Absent</span>
-                    </div>
-                    <div className="att-stat-pill blue">
-                      <span className="att-stat-num">{selectedCourse.total}</span>
-                      <span className="att-stat-lbl">Total</span>
-                    </div>
-                    <div className="att-stat-pill blue">
-                      <span className="att-stat-num">
-                        {Math.max(0, Math.ceil(selectedCourse.total * 0.75) - selectedCourse.attended)}
-                      </span>
-                      <span className="att-stat-lbl">
-                        {atRisk ? "Needed to clear" : "Can miss"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Class log */}
-                <div className="glass-card att-log-card" style={{ opacity: 1, transform: "none" }}>
-                  <div className="ch">
-                    <div className="ct"><div className="ctbar"/>Class Log</div>
-                    <div className="att-log-count">{selectedCourse.classes.length} records</div>
-                  </div>
-
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={selectedCourse.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -12 }}
-                      transition={{ duration: 0.25 }}
-                      className="att-log-list"
-                    >
-                      {selectedCourse.classes.map((cls, i) => (
-                        <div key={i} className={`att-log-row${cls.status === "absent" ? " absent" : ""}`}>
-                          <div className={`att-log-dot${cls.status === "absent" ? " red" : " green"}`} />
-                          <div className="att-log-date">{cls.date}</div>
-                          <div className="att-log-topic">{cls.topic}</div>
-                          <div className={`att-log-status${cls.status === "absent" ? " red" : " green"}`}>
-                            {cls.status === "present" ? "Present" : "Absent"}
-                          </div>
+                  {/* Header card */}
+                  <div className="glass-card att-detail-header" style={{ opacity: 1, transform: "none" }}>
+                    <div className="att-dh-top">
+                      <div>
+                        <div className="att-dh-title">{selectedCourse.course}</div>
+                        <div className="att-dh-meta">
+                          {selectedCourse.code}
+                          {selectedCourse.credits ? ` · ${selectedCourse.credits} Credit Hours` : ""}
+                          {" · Spring 2025"}
                         </div>
-                      ))}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
+                      </div>
+                      <div className={`att-big-pct${atRisk ? " red" : " green"}`}>{pct}%</div>
+                    </div>
 
-              </div>
+                    {/* Big attendance bar */}
+                    <div className="att-big-bar-wrap">
+                      <div className="att-big-bar-track">
+                        <motion.div
+                          key={selectedCourse.id + "-bar"}
+                          className={`att-big-bar-fill${atRisk ? " red" : " green"}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.9, ease: "easeOut" }}
+                        />
+                        <div className="att-big-threshold" title="75% minimum" />
+                      </div>
+                      <div className="att-bar-labels">
+                        <span className={atRisk ? "lbl-red" : "lbl-green"}>
+                          {atRisk ? "⚠ Below minimum attendance" : "✓ Attendance satisfactory"}
+                        </span>
+                        <span className="lbl-dim">
+                          {selectedCourse.attended}/{selectedCourse.total} classes
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stat pills */}
+                    <div className="att-stat-row">
+                      <div className="att-stat-pill green">
+                        <span className="att-stat-num">{selectedCourse.attended}</span>
+                        <span className="att-stat-lbl">Present</span>
+                      </div>
+                      <div className="att-stat-pill red">
+                        <span className="att-stat-num">{selectedCourse.total - selectedCourse.attended}</span>
+                        <span className="att-stat-lbl">Absent</span>
+                      </div>
+                      <div className="att-stat-pill blue">
+                        <span className="att-stat-num">{selectedCourse.total}</span>
+                        <span className="att-stat-lbl">Total</span>
+                      </div>
+                      <div className="att-stat-pill blue">
+                        <span className="att-stat-num">
+                          {Math.max(0, Math.ceil(selectedCourse.total * 0.75) - selectedCourse.attended)}
+                        </span>
+                        <span className="att-stat-lbl">
+                          {atRisk ? "Needed to clear" : "Can miss"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Class log */}
+                  <div className="glass-card att-log-card" style={{ opacity: 1, transform: "none" }}>
+                    <div className="ch">
+                      <div className="ct"><div className="ctbar" />Class Log</div>
+                      <div className="att-log-count">{selectedCourse.classes.length} records</div>
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={selectedCourse.id}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25 }}
+                        className="att-log-list"
+                      >
+                        {selectedCourse.classes.length === 0 ? (
+                          <div style={{ padding: "16px", color: "var(--text-sub)", opacity: 0.5, textAlign: "center" }}>
+                            No class log available
+                          </div>
+                        ) : (
+                          selectedCourse.classes.map((cls, i) => (
+                            <div
+                              key={i}
+                              className={`att-log-row${cls.status === "absent" ? " absent" : ""}`}
+                            >
+                              <div className={`att-log-dot${cls.status === "absent" ? " red" : " green"}`} />
+                              <div className="att-log-date">{cls.date}</div>
+                              <div className="att-log-topic">{cls.topic}</div>
+                              <div className={`att-log-status${cls.status === "absent" ? " red" : " green"}`}>
+                                {cls.status === "present" ? "Present" : "Absent"}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                </div>
+              )}
             </div>
           </div>
         </div>
