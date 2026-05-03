@@ -137,6 +137,19 @@ const AdminApi = {
             body: JSON.stringify(data)
         }).then(r => r.json()),
 
+    updateAnnouncement: (id, data) =>
+        fetch(`${BASE_URL}/admin/announcements/${id}`, {
+            method: 'PATCH',
+            headers: headers(),
+            body: JSON.stringify(data)
+        }).then(r => r.json()),
+
+    deleteAnnouncement: (id) =>
+        fetch(`${BASE_URL}/admin/announcements/${id}`, {
+            method: 'DELETE',
+            headers: headers()
+        }).then(r => r.json()),
+
     // ── PENDING REGISTRATIONS ─────────────────────────────────────────────────
     getPendingRegistrations: () =>
         fetch(`${BASE_URL}/admin/pending-registrations`, { headers: headers() }).then(r => r.json()),
