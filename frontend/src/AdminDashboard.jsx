@@ -42,6 +42,11 @@ export default function AdminDashboardV1() {
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
 
+  // real counts fetched independently
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [totalTeachers, setTotalTeachers] = useState(0);
+  const [totalCourses,  setTotalCourses]  = useState(0);
+
   const [hasPlayedIntro] = useState(() => {
     if (typeof window !== "undefined") {
       return sessionStorage.getItem("archAdminIntroPlayed") === "true";
@@ -57,10 +62,12 @@ export default function AdminDashboardV1() {
       try {
         setLoading(true);
 
-        const [dashRes, studentsRes, announcementsRes] = await Promise.all([
+        const [dashRes, studentsRes, announcementsRes, teachersRes, coursesRes] = await Promise.all([
           AdminApi.getDashboard(),
-          AdminApi.getStudents(1, 4),
+          AdminApi.getStudents(1, 500),
           AdminApi.getAnnouncements(),
+          AdminApi.getTeachers(),
+          AdminApi.getCourses(1, 1),
         ]);
 
         // Dashboard stats
@@ -87,11 +94,53 @@ export default function AdminDashboardV1() {
 
         // Recent students
         if (studentsRes && !studentsRes.error) {
-          // API may return { students: [...] } or array directly
           const list = Array.isArray(studentsRes)
             ? studentsRes
             : studentsRes.students || studentsRes.data || [];
+          
           setRecentStudents(list.slice(0, 4));
+          
+          const count = studentsRes.total ?? studentsRes.totalCount ?? studentsRes.pagination?.total ?? list.length;
+          setTotalStudents(count);
+
+          // ── BUILD DEPT DATA from student records if dashboard didn't provide it ──
+          if (!dashRes?.departmentStats?.length) {
+            const DEPT_COLORS = {
+              CS: "#1a78ff", EE: "#7c3aed", MT: "#00c96e", BBA: "#ffab00", IS: "#ff4d6a",
+            };
+            const deptMap = {};
+            list.forEach(s => {
+              const dept = s.department || s.dept || "Other";
+              deptMap[dept] = (deptMap[dept] || 0) + 1;
+            });
+            const maxCount = Math.max(...Object.values(deptMap), 1);
+            setDeptData(
+              Object.entries(deptMap).map(([name, cnt]) => ({
+                name,
+                count: cnt,
+                max: maxCount,
+                color: DEPT_COLORS[name] || "#1a78ff",
+              }))
+            );
+          }
+        }
+
+        // Teachers total count
+        if (teachersRes && !teachersRes.error) {
+          const list = Array.isArray(teachersRes)
+            ? teachersRes
+            : teachersRes.teachers || teachersRes.data || [];
+          const count = teachersRes.total ?? teachersRes.totalCount ?? teachersRes.pagination?.total ?? list.length;
+          setTotalTeachers(count);
+        }
+
+        // Courses total count
+        if (coursesRes && !coursesRes.error) {
+          const list = Array.isArray(coursesRes)
+            ? coursesRes
+            : coursesRes.courses || coursesRes.data || [];
+          const count = coursesRes.total ?? coursesRes.totalCount ?? coursesRes.pagination?.total ?? list.length;
+          setTotalCourses(count);
         }
 
         // Announcements → activity feed
@@ -113,20 +162,12 @@ export default function AdminDashboardV1() {
   }, []);
 
   // ── DERIVE STATS CARDS ─────────────────────────────────────────────────
-  // dashStats shape assumed: { totalStudents, activeCourses, facultyMembers, avgAttendance }
-  const statsCards = dashStats
-    ? [
-        { cls: "sc-a", label: "Total Students",  value: dashStats.totalStudents  ?? 0, special: "none",    useCommas: true },
-        { cls: "sc-b", label: "Active Courses",  value: dashStats.activeCourses  ?? 0, special: "none" },
-        { cls: "sc-c", label: "Faculty Members", value: dashStats.facultyMembers ?? 0, special: "bubbles" },
-        { cls: "sc-d", label: "Avg Attendance",  value: dashStats.avgAttendance  ?? 0, special: "fire",    suffix: "%" },
-      ]
-    : [
-        { cls: "sc-a", label: "Total Students",  value: 0, special: "none", useCommas: true },
-        { cls: "sc-b", label: "Active Courses",  value: 0, special: "none" },
-        { cls: "sc-c", label: "Faculty Members", value: 0, special: "bubbles" },
-        { cls: "sc-d", label: "Avg Attendance",  value: 0, special: "fire", suffix: "%" },
-      ];
+  // Real counts from dedicated API calls — not reliant on dashStats shape
+  const statsCards = [
+    { cls: "sc-a", label: "Total Students",  value: totalStudents, special: "none",    useCommas: true },
+    { cls: "sc-b", label: "Total Teachers",  value: totalTeachers, special: "bubbles" },
+    { cls: "sc-c", label: "Total Courses",   value: totalCourses,  special: "none" },
+  ];
 
   // ── DERIVE ACTIVITY FEED FROM ANNOUNCEMENTS ────────────────────────────
   const ACTIVITY_ICON_MAP = { info: "ℹ️", alert: "⚠️", success: "✅", warning: "⚠️" };
@@ -143,7 +184,10 @@ export default function AdminDashboardV1() {
     : FALLBACK_ACTIVITY;
 
   // ── TOTAL FROM DEPT DATA ───────────────────────────────────────────────
-  const totalEnrollment = deptData.reduce((sum, d) => sum + d.count, 0);
+  // Prefer API-fetched student total; fall back to summing dept data if dashboard provides it
+  const totalEnrollment = totalStudents > 0
+    ? totalStudents
+    : deptData.reduce((sum, d) => sum + d.count, 0);
 
   // ── STUDENT STATUS HELPER ──────────────────────────────────────────────
   const statusCls = (status) => {

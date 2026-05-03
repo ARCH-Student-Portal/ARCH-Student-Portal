@@ -7,7 +7,7 @@
 class AnnouncementAdapter {
     adapt(announcement) {
         return {
-            id: announcement._id,
+            id: announcement._id.toString(),
             title: announcement.title,
             body: announcement.body,
             type: announcement.type,

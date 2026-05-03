@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
 import { gsap } from "gsap";
@@ -27,6 +27,28 @@ const STUDENT_FALLBACK = {
   guardianPhone: "",
 };
 
+// ── SAFELY COERCE A VALUE TO STRING ──────────────────────────────────────────
+// API sometimes returns objects like { name: "...", phone: "..." } for nested
+// fields. This flattens them so React never tries to render a plain object.
+function toStr(val, fallback = "") {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === "string")  return val;
+  if (typeof val === "number")  return String(val);
+  // object — try common string-like keys before giving up
+  if (typeof val === "object") {
+    return (
+      val.name   ??
+      val.value  ??
+      val.text   ??
+      val.label  ??
+      val.phone  ??
+      val.email  ??
+      JSON.stringify(val)
+    );
+  }
+  return fallback;
+}
+
 // ── DERIVE INITIALS FROM NAME ──
 function getInitials(name = "") {
   return name
@@ -39,7 +61,6 @@ function getInitials(name = "") {
 
 export default function StudentProfileV1() {
   const navigate    = useNavigate();
-  const location    = useLocation();
   const webglRef    = useRef(null);
   const introCanvasRef = useRef(null);
   const introRef    = useRef(null);
@@ -52,32 +73,41 @@ export default function StudentProfileV1() {
   const [userName, setUserName] = useState("Loading...");
   const [userId,   setUserId]   = useState("...");
 
+  // ── LOGOUT ────────────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    sessionStorage.clear();
+    navigate("/login");
+  };
+
   // ── FETCH PROFILE ──────────────────────────────────────────────────────────
   useEffect(() => {
     StudentApi.getProfile()
       .then((res) => {
-        // Support both { student: {...} } and flat { name, ... } response shapes
         const d = res?.student ?? res ?? {};
 
-        const name    = d.name       ?? "";
-        const rollNo  = d.rollNumber ?? d.studentId ?? d.rollNo ?? "";
-        const program = d.program    ?? d.degree    ?? "";
-        const dept    = d.department ?? d.dept      ?? "";
-        const faculty = d.faculty    ?? "";
-        const batch   = d.batch      ?? d.cohort    ?? "";
-        const semester= d.currentSemester
-                          ? `${d.currentSemester}${["th","st","nd","rd"][Math.min(d.currentSemester,3)] ?? "th"} Semester`
-                          : d.semester ?? "";
-        const section = d.section    ?? "";
-        const email   = d.email      ?? d.universityEmail ?? "";
-        const phone   = d.phone      ?? d.phoneNumber     ?? "";
-        const address = d.address    ?? d.residentialAddress ?? "";
-        const dob     = d.dateOfBirth
-                          ? new Date(d.dateOfBirth).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
-                          : d.dob ?? "";
-        const cnic    = d.cnic       ?? d.nationalId ?? "";
-        const guardian = d.guardian?.name ?? d.guardianName ?? "";
-        const guardianPhone = d.guardian?.phone ?? "";
+        const name     = toStr(d.name);
+        const rollNo   = toStr(d.rollNumber ?? d.studentId ?? d.rollNo);
+        const program  = toStr(d.program    ?? d.degree);
+        const dept     = toStr(d.department ?? d.dept);
+        const faculty  = toStr(d.faculty);
+        const batch    = toStr(d.batch      ?? d.cohort);
+        const section  = toStr(d.section);
+        const email    = toStr(d.email      ?? d.universityEmail);
+        // phone/guardian may come back as nested objects — toStr handles it
+        const phone    = toStr(d.phone      ?? d.phoneNumber);
+        const address  = toStr(d.address    ?? d.residentialAddress);
+        const guardian = toStr(d.guardian   ?? d.guardianName);
+        const cnic     = toStr(d.cnic       ?? d.nationalId);
+
+        const rawSem = d.currentSemester;
+        const semester = rawSem
+          ? `${rawSem}${["th","st","nd","rd"][Math.min(rawSem, 3)] ?? "th"} Semester`
+          : toStr(d.semester);
+
+        const dobRaw = d.dateOfBirth;
+        const dob = dobRaw
+          ? new Date(dobRaw).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+          : toStr(d.dob);
 
         setStudent({
           name, rollNo, program, department: dept, faculty,
@@ -276,7 +306,6 @@ export default function StudentProfileV1() {
           </div>
           <div id="scroll">
             <div className="profile-container">
-              {/* HERO CARD */}
               <div className="glass-card sc profile-hero-card">
                 <div className="hero-avatar">{student.initials}</div>
                 <div className="hero-details">
@@ -284,89 +313,53 @@ export default function StudentProfileV1() {
                   <div className="hero-roll">{student.rollNo}</div>
                   <div className="hero-program">{student.program}</div>
                 </div>
+                {/* ── LOGOUT BUTTON ── matches TeacherProfile style */}
+                <button
+                  className="tp-logout-btn"
+                  onClick={handleLogout}
+                  style={{ marginLeft: "auto", alignSelf: "center" }}
+                >
+                  <span style={{ fontSize: 18, marginRight: 8 }}>⏏</span> Secure Logout
+                </button>
               </div>
 
-              {/* INFO GRID */}
               <div className="profile-grid">
-                {/* ACADEMIC DETAILS */}
                 <div className="glass-card sc">
                   <div className="card-header">
                     <div className="ch-bar" />
                     <div className="ch-title">Academic Details</div>
                   </div>
                   <div className="info-list">
-                    <div className="info-item">
-                      <span className="info-label">Program</span>
-                      <span className="info-val">{student.program}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Department</span>
-                      <span className="info-val">{student.department}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Faculty</span>
-                      <span className="info-val">{student.faculty}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Batch</span>
-                      <span className="info-val">{student.batch}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Semester</span>
-                      <span className="info-val">{student.semester}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Section</span>
-                      <span className="info-val">{student.section}</span>
-                    </div>
+                    <div className="info-item"><span className="info-label">Program</span><span className="info-val">{student.program}</span></div>
+                    <div className="info-item"><span className="info-label">Department</span><span className="info-val">{student.department}</span></div>
+                    <div className="info-item"><span className="info-label">Faculty</span><span className="info-val">{student.faculty}</span></div>
+                    <div className="info-item"><span className="info-label">Batch</span><span className="info-val">{student.batch}</span></div>
+                    <div className="info-item"><span className="info-label">Semester</span><span className="info-val">{student.semester}</span></div>
+                    <div className="info-item"><span className="info-label">Section</span><span className="info-val">{student.section}</span></div>
                   </div>
                 </div>
 
-                {/* CONTACT & LOGISTICS */}
                 <div className="glass-card sc">
                   <div className="card-header">
                     <div className="ch-bar" />
                     <div className="ch-title">Contact & Logistics</div>
                   </div>
                   <div className="info-list">
-                    <div className="info-item">
-                      <span className="info-label">University Email</span>
-                      <span className="info-val">{student.email}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Phone Number</span>
-                      <span className="info-val">{student.phone}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Residential Address</span>
-                      <span className="info-val wrap">{student.address}</span>
-                    </div>
+                    <div className="info-item"><span className="info-label">University Email</span><span className="info-val">{student.email}</span></div>
+                    <div className="info-item"><span className="info-label">Phone Number</span><span className="info-val">{student.phone}</span></div>
+                    <div className="info-item"><span className="info-label">Residential Address</span><span className="info-val wrap">{student.address}</span></div>
                   </div>
                 </div>
 
-                {/* PERSONAL RECORD */}
                 <div className="glass-card sc">
                   <div className="card-header">
                     <div className="ch-bar" />
                     <div className="ch-title">Personal Record</div>
                   </div>
                   <div className="info-list">
-                    <div className="info-item">
-                      <span className="info-label">Date of Birth</span>
-                      <span className="info-val">{student.dob}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">National ID (CNIC)</span>
-                      <span className="info-val">{student.cnic}</span>
-                    </div>
-                    <div className="info-item">
-                       <span className="info-label">Guardian Name</span>
-                       <span className="info-val">{student.guardian}</span>
-                    </div>
-                    <div className="info-item">
-                        <span className="info-label">Guardian Phone</span>
-                        <span className="info-val">{student.guardianPhone}</span>
-                    </div>
+                    <div className="info-item"><span className="info-label">Date of Birth</span><span className="info-val">{student.dob}</span></div>
+                    <div className="info-item"><span className="info-label">National ID (CNIC)</span><span className="info-val">{student.cnic}</span></div>
+                    <div className="info-item"><span className="info-label">Guardian Name</span><span className="info-val">{student.guardian}</span></div>
                   </div>
                 </div>
               </div>

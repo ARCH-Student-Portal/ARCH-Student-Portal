@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+
 const { verifyToken, authorizeRole } = require('../middleware/auth.middleware');
 const {
     getDashboard,
@@ -22,10 +23,13 @@ const {
     unenrollStudentHandler,
     getAnnouncements,
     postAnnouncement,
+    deleteAnnouncement,
+    updateAnnouncement,  // ADD
     completeEnrollment,
     dropEnrollment,
     reactivateEnrollment
 } = require('../controllers/admin.controller');
+
 
 // all routes protected — must be a logged in admin
 router.use(verifyToken, authorizeRole('admin'));
@@ -64,5 +68,8 @@ router.patch('/enrollments/:id/reactivate', reactivateEnrollment);
 // announcements
 router.get('/announcements', getAnnouncements);
 router.post('/announcements', postAnnouncement);
+router.delete('/announcements/:id', deleteAnnouncement);  // ADD
+router.patch('/announcements/:id', updateAnnouncement);  // ADD
+
 
 module.exports = router;
