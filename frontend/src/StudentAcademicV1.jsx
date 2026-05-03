@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom"; 
+import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts"; 
-import { motion, AnimatePresence } from "framer-motion"; 
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
+import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
 import StudentApi from "./config/studentApi";
-import "./StudentAcademicV1.css"; 
+import "./StudentAcademicV1.css";
 
 export default function StudentAcademicV1() {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ export default function StudentAcademicV1() {
   const introRef = useRef(null);
   const appRef = useRef(null);
   const sidebarRef = useRef(null);
-  
+
   const [collapse, setCollapse] = useState(false);
   const [activeTab, setActiveTab] = useState("gpa");
 
@@ -104,7 +104,7 @@ export default function StudentAcademicV1() {
     return             { label: "At Risk",                cls: "std-risk",  bubble: false, fire: true  };
   };
 
-  // ── CINEMATIC INTRO & FOCUS MODE TRANSITION ──
+  // ── CINEMATIC INTRO ──
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archIntroPlayed");
 
@@ -112,7 +112,7 @@ export default function StudentAcademicV1() {
       introRef.current.style.display = "none";
       appRef.current.style.opacity = 1;
       sidebarRef.current.style.transform = "translateX(0)";
-      
+
       if (webglRef.current) {
         webglRef.current.style.opacity = 0;
         webglRef.current.style.display = "none";
@@ -121,7 +121,7 @@ export default function StudentAcademicV1() {
       document.querySelectorAll(".glass-card").forEach((el, i) => {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: i * 0.1 });
       });
-      return; 
+      return;
     }
 
     const canvas = introCanvasRef.current;
@@ -143,7 +143,7 @@ export default function StudentAcademicV1() {
         p.y -= p.speed * 0.4; p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
         p.opacity = Math.max(0.03, Math.min(0.55, p.opacity));
         if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; }
-        ctx.font = `${p.size}px 'Inter', sans-serif`; 
+        ctx.font = `${p.size}px 'Inter', sans-serif`;
         ctx.fillStyle = `rgba(${p.hue},${p.opacity})`;
         ctx.fillText(p.word, p.x, p.y);
       });
@@ -153,11 +153,11 @@ export default function StudentAcademicV1() {
 
     const afterIntro = () => {
       cancelAnimationFrame(animId);
-      sessionStorage.setItem("archIntroPlayed", "true"); 
+      sessionStorage.setItem("archIntroPlayed", "true");
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out" });
-      
+
       gsap.to(webglRef.current, { opacity: 0, duration: 2.5, ease: "power2.inOut", delay: 0.5 });
       setTimeout(() => {
         if (webglRef.current) webglRef.current.style.display = "none";
@@ -260,24 +260,10 @@ export default function StudentAcademicV1() {
     requestAnimationFrame(tick);
   }
 
-  // ── LOADING GUARD ──
-  if (loading || !academicData || !selectedSem) {
-    return (
-      <>
-        <div className="mesh-bg">
-          <div className="mesh-blob blob-1" />
-          <div className="mesh-blob blob-2" />
-          <div className="mesh-blob blob-3" />
-        </div>
-        <div id="app" style={{ opacity: 1, display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
-          <div style={{ color: "#1a78ff", fontSize: "1.2rem", fontFamily: "Inter, sans-serif" }}>Loading academic data...</div>
-        </div>
-      </>
-    );
-  }
+  // ── derive standing only when data is ready ──
+  const standing = academicData ? getStanding(academicData.cgpa) : null;
 
-  const standing = getStanding(academicData.cgpa);
-
+  // ── ALWAYS render full DOM so refs are always mounted ──
   return (
     <>
       <div className="mesh-bg">
@@ -313,195 +299,209 @@ export default function StudentAcademicV1() {
           </div>
 
           <div id="scroll">
-            <div className="tab-switcher">
-              <button className={`tab-btn ${activeTab === 'gpa' ? 'active' : ''}`} onClick={() => setActiveTab('gpa')}>
-                GPA Overview
-              </button>
-              <button className={`tab-btn ${activeTab === 'credits' ? 'active' : ''}`} onClick={() => setActiveTab('credits')}>
-                Credit Progress
-              </button>
-            </div>
 
-            <AnimatePresence mode="wait">
-              {activeTab === 'gpa' && (
-                <motion.div 
-                  key="gpa-tab"
-                  initial={{ opacity: 0, y: 20 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="aca-grid"
-                >
-                  <div className="glass-card hero-card" style={{opacity: 1, transform: 'none'}}>
-                    <div className="hero-bg-glow" />
-                    <div className="hero-label">Cumulative GPA</div>
-                    <div className="hero-val" id="cgpa-val">{academicData.cgpa}</div>
-                    <div className={`hero-standing ${standing.cls}`}>{standing.label}</div>
-                    {standing.bubble && (
-                      <div className="bubbles">
-                        {[0,1,2,3,4,5].map(i => <span key={i} className="bubble" style={{ left:`${10+i*15}%`, animationDelay:`${i*0.3}s` }} />)}
-                      </div>
-                    )}
-                  </div>
+            {/* ── LOADING SPINNER (inline, no early return) ── */}
+            {(loading || !academicData || !selectedSem) ? (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                height: "60vh", color: "#1a78ff", fontSize: "1.2rem",
+                fontFamily: "Inter, sans-serif"
+              }}>
+                Loading academic data...
+              </div>
+            ) : (
+              <>
+                <div className="tab-switcher">
+                  <button className={`tab-btn ${activeTab === 'gpa' ? 'active' : ''}`} onClick={() => setActiveTab('gpa')}>
+                    GPA Overview
+                  </button>
+                  <button className={`tab-btn ${activeTab === 'credits' ? 'active' : ''}`} onClick={() => setActiveTab('credits')}>
+                    Credit Progress
+                  </button>
+                </div>
 
-                  <div className="glass-card chart-card" style={{opacity: 1, transform: 'none'}}>
-                    <div className="ch"><div className="ct"><div className="ctbar"/>GPA Trend</div></div>
-                    <div className="chart-wrapper">
-                      <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={academicData.semesters} barSize={32}>
-                          <XAxis dataKey="name" tick={{fill: '#1f4f99', fontSize: 18, fontWeight: 700, fontFamily: 'Inter, sans-serif'}} axisLine={false} tickLine={false} />
-                          <YAxis domain={[0, 4]} tick={{fill: '#1f4f99', fontSize: 18, fontWeight: 700, fontFamily: 'Inter, sans-serif'}} axisLine={false} tickLine={false} />
-                          <Tooltip cursor={{fill: 'rgba(20, 94, 201, 0.05)'}} contentStyle={{ borderRadius: '12px', border: '1px solid rgba(26,120,255,0.2)', boxShadow: '0 8px 20px rgba(0,0,0,0.1)', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '18px', color: '#145ec9' }} />
-                          <Bar 
-                            dataKey="gpa" 
-                            radius={[6, 6, 0, 0]} 
-                            onClick={(data, index) => setSelectedSem(academicData.semesters[index])}
-                          >
-                            {academicData.semesters.map((entry, index) => (
-                              <Cell 
-                                cursor="pointer" 
-                                fill={selectedSem.name === entry.name ? '#00e676' : '#1a78ff'} 
-                                key={`cell-${index}`} 
-                              />
+                <AnimatePresence mode="wait">
+                  {activeTab === 'gpa' && (
+                    <motion.div
+                      key="gpa-tab"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                      className="aca-grid"
+                    >
+                      <div className="glass-card hero-card" style={{ opacity: 1, transform: 'none' }}>
+                        <div className="hero-bg-glow" />
+                        <div className="hero-label">Cumulative GPA</div>
+                        <div className="hero-val" id="cgpa-val">{academicData.cgpa}</div>
+                        <div className={`hero-standing ${standing.cls}`}>{standing.label}</div>
+                        {standing.bubble && (
+                          <div className="bubbles">
+                            {[0,1,2,3,4,5].map(i => (
+                              <span key={i} className="bubble" style={{ left: `${10 + i * 15}%`, animationDelay: `${i * 0.3}s` }} />
                             ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
+                          </div>
+                        )}
+                      </div>
 
-                  <div className="glass-card list-card" style={{opacity: 1, transform: 'none'}}>
-                    <div className="sem-switcher">
-                      {academicData.semesters.map((sem) => (
-                        <button
-                          key={sem.name}
-                          className={`sem-pill ${selectedSem.name === sem.name ? 'active' : ''}`}
-                          onClick={() => setSelectedSem(sem)}
-                        >
-                          {sem.name}
-                        </button>
-                      ))}
-                    </div>
+                      <div className="glass-card chart-card" style={{ opacity: 1, transform: 'none' }}>
+                        <div className="ch"><div className="ct"><div className="ctbar" />GPA Trend</div></div>
+                        <div className="chart-wrapper">
+                          <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={academicData.semesters} barSize={32}>
+                              <XAxis dataKey="name" tick={{ fill: '#1f4f99', fontSize: 18, fontWeight: 700, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
+                              <YAxis domain={[0, 4]} tick={{ fill: '#1f4f99', fontSize: 18, fontWeight: 700, fontFamily: 'Inter, sans-serif' }} axisLine={false} tickLine={false} />
+                              <Tooltip
+                                cursor={{ fill: 'rgba(20, 94, 201, 0.05)' }}
+                                contentStyle={{ borderRadius: '12px', border: '1px solid rgba(26,120,255,0.2)', boxShadow: '0 8px 20px rgba(0,0,0,0.1)', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '18px', color: '#145ec9' }}
+                              />
+                              <Bar dataKey="gpa" radius={[6, 6, 0, 0]} onClick={(data, index) => setSelectedSem(academicData.semesters[index])}>
+                                {academicData.semesters.map((entry, index) => (
+                                  <Cell
+                                    cursor="pointer"
+                                    fill={selectedSem.name === entry.name ? '#00e676' : '#1a78ff'}
+                                    key={`cell-${index}`}
+                                  />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
 
-                    <div className="ch" style={{marginBottom: '10px'}}>
-                      <div className="ct"><div className="ctbar"/>{selectedSem.name} Courses</div>
-                      <div className="sem-chip">{selectedSem.gpa} GPA</div>
-                    </div>
-
-                    <div className="sem-list">
-                      <AnimatePresence mode="wait">
-                        <motion.div key={selectedSem.name} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                          {selectedSem.courses.map((course, i) => (
-                            <div className="sem-row" key={i}>
-                              <div className="sem-name">
-                                {course.name} <span style={{fontSize: '18px', color: '#1f4f99', fontWeight: '600'}}>({course.credits} Cr)</span>
-                              </div>
-                              <div className="sem-gpa">{course.grade}</div>
-                            </div>
+                      <div className="glass-card list-card" style={{ opacity: 1, transform: 'none' }}>
+                        <div className="sem-switcher">
+                          {academicData.semesters.map((sem) => (
+                            <button
+                              key={sem.name}
+                              className={`sem-pill ${selectedSem.name === sem.name ? 'active' : ''}`}
+                              onClick={() => setSelectedSem(sem)}
+                            >
+                              {sem.name}
+                            </button>
                           ))}
-                        </motion.div>
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
+                        </div>
 
-              {activeTab === 'credits' && (
-                <motion.div 
-                  key="credits-tab"
-                  initial={{ opacity: 0, y: 20 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="credits-layout"
-                >
-                  <div className="glass-card full-width-card" style={{opacity: 1, transform: 'none'}}>
-                    <div className="ch">
-                      <div className="ct"><div className="ctbar"/>Degree Progress</div>
-                      <div className="credit-total-text">{academicData.credits.done} / {academicData.credits.total} Hours</div>
-                    </div>
-                    
-                    <div className="mega-bar-track">
-                      <motion.div 
-                        className="mega-bar-done" 
-                        initial={{ width: 0 }} 
-                        animate={{ width: `${(academicData.credits.done / academicData.credits.total) * 100}%` }} 
-                        transition={{ duration: 1.2, ease: "easeOut" }} 
-                      />
-                      <motion.div 
-                        className="mega-bar-active" 
-                        initial={{ width: 0 }} 
-                        animate={{ width: `${(academicData.credits.active / academicData.credits.total) * 100}%` }} 
-                        transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }} 
-                      />
-                      <div className="mega-bar-rem" />
-                    </div>
+                        <div className="ch" style={{ marginBottom: '10px' }}>
+                          <div className="ct"><div className="ctbar" />{selectedSem.name} Courses</div>
+                          <div className="sem-chip">{selectedSem.gpa} GPA</div>
+                        </div>
 
-                    <div className="mega-legend">
-                      <div className="ml-item"><div className="ml-dot" style={{background: '#00e676'}}/><div className="ml-label">Completed</div><div className="ml-val">{academicData.credits.done}</div></div>
-                      <div className="ml-item"><div className="ml-dot" style={{background: '#1a78ff'}}/><div className="ml-label">In Progress</div><div className="ml-val">{academicData.credits.active}</div></div>
-                      <div className="ml-item"><div className="ml-dot" style={{background: '#e2e8f0'}}/><div className="ml-label">Remaining</div><div className="ml-val">{academicData.credits.remaining}</div></div>
-                    </div>
-                  </div>
+                        <div className="sem-list">
+                          <AnimatePresence mode="wait">
+                            <motion.div key={selectedSem.name} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                              {selectedSem.courses.map((course, i) => (
+                                <div className="sem-row" key={i}>
+                                  <div className="sem-name">
+                                    {course.name} <span style={{ fontSize: '18px', color: '#1f4f99', fontWeight: '600' }}>({course.credits} Cr)</span>
+                                  </div>
+                                  <div className="sem-gpa">{course.grade}</div>
+                                </div>
+                              ))}
+                            </motion.div>
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
 
-                  <div className="glass-card full-width-card" style={{opacity: 1, transform: 'none'}}>
-                    <div className="ch">
-                      <div className="ct"><div className="ctbar"/>Grade Distribution</div>
-                    </div>
-                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '380px', width: '100%'}}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <defs>
-                            <linearGradient id="grad-A" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#69f0ae" />
-                              <stop offset="100%" stopColor="#00b35c" />
-                            </linearGradient>
-                            <linearGradient id="grad-B" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#91d5ff" />
-                              <stop offset="100%" stopColor="#1a78ff" />
-                            </linearGradient>
-                            <linearGradient id="grad-C" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#ffcc80" />
-                              <stop offset="100%" stopColor="#ff9100" />
-                            </linearGradient>
-                            <filter id="pie-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                              <feDropShadow dx="0" dy="8" stdDeviation="8" floodOpacity="0.15" />
-                            </filter>
-                          </defs>
+                  {activeTab === 'credits' && (
+                    <motion.div
+                      key="credits-tab"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                      className="credits-layout"
+                    >
+                      <div className="glass-card full-width-card" style={{ opacity: 1, transform: 'none' }}>
+                        <div className="ch">
+                          <div className="ct"><div className="ctbar" />Degree Progress</div>
+                          <div className="credit-total-text">{academicData.credits.done} / {academicData.credits.total} Hours</div>
+                        </div>
 
-                          <Pie 
-                            data={gradeDistribution} 
-                            dataKey="value" 
-                            nameKey="name" 
-                            cx="50%" 
-                            cy="55%" 
-                            innerRadius={80} 
-                            outerRadius={120} 
-                            paddingAngle={4}
-                            stroke="none"
-                            style={{ filter: 'url(#pie-shadow)', fontFamily: 'Inter', fontWeight: 800, fontSize: '18px', fill: '#145ec9' }} 
-                            label={({name, value}) => `${name} (${value} Cr)`} 
-                            labelLine={{ stroke: '#1a78ff', strokeWidth: 1, opacity: 0.5 }}
-                          >
-                            {gradeDistribution.map((entry, index) => {
-                              let gradUrl = "url(#grad-B)";
-                              if (entry.name.includes("A")) gradUrl = "url(#grad-A)";
-                              if (entry.name.includes("C")) gradUrl = "url(#grad-C)";
-                              return <Cell key={`cell-${index}`} fill={gradUrl} />;
-                            })}
-                          </Pie>
-                          <Tooltip 
-                            cursor={{fill: 'rgba(20, 94, 201, 0.05)'}} 
-                            contentStyle={{ borderRadius: '12px', border: '1px solid rgba(26,120,255,0.2)', boxShadow: '0 8px 20px rgba(0,0,0,0.1)', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '18px', color: '#145ec9' }}
+                        <div className="mega-bar-track">
+                          <motion.div
+                            className="mega-bar-done"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(academicData.credits.done / academicData.credits.total) * 100}%` }}
+                            transition={{ duration: 1.2, ease: "easeOut" }}
                           />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
+                          <motion.div
+                            className="mega-bar-active"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(academicData.credits.active / academicData.credits.total) * 100}%` }}
+                            transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
+                          />
+                          <div className="mega-bar-rem" />
+                        </div>
 
-                </motion.div>
-              )}
-            </AnimatePresence>
+                        <div className="mega-legend">
+                          <div className="ml-item"><div className="ml-dot" style={{ background: '#00e676' }} /><div className="ml-label">Completed</div><div className="ml-val">{academicData.credits.done}</div></div>
+                          <div className="ml-item"><div className="ml-dot" style={{ background: '#1a78ff' }} /><div className="ml-label">In Progress</div><div className="ml-val">{academicData.credits.active}</div></div>
+                          <div className="ml-item"><div className="ml-dot" style={{ background: '#e2e8f0' }} /><div className="ml-label">Remaining</div><div className="ml-val">{academicData.credits.remaining}</div></div>
+                        </div>
+                      </div>
+
+                      <div className="glass-card full-width-card" style={{ opacity: 1, transform: 'none' }}>
+                        <div className="ch">
+                          <div className="ct"><div className="ctbar" />Grade Distribution</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '380px', width: '100%' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <defs>
+                                <linearGradient id="grad-A" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#69f0ae" />
+                                  <stop offset="100%" stopColor="#00b35c" />
+                                </linearGradient>
+                                <linearGradient id="grad-B" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#91d5ff" />
+                                  <stop offset="100%" stopColor="#1a78ff" />
+                                </linearGradient>
+                                <linearGradient id="grad-C" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#ffcc80" />
+                                  <stop offset="100%" stopColor="#ff9100" />
+                                </linearGradient>
+                                <filter id="pie-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                                  <feDropShadow dx="0" dy="8" stdDeviation="8" floodOpacity="0.15" />
+                                </filter>
+                              </defs>
+
+                              <Pie
+                                data={gradeDistribution}
+                                dataKey="value"
+                                nameKey="name"
+                                cx="50%"
+                                cy="55%"
+                                innerRadius={80}
+                                outerRadius={120}
+                                paddingAngle={4}
+                                stroke="none"
+                                style={{ filter: 'url(#pie-shadow)', fontFamily: 'Inter', fontWeight: 800, fontSize: '18px', fill: '#145ec9' }}
+                                label={({ name, value }) => `${name} (${value} Cr)`}
+                                labelLine={{ stroke: '#1a78ff', strokeWidth: 1, opacity: 0.5 }}
+                              >
+                                {gradeDistribution.map((entry, index) => {
+                                  let gradUrl = "url(#grad-B)";
+                                  if (entry.name.includes("A")) gradUrl = "url(#grad-A)";
+                                  if (entry.name.includes("C")) gradUrl = "url(#grad-C)";
+                                  return <Cell key={`cell-${index}`} fill={gradUrl} />;
+                                })}
+                              </Pie>
+                              <Tooltip
+                                cursor={{ fill: 'rgba(20, 94, 201, 0.05)' }}
+                                contentStyle={{ borderRadius: '12px', border: '1px solid rgba(26,120,255,0.2)', boxShadow: '0 8px 20px rgba(0,0,0,0.1)', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: '18px', color: '#145ec9' }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            )}
 
           </div>
         </div>
