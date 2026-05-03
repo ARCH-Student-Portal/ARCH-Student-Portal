@@ -96,7 +96,8 @@ export default function StudentProfileV1() {
         // phone/guardian may come back as nested objects — toStr handles it
         const phone    = toStr(d.phone      ?? d.phoneNumber);
         const address  = toStr(d.address    ?? d.residentialAddress);
-        const guardian = toStr(d.guardian   ?? d.guardianName);
+        const guardian = toStr(d.guardian?.name ?? d.guardianName);
+        const guardianPhone = toStr(d.guardian?.phone ?? '');
         const cnic     = toStr(d.cnic       ?? d.nationalId);
 
         const rawSem = d.currentSemester;

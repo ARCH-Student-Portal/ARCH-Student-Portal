@@ -9,24 +9,7 @@ const CourseRepo = require('../repositories/course.repository');
 const EnrollmentService = require('../services/enrollment.service');
 
 // student.controller.js — getAnnouncements
-const getAnnouncements = async (req, res) => {
-  try {
-    const { week } = req.query;
-    const query = {};
-    if (week) query.weekNumber = Number(week);
 
-    // Return ALL announcements — both teacher and admin
-    // No createdByModel filter here
-    const announcements = await Announcement.find(query)
-      .populate("course", "code name")
-      .populate("createdBy", "name")   // works for both Teacher + Admin refs
-      .sort({ createdAt: -1 });
-
-    res.json({ announcements });
-  } catch (err) {
-    res.status(500).json({ error: true, message: err.message });
-  }
-};
 
 class StudentController {
     async getProfile(req, res) {
