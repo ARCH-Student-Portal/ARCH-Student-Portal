@@ -1,34 +1,47 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import * as THREE from "three";
 import Sidebar from "./Components/shared/Sidebar";
 import { ADMIN_NAV } from "./config/AdminNav";
 import { gsap } from "gsap";
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
-import AnimatedCounter from "./Utilities/AnimatedCounter";
+import { AnimatePresence } from "framer-motion";
 import useWebGLBackground from "./Utilities/UseWebGLBackground";
 import StatsGrid from "./data/StatsGrid";
-import "./AdminStudents.css"; 
-
-const INITIAL_STUDENTS = [
-  { id: "24K-0001", name: "Ahmed Hassan",    prog: "BS-CS", dept: "CS",  sem: "1st", email: "24k-0001@stu.nu.edu.pk", phone: "+92-300-1111111", status: "active",   cgpa: "—",   enrolled: 3  },
-  { id: "24K-0002", name: "Sara Malik",      prog: "BS-CS", dept: "CS",  sem: "1st", email: "24k-0002@stu.nu.edu.pk", phone: "+92-301-2222222", status: "active",   cgpa: "—",   enrolled: 3  },
-  { id: "23K-1201", name: "Bilal Raza",      prog: "BS-EE", dept: "EE",  sem: "3rd", email: "23k-1201@stu.nu.edu.pk", phone: "+92-303-3333333", status: "active",   cgpa: "3.24",enrolled: 5  },
-  { id: "22K-3210", name: "Areeb Bucha",     prog: "BS-CS", dept: "CS",  sem: "7th", email: "22k-3210@stu.nu.edu.pk", phone: "+92-300-1234567", status: "active",   cgpa: "3.82",enrolled: 5  },
-  { id: "22K-2980", name: "Hira Baig",       prog: "BS-IS", dept: "IS",  sem: "5th", email: "22k-2980@stu.nu.edu.pk", phone: "+92-302-4444444", status: "active",   cgpa: "3.56",enrolled: 4  },
-  { id: "21K-5002", name: "Omar Farooq",     prog: "BS-CS", dept: "CS",  sem: "7th", email: "21k-5002@stu.nu.edu.pk", phone: "+92-333-5555555", status: "active",   cgpa: "3.10",enrolled: 4  },
-  { id: "20K-7710", name: "Nadia Khalid",    prog: "BS-MT", dept: "MT",  sem: "8th", email: "20k-7710@stu.nu.edu.pk", phone: "+92-311-6666666", status: "inactive", cgpa: "2.88",enrolled: 0  },
-  { id: "23K-0451", name: "Zubair Ahmed",    prog: "BS-CS", dept: "CS",  sem: "3rd", email: "23k-0451@stu.nu.edu.pk", phone: "+92-345-7777777", status: "pending",  cgpa: "—",   enrolled: 0  },
-  { id: "22K-1100", name: "Fatima Siddiqui", prog: "BS-CS", dept: "CS",  sem: "5th", email: "22k-1100@stu.nu.edu.pk", phone: "+92-300-8888888", status: "active",   cgpa: "3.67",enrolled: 5  },
-  { id: "21K-9001", name: "Shahzaib Khan",   prog: "BS-EE", dept: "EE",  sem: "7th", email: "21k-9001@stu.nu.edu.pk", phone: "+92-321-9999999", status: "active",   cgpa: "2.95",enrolled: 3  },
-];
+import AdminApi from "./config/adminApi";
+import "./AdminStudents.css";
 
 const DEPTS  = ["All", "CS", "EE", "MT", "IS", "BBA"];
 const SEMS   = ["All", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
 const STATUS = ["All", "active", "inactive", "pending"];
 
-// ── INLINE MODAL ──
-function StudentModal({ student, onClose, onSave }) {
+// Map backend doc → UI row
+const mapStudent = (s) => ({
+  _id:      s._id,
+  id:       s.rollNumber,
+  name:     s.name,
+  prog:     s.program  || "—",
+  dept:     s.department || "—",
+  sem:      s.semester  || "—",
+  email:    s.email,
+  phone:    s.phone     || "—",
+  status:   s.status    || "active",
+  cgpa:     s.cgpa != null ? String(s.cgpa) : "—",
+  enrolled: s.enrolledCredits ?? 0,
+});
+
+// Map UI form → backend payload
+const mapToPayload = (form) => ({
+  rollNumber:  form.id,
+  name:        form.name,
+  program:     form.prog,
+  department:  form.dept,
+  semester:    form.sem,
+  email:       form.email,
+  phone:       form.phone,
+  status:      form.status,
+});
+
+// ── MODAL ──
+function StudentModal({ student, onClose, onSave, saving }) {
   const [form, setForm] = useState(
     student
       ? { ...student }
@@ -86,9 +99,9 @@ function StudentModal({ student, onClose, onSave }) {
           </div>
         </div>
         <div className="adm-modal-footer" style={{ marginTop: 48 }}>
-          <button className="adm-btn-secondary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={onClose}>Cancel</button>
-          <button className="adm-btn-primary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={() => onSave(form)}>
-            {student ? "Save Changes" : "➕ Add Student"}
+          <button className="adm-btn-secondary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="adm-btn-primary" style={{ fontSize: 20, padding: "16px 32px", opacity: saving ? 0.6 : 1 }} onClick={() => onSave(form)} disabled={saving}>
+            {saving ? "Saving…" : student ? "Save Changes" : "➕ Add Student"}
           </button>
         </div>
       </div>
@@ -96,43 +109,112 @@ function StudentModal({ student, onClose, onSave }) {
   );
 }
 
-// ── MAIN COMPONENT ──
+// ── MAIN ──
 export default function AdminStudents() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const webglRef = useRef(null);
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const webglRef  = useRef(null);
 
   const [collapse,   setCollapse]   = useState(false);
-  const [students,   setStudents]   = useState(INITIAL_STUDENTS);
+  const [students,   setStudents]   = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [saving,     setSaving]     = useState(false);
+
+  // pagination
+  const [page,       setPage]       = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 10;
+
   const [search,     setSearch]     = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [semFilter,  setSemFilter]  = useState("All");
   const [statFilter, setStatFilter] = useState("All");
-  const [modal,      setModal]      = useState(null); 
+  const [modal,      setModal]      = useState(null);
   const [showStats,  setShowStats]  = useState(false);
 
+  // ── FETCH ──
+  const fetchStudents = useCallback(async (p = page) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await AdminApi.getStudents(p, PAGE_SIZE);
+      if (res.students) {
+        setStudents(res.students.map(mapStudent));
+        setTotalCount(res.total ?? res.students.length);
+      } else {
+        setError(res.message || "Failed to load students");
+      }
+    } catch (e) {
+      setError("Network error — backend down?");
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => { fetchStudents(page); }, [page]);
+
+  // ── FILTER (client-side on current page) ──
   const filtered = students.filter(s => {
     const q = search.toLowerCase();
     const matchSearch = !q || s.id.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q);
-    const matchDept   = deptFilter === "All" || s.dept === deptFilter;
-    const matchSem    = semFilter  === "All" || s.sem  === semFilter;
+    const matchDept   = deptFilter === "All" || s.dept   === deptFilter;
+    const matchSem    = semFilter  === "All" || s.sem    === semFilter;
     const matchStat   = statFilter === "All" || s.status === statFilter;
     return matchSearch && matchDept && matchSem && matchStat;
   });
 
-  const handleSave = (form) => {
-    if (modal === "add") setStudents(prev => [form, ...prev]);
-    else setStudents(prev => prev.map(s => s.id === form.id ? form : s));
-    setModal(null);
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm("Delete this student record? This cannot be undone.")) {
-      setStudents(prev => prev.filter(s => s.id !== id));
+  // ── SAVE (create / update) ──
+  const handleSave = async (form) => {
+    setSaving(true);
+    try {
+      const payload = mapToPayload(form);
+      let res;
+      if (modal === "add") {
+        res = await AdminApi.createStudent(payload);
+        if (res._id || res.student) {
+          const created = mapStudent(res.student || res);
+          setStudents(prev => [created, ...prev]);
+          setTotalCount(c => c + 1);
+        } else {
+          alert(res.message || "Create failed");
+          return;
+        }
+      } else {
+        // modal holds the existing student row (has _id)
+        res = await AdminApi.updateStudent(modal._id, payload);
+        if (res._id || res.student) {
+          const updated = mapStudent(res.student || res);
+          setStudents(prev => prev.map(s => s._id === updated._id ? updated : s));
+        } else {
+          alert(res.message || "Update failed");
+          return;
+        }
+      }
+      setModal(null);
+    } catch (e) {
+      alert("Network error");
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Three.js Background (Unified Blue Theme)
+  // ── DELETE ──
+  const handleDelete = async (_id, rollNumber) => {
+    if (!window.confirm(`Delete ${rollNumber}? Cannot be undone.`)) return;
+    try {
+      const res = await AdminApi.deleteStudent(_id);
+      if (res.message?.toLowerCase().includes("deleted") || res.success) {
+        setStudents(prev => prev.filter(s => s._id !== _id));
+        setTotalCount(c => c - 1);
+      } else {
+        alert(res.message || "Delete failed");
+      }
+    } catch (e) {
+      alert("Network error");
+    }
+  };
+
   useWebGLBackground(webglRef);
 
   useEffect(() => {
@@ -140,7 +222,9 @@ export default function AdminStudents() {
       gsap.fromTo(el, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", delay: i * 0.06 });
     });
     setTimeout(() => setShowStats(true), 100);
-  }, [deptFilter, semFilter, statFilter]); 
+  }, [deptFilter, semFilter, statFilter]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   return (
     <div className="admin-stu-wrapper">
@@ -152,13 +236,13 @@ export default function AdminStudents() {
             student={modal === "add" ? null : modal}
             onClose={() => setModal(null)}
             onSave={handleSave}
+            saving={saving}
           />
         )}
       </AnimatePresence>
 
-      <div id="app" style={{ opacity: 1, zIndex: 10, position: 'relative' }}>
-        
-        {/* INLINE SIDEBAR */}
+      <div id="app" style={{ opacity: 1, zIndex: 10, position: "relative" }}>
+
         <Sidebar
           sections={ADMIN_NAV}
           logoLabel="Admin Portal"
@@ -168,13 +252,12 @@ export default function AdminStudents() {
           onToggle={() => setCollapse(c => !c)}
         />
 
-        {/* MAIN */}
         <div id="main">
           <div id="topbar" style={{ opacity: 1 }}>
             <div className="tb-glow" />
             <div className="pg-title"><span>Student Records</span></div>
             <div className="tb-r">
-              <div className="sem-chip">{students.length} Total</div>
+              <div className="sem-chip">{totalCount} Total</div>
               <button className="adm-btn-primary" onClick={() => setModal("add")} style={{ fontSize: 18, padding: "10px 24px", marginLeft: 12 }}>
                 ➕ Add Student
               </button>
@@ -183,18 +266,25 @@ export default function AdminStudents() {
 
           <div id="scroll">
 
-            {/* ── GODZILLA STATS GRID ── */}
+            {/* ERROR BANNER */}
+            {error && (
+              <div style={{ background: "rgba(239,68,68,.15)", border: "1px solid var(--red)", borderRadius: 16, padding: "16px 24px", marginBottom: 24, color: "var(--red)", fontWeight: 700, fontSize: 18 }}>
+                ⚠️ {error} — <button style={{ color: "var(--blue)", background: "none", border: "none", cursor: "pointer", fontWeight: 800 }} onClick={() => fetchStudents(page)}>Retry</button>
+              </div>
+            )}
+
+            {/* STATS */}
             <StatsGrid
               showStats={showStats}
               cards={[
-                { cls: "sc-a", label: "Total Enrolled", value: students.length,                                  special: "none"    },
-                { cls: "sc-d", label: "Active Status",  value: students.filter(s=>s.status==="active").length,   special: "bubbles" },
-                { cls: "sc-b", label: "Pending Rev.",   value: students.filter(s=>s.status==="pending").length,  special: "none"    },
-                { cls: "sc-c", label: "Inactive/Alum",  value: students.filter(s=>s.status==="inactive").length, special: "fire"    },
+                { cls: "sc-a", label: "Total Enrolled",  value: totalCount,                                          special: "none"    },
+                { cls: "sc-d", label: "Active Status",   value: students.filter(s => s.status === "active").length,  special: "bubbles" },
+                { cls: "sc-b", label: "Pending Rev.",    value: students.filter(s => s.status === "pending").length, special: "none"    },
+                { cls: "sc-c", label: "Inactive/Alum",  value: students.filter(s => s.status === "inactive").length, special: "fire"    },
               ]}
             />
 
-            {/* 🔥 FIXED: HORIZONTAL FILTER BAR 🔥 */}
+            {/* FILTER BAR */}
             <div className="admin-isolated-card" style={{ marginBottom: 40, padding: "24px 32px" }}>
               <div style={{ display: "flex", flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 20, width: "100%" }}>
                 <div className="adm-filter-search" style={{ padding: "16px 20px", flex: 1, minWidth: 300 }}>
@@ -221,7 +311,7 @@ export default function AdminStudents() {
               </div>
             </div>
 
-            {/* Table - ANTI SQUASH & GODZILLA SCALED */}
+            {/* TABLE */}
             <div className="admin-isolated-card" style={{ padding: 0 }}>
               <div className="adm-table-wrap" style={{ borderRadius: 24 }}>
                 <table className="adm-table">
@@ -239,14 +329,20 @@ export default function AdminStudents() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.length === 0 ? (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={9} style={{ textAlign: "center", padding: "80px", color: "var(--dimmer)", fontSize: 20, fontWeight: 800 }}>
+                          ⏳ Loading students…
+                        </td>
+                      </tr>
+                    ) : filtered.length === 0 ? (
                       <tr>
                         <td colSpan={9} style={{ textAlign: "center", padding: "80px", color: "var(--dimmer)", opacity: .6, fontSize: 20, fontWeight: 800 }}>
                           📭 No students match the current filters.
                         </td>
                       </tr>
                     ) : filtered.map(s => (
-                      <tr key={s.id} className="adm-tr-hover">
+                      <tr key={s._id} className="adm-tr-hover">
                         <td className="td-mono">{s.id}</td>
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -257,7 +353,7 @@ export default function AdminStudents() {
                               fontSize: 20, fontWeight: 900, color: "#fff", flexShrink: 0,
                               boxShadow: "0 4px 12px rgba(26,120,255,.3)"
                             }}>
-                              {s.name.split(" ").map(n=>n[0]).join("").slice(0,2)}
+                              {s.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
                             </div>
                             <div>
                               <div className="td-bold">{s.name}</div>
@@ -276,22 +372,19 @@ export default function AdminStudents() {
                           </span>
                         </td>
                         <td className="td-dim">{s.sem}</td>
-                        
-                        {/* 2-FONT RULE: BITCOUNT FOR NUMBERS */}
                         <td style={{ fontFamily: "'Bitcount Grid Double', monospace", fontSize: 28, fontWeight: 700, color: s.cgpa === "—" ? "var(--dimmer)" : "var(--blue)" }}>
                           {s.cgpa}
                         </td>
                         <td style={{ fontFamily: "'Bitcount Grid Double', monospace", fontSize: 28, fontWeight: 700, color: "var(--text-main)" }}>
                           {s.enrolled}
                         </td>
-                        
                         <td>
                           <span className={`adm-badge badge-${s.status}`}>{s.status}</span>
                         </td>
                         <td style={{ textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                             <button className="adm-action-btn" title="Edit" onClick={() => setModal(s)} style={{ width: 52, height: 52, fontSize: 22 }}>✏️</button>
-                            <button className="adm-action-btn btn-delete" title="Delete" onClick={() => handleDelete(s.id)} style={{ width: 52, height: 52, fontSize: 22 }}>🗑️</button>
+                            <button className="adm-action-btn btn-delete" title="Delete" onClick={() => handleDelete(s._id, s.id)} style={{ width: 52, height: 52, fontSize: 22 }}>🗑️</button>
                           </div>
                         </td>
                       </tr>
@@ -299,6 +392,31 @@ export default function AdminStudents() {
                   </tbody>
                 </table>
               </div>
+
+              {/* PAGINATION */}
+              {totalPages > 1 && (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, padding: "24px 32px", borderTop: "1px solid rgba(255,255,255,.06)" }}>
+                  <button
+                    className="adm-btn-secondary"
+                    style={{ fontSize: 18, padding: "10px 24px" }}
+                    disabled={page <= 1}
+                    onClick={() => setPage(p => p - 1)}
+                  >
+                    ← Prev
+                  </button>
+                  <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 18, color: "var(--dimmer)" }}>
+                    Page {page} / {totalPages}
+                  </span>
+                  <button
+                    className="adm-btn-secondary"
+                    style={{ fontSize: 18, padding: "10px 24px" }}
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </div>
 
           </div>
