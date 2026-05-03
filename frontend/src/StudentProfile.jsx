@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
@@ -37,8 +36,6 @@ function getInitials(name = "") {
 }
 
 export default function StudentProfileV1() {
-  const navigate    = useNavigate();
-  const location    = useLocation();
   const webglRef    = useRef(null);
   const introCanvasRef = useRef(null);
   const introRef    = useRef(null);
@@ -55,7 +52,6 @@ export default function StudentProfileV1() {
   useEffect(() => {
     StudentApi.getProfile()
       .then((res) => {
-        // Support both { student: {...} } and flat { name, ... } response shapes
         const d = res?.student ?? res ?? {};
 
         const name    = d.name       ?? "";
@@ -274,7 +270,6 @@ export default function StudentProfileV1() {
           </div>
           <div id="scroll">
             <div className="profile-container">
-              {/* HERO CARD */}
               <div className="glass-card sc profile-hero-card">
                 <div className="hero-avatar">{student.initials}</div>
                 <div className="hero-details">
@@ -284,83 +279,43 @@ export default function StudentProfileV1() {
                 </div>
               </div>
 
-              {/* INFO GRID */}
               <div className="profile-grid">
-                {/* ACADEMIC DETAILS */}
                 <div className="glass-card sc">
                   <div className="card-header">
                     <div className="ch-bar" />
                     <div className="ch-title">Academic Details</div>
                   </div>
                   <div className="info-list">
-                    <div className="info-item">
-                      <span className="info-label">Program</span>
-                      <span className="info-val">{student.program}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Department</span>
-                      <span className="info-val">{student.department}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Faculty</span>
-                      <span className="info-val">{student.faculty}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Batch</span>
-                      <span className="info-val">{student.batch}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Semester</span>
-                      <span className="info-val">{student.semester}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Section</span>
-                      <span className="info-val">{student.section}</span>
-                    </div>
+                    <div className="info-item"><span className="info-label">Program</span><span className="info-val">{student.program}</span></div>
+                    <div className="info-item"><span className="info-label">Department</span><span className="info-val">{student.department}</span></div>
+                    <div className="info-item"><span className="info-label">Faculty</span><span className="info-val">{student.faculty}</span></div>
+                    <div className="info-item"><span className="info-label">Batch</span><span className="info-val">{student.batch}</span></div>
+                    <div className="info-item"><span className="info-label">Semester</span><span className="info-val">{student.semester}</span></div>
+                    <div className="info-item"><span className="info-label">Section</span><span className="info-val">{student.section}</span></div>
                   </div>
                 </div>
 
-                {/* CONTACT & LOGISTICS */}
                 <div className="glass-card sc">
                   <div className="card-header">
                     <div className="ch-bar" />
                     <div className="ch-title">Contact & Logistics</div>
                   </div>
                   <div className="info-list">
-                    <div className="info-item">
-                      <span className="info-label">University Email</span>
-                      <span className="info-val">{student.email}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Phone Number</span>
-                      <span className="info-val">{student.phone}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Residential Address</span>
-                      <span className="info-val wrap">{student.address}</span>
-                    </div>
+                    <div className="info-item"><span className="info-label">University Email</span><span className="info-val">{student.email}</span></div>
+                    <div className="info-item"><span className="info-label">Phone Number</span><span className="info-val">{student.phone}</span></div>
+                    <div className="info-item"><span className="info-label">Residential Address</span><span className="info-val wrap">{student.address}</span></div>
                   </div>
                 </div>
 
-                {/* PERSONAL RECORD */}
                 <div className="glass-card sc">
                   <div className="card-header">
                     <div className="ch-bar" />
                     <div className="ch-title">Personal Record</div>
                   </div>
                   <div className="info-list">
-                    <div className="info-item">
-                      <span className="info-label">Date of Birth</span>
-                      <span className="info-val">{student.dob}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">National ID (CNIC)</span>
-                      <span className="info-val">{student.cnic}</span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Guardian Name</span>
-                      <span className="info-val">{student.guardian}</span>
-                    </div>
+                    <div className="info-item"><span className="info-label">Date of Birth</span><span className="info-val">{student.dob}</span></div>
+                    <div className="info-item"><span className="info-label">National ID (CNIC)</span><span className="info-val">{student.cnic}</span></div>
+                    <div className="info-item"><span className="info-label">Guardian Name</span><span className="info-val">{student.guardian}</span></div>
                   </div>
                 </div>
               </div>

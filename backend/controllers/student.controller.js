@@ -5,6 +5,8 @@ const GradeService = require('../services/grade.service');
 const AttendanceService = require('../services/attendance.service');
 const ScheduleService = require('../services/schedule.service');
 const AnnouncementAdapter = require('../patterns/AnnouncementAdapter');
+const CourseRepo = require('../repositories/course.repository');
+const EnrollmentService = require('../services/enrollment.service');
 
 
 class StudentController {
@@ -66,6 +68,114 @@ class StudentController {
             res.status(500).json({ message: 'Server error', error: error.message });
         }
     }
+    // ── ADD THESE THREE METHODS TO YOUR EXISTING StudentController CLASS ──────────
+    // Place them inside the class body alongside the existing methods.
+    // Also add these two requires at the top of student.controller.js:
+    //   const CourseRepo = require('../repositories/course.repository');
+    //   const EnrollmentService = require('../services/enrollment.service');
+
+    async getAvailableCourses(req, res) {
+        try {
+            // Get all courses
+            const allCourses = await CourseRepo.findAll();
+
+            // Get student's active enrollments to exclude already-enrolled courses
+            const activeEnrollments = await EnrollmentRepo.findActiveByStudent(req.user.id);
+            const enrolledCourseIds = new Set(
+                activeEnrollments.map(e => e.course.toString())
+            );
+
+            // Get student's completed enrollments to check prerequisites
+            const completedEnrollments = await EnrollmentRepo.findCompletedByStudent(req.user.id);
+            const completedCourseIds = new Set(
+                completedEnrollments.map(e => e.course._id.toString())
+            );
+            // Also include active as "done" for prerequisite purposes
+            activeEnrollments.forEach(e => completedCourseIds.add(e.course.toString()));
+
+            const available = allCourses
+                .filter(course => !enrolledCourseIds.has(course._id.toString()))
+                .map(course => {
+                    // Check prerequisites
+                    const prereqIds = course.prerequisites.map(p =>
+                        p._id ? p._id.toString() : p.toString()
+                    );
+                    const prereqMet = prereqIds.every(id => completedCourseIds.has(id));
+
+                    // Build sections with availability info
+                    const sections = course.sections.map(section => ({
+                        sectionId:       section._id,
+                        sectionName:     section.sectionName,
+                        teacher:         section.teacher?.name ?? null,
+                        totalSeats:      section.totalSeats,
+                        seatsAvailable:  section.seatsAvailable,
+                        schedule:        section.schedule,
+                    }));
+
+                    return {
+                        courseId:       course._id,
+                        courseCode:     course.courseCode,
+                        name:           course.name,
+                        creditHours:    course.creditHours,
+                        department:     course.department,
+                        fee:            course.fee,
+                        prerequisites:  prereqIds,
+                        prereqMet,
+                        weightage:      course.weightage,
+                        sections,
+                    };
+                });
+
+            res.status(200).json({ courses: available });
+        } catch (error) {
+            res.status(500).json({ message: 'Server error', error: error.message });
+        }
+    }
+
+    async enrollCourse(req, res) {
+        try {
+            const { courseId, sectionId, semester } = req.body;
+            if (!courseId || !sectionId || !semester) {
+                return res.status(400).json({ message: 'courseId, sectionId, and semester are required' });
+            }
+            const enrollment = await EnrollmentService.enrollStudent(
+                req.user.id,
+                courseId,
+                sectionId,
+                semester
+            );
+            res.status(201).json({ message: 'Enrolled successfully', enrollment });
+        } catch (error) {
+            const statusMap = {
+                COURSE_NOT_FOUND:  404,
+                SECTION_NOT_FOUND: 404,
+                ALREADY_ENROLLED:  409,
+                NO_SEATS:          409,
+            };
+            const status = statusMap[error.message] ?? 500;
+            res.status(status).json({ message: error.message });
+        }
+    }
+
+    async dropCourse(req, res) {
+        try {
+            const { enrollmentId } = req.params;
+            // Security: verify this enrollment belongs to this student
+            const enrollment = await EnrollmentRepo.findById(enrollmentId);
+            if (!enrollment) {
+                return res.status(404).json({ message: 'Enrollment not found' });
+            }
+            if (enrollment.student.toString() !== req.user.id) {
+                return res.status(403).json({ message: 'Not authorized to drop this enrollment' });
+            }
+            await EnrollmentService.unenrollStudent(enrollmentId);
+            res.status(200).json({ message: 'Course dropped successfully' });
+        } catch (error) {
+            res.status(500).json({ message: 'Server error', error: error.message });
+        }
+    }
+
+    
 
     async getGrades(req, res) {
         try {
@@ -248,13 +358,16 @@ class StudentController {
 
 const controller = new StudentController();
 module.exports = {
-    getProfile: controller.getProfile.bind(controller),
-    updateProfile: controller.updateProfile.bind(controller),
-    getCourses: controller.getCourses.bind(controller),
-    getGrades: controller.getGrades.bind(controller),
-    getAttendance: controller.getAttendance.bind(controller),
-    getGPA: controller.getGPA.bind(controller),
-    getAnnouncements: controller.getAnnouncements.bind(controller),
-    getTranscript: controller.getTranscript.bind(controller),
-    getTimetable: controller.getTimetable.bind(controller)
+    getProfile:           controller.getProfile.bind(controller),
+    updateProfile:        controller.updateProfile.bind(controller),
+    getCourses:           controller.getCourses.bind(controller),
+    getGrades:            controller.getGrades.bind(controller),
+    getAttendance:        controller.getAttendance.bind(controller),
+    getGPA:               controller.getGPA.bind(controller),
+    getAnnouncements:     controller.getAnnouncements.bind(controller),
+    getTranscript:        controller.getTranscript.bind(controller),
+    getTimetable:         controller.getTimetable.bind(controller),
+    getAvailableCourses:  controller.getAvailableCourses.bind(controller),
+    enrollCourse:         controller.enrollCourse.bind(controller),
+    dropCourse:           controller.dropCourse.bind(controller),
 };

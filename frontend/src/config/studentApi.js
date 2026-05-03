@@ -9,11 +9,11 @@ const headers = () => ({
 
 const StudentApi = {
     login: (identifier, password) =>
-    fetch(`${BASE_URL}/auth/student/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password })
-    }).then(r => r.json()),
+        fetch(`${BASE_URL}/auth/student/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier, password })
+        }).then(r => r.json()),
 
     getProfile: () =>
         fetch(`${BASE_URL}/student/profile`, { headers: headers() }).then(r => r.json()),
@@ -44,6 +44,23 @@ const StudentApi = {
             method: 'PATCH',
             headers: headers(),
             body: JSON.stringify(data)
+        }).then(r => r.json()),
+
+    // ── REGISTRATION ──────────────────────────────────────────────────────────
+    getAvailableCourses: () =>
+        fetch(`${BASE_URL}/student/available-courses`, { headers: headers() }).then(r => r.json()),
+
+    enrollCourse: (courseId, sectionId, semester) =>
+        fetch(`${BASE_URL}/student/enroll`, {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ courseId, sectionId, semester })
+        }).then(r => r.json()),
+
+    dropCourse: (enrollmentId) =>
+        fetch(`${BASE_URL}/student/enroll/${enrollmentId}`, {
+            method: 'DELETE',
+            headers: headers(),
         }).then(r => r.json()),
 };
 
