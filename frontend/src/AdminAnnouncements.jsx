@@ -99,10 +99,10 @@ export default function AdminAnnouncements() {
         if (cancelled) return;
 
         // Normalise: API may return { data: [...] } or [...] directly
-        const list = Array.isArray(res)
-          ? res
-          : Array.isArray(res?.data)
-            ? res.data
+        const list = Array.isArray(res?.announcements)
+          ? res.announcements
+          : Array.isArray(res)
+            ? res
             : [];
 
         if (res?.error || res?.message?.toLowerCase().includes("error")) {
@@ -149,51 +149,65 @@ export default function AdminAnnouncements() {
   const handleSave = async (form) => {
     setSaving(true);
 
-    const now = new Date()
-      .toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-      .replace(/ /g, " ");
-
     if (compose === "new") {
-      // ── Optimistic insert ──
-      const tempId  = `temp-${Date.now()}`;
-      const optimistic = { ...form, id: tempId, date: now, _pending: true };
+      const payload = {
+        title:      form.title,
+        body:       form.body,
+        type:       form.annType,      // "university" | "faculty"
+        category:   form.category,     // "notice" | "mid" | "final" | "activity"
+        weekNumber: form.weekNumber ?? null,
+        course:     form.course     ?? null,
+      };
+
+      const tempId = `temp-${Date.now()}`;
+      const optimistic = { ...form, id: tempId, _pending: true };
       setAnnouncements(prev => [optimistic, ...prev]);
       setCompose(null);
 
       try {
-        const res = await AdminApi.postAnnouncement(form);
-
+        const res = await AdminApi.postAnnouncement(payload); // payload not form
         if (res?.error || res?.message?.toLowerCase().includes("error")) {
-          throw new Error(res.message || "Failed to post announcement");
+          throw new Error(res.message || "Failed to post");
         }
-
-        // Replace temp with server record
-        const serverRecord = res?.data ?? res;
+        const serverRecord = res?.announcement ?? res?.data ?? res;
         setAnnouncements(prev =>
-          prev.map(a => a.id === tempId ? { ...optimistic, ...serverRecord, _pending: false } : a)
+          prev.map(a => a.id === tempId
+            ? { ...optimistic, ...serverRecord, _pending: false }
+            : a)
         );
-        pushToast("Announcement posted successfully!");
+        pushToast("Announcement posted!");
       } catch (err) {
-        console.error("[AdminAnnouncements] post error:", err);
-        // Roll back optimistic insert
         setAnnouncements(prev => prev.filter(a => a.id !== tempId));
-        pushToast(err.message || "Failed to post announcement. Please try again.", "error");
+        pushToast(err.message || "Failed to post.", "error");
       }
     } else {
-      // ── Local edit (no PATCH endpoint available) ──
       setAnnouncements(prev => prev.map(a => a.id === form.id ? { ...form } : a));
       setCompose(null);
-      pushToast("Announcement updated locally.", "warning");
+      pushToast("Updated locally.", "warning");
     }
 
     setSaving(false);
   };
 
   // ── Delete handler (local only — no DELETE endpoint for announcements) ──
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
+    console.log("deleting id:", id);   // ← add this
     if (!window.confirm("Delete this announcement? This cannot be undone.")) return;
-    setAnnouncements(prev => prev.filter(a => a.id !== id));
-    pushToast("Announcement removed.", "warning");
+
+      // Optimistic remove
+      const prev = announcements;
+      setAnnouncements(p => p.filter(a => a.id !== id));
+
+      try {
+          const res = await AdminApi.deleteAnnouncement(id);
+          if (res?.error || res?.message?.toLowerCase().includes("error")) {
+              throw new Error(res.message || "Delete failed");
+          }
+          pushToast("Announcement deleted.");
+      } catch (err) {
+          setAnnouncements(prev); // roll back
+          pushToast(err.message || "Failed to delete.", "error");
+      }
   };
 
   const handleTogglePin = (id) =>

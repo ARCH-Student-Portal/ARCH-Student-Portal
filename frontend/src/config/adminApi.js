@@ -136,6 +136,18 @@ const AdminApi = {
             headers: headers(),
             body: JSON.stringify(data)
         }).then(r => r.json()),
+
+    deleteAnnouncement: (id) => {
+        console.log("DELETE id sent to API:", id); // verify not undefined
+        return fetch(`${BASE_URL}/admin/announcements/${id}`, {
+            method: 'DELETE',
+            headers: headers()
+        }).then(async r => {
+            const text = await r.text();
+            try { return JSON.parse(text); }
+            catch { throw new Error(text.slice(0, 120)); } // surface HTML error
+        });
+    },
 };
 
 export default AdminApi;
