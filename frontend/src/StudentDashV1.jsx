@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
 import { countUp, setText } from "./Utilities/domAnimation";
 import "./StudentDashV1.css";
-import { courses, notices, attendances } from "./data/StudentDashData";
+import StudentApi from "./config/studentApi";
 
 export default function StudentDashV1() {
   const navigate = useNavigate();
@@ -15,10 +15,74 @@ export default function StudentDashV1() {
   const topbarRef = useRef(null);
   const [collapse, setCollapse] = useState(false);
 
+  const [dashData, setDashData] = useState({
+    gpa: null,
+    courses: [],
+    notices: [],
+    attendance: []
+  });
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  // fetch dashboard data
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const [gpaRes, coursesRes, attendanceRes, announcementsRes] = await Promise.all([
+          StudentApi.getGPA(),
+          StudentApi.getCourses(),
+          StudentApi.getAttendance(),
+          StudentApi.getAnnouncements()
+        ]);
+
+        const gpa = gpaRes;
+        const courses = coursesRes.courses || [];
+        const attendance = attendanceRes.attendance || [];
+        const notices = announcementsRes.announcements || [];
+
+        setDashData({ gpa, courses, notices, attendance });
+
+        // avg attendance
+        const avgAtt = attendance.length > 0
+          ? Math.round(attendance.reduce((sum, a) => sum + (a.percentage ?? 0), 0) / attendance.length)
+          : 0;
+
+        // at risk count
+        const atRisk = attendance.filter(a => a.percentage < 75).length;
+
+        // countUp with real values
+        countUp("v1", gpa?.cgpa ?? 0, 2, "", 1400);
+        countUp("v2", gpa?.creditsCompleted ?? 0, 0, "", 1200);
+        countUp("v3", courses.length, 0, "", 1000);
+        countUp("v4", avgAtt, 0, "%", 1200);
+
+        setTimeout(() => {
+          setText("d1", "↑ +0.08 this semester");
+          setText("d2", `of ${gpa?.totalCreditsRequired ?? 130} required`);
+          setText("d3", "courses active");
+          setText("d4", atRisk > 0 ? `${atRisk} course at risk` : "");
+        }, 950);
+
+        // credit bar
+        setTimeout(() => {
+          const bd = document.getElementById("bar-done");
+          const ba = document.getElementById("bar-active");
+          const total = gpa?.totalCreditsRequired ?? 130;
+          if (bd) bd.style.width = `${Math.round(((gpa?.creditsCompleted ?? 0) / total) * 100)}%`;
+          if (ba) ba.style.width = `${Math.round(((gpa?.creditsInProgress ?? 0) / total) * 100)}%`;
+        }, 1500);
+
+      } catch (err) {
+        console.error('Dashboard fetch error:', err);
+      }
+    };
+    fetchDashboard();
+  }, []);
+
   // ── CINEMATIC INTRO ──
   useEffect(() => {
     const hasPlayedIntro = sessionStorage.getItem("archIntroPlayed");
-    
+
     if (hasPlayedIntro) {
       introRef.current.style.display = "none";
       appRef.current.style.opacity = 1;
@@ -26,7 +90,6 @@ export default function StudentDashV1() {
       sidebarRef.current.style.transform = "translateX(0)";
       topbarRef.current.style.opacity = 1;
 
-      // Wait for React to paint the DOM before querying elements
       requestAnimationFrame(() => {
         document.querySelectorAll(".sc").forEach((el) => {
           gsap.set(el, { opacity: 1, y: 0 });
@@ -34,26 +97,9 @@ export default function StudentDashV1() {
         document.querySelectorAll(".glass-card").forEach((el) => {
           gsap.set(el, { opacity: 1, y: 0 });
         });
-
-        countUp("v1", 3.62, 2, "", 1000);
-        countUp("v2", 86, 0, "", 800);
-        countUp("v3", 5, 0, "", 600);
-        countUp("v4", 78, 0, "%", 800);
-
-        setText("d1", "↑ +0.08 this semester");
-        setText("d2", "of 136 required");
-        setText("d3", "courses active");
-        setText("d4", "1 course at risk");
-
-        setTimeout(() => {
-          const bd = document.getElementById("bar-done");
-          const ba = document.getElementById("bar-active");
-          if (bd) bd.style.width = "63%";
-          if (ba) ba.style.width = "11%";
-        }, 100);
       });
 
-      return; 
+      return;
     }
 
     const canvas = introCanvasRef.current;
@@ -145,7 +191,7 @@ export default function StudentDashV1() {
 
     const afterIntro = () => {
       cancelAnimationFrame(animId);
-      sessionStorage.setItem("archIntroPlayed", "true"); 
+      sessionStorage.setItem("archIntroPlayed", "true");
 
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
@@ -157,24 +203,6 @@ export default function StudentDashV1() {
       document.querySelectorAll(".glass-card").forEach((el, i) => {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)", delay: 1.0 + i * 0.12 });
       });
-      setTimeout(() => {
-        countUp("v1", 3.62, 2, "", 1400);
-        countUp("v2", 86, 0, "", 1200);
-        countUp("v3", 5, 0, "", 1000);
-        countUp("v4", 78, 0, "%", 1200);
-        setTimeout(() => {
-          setText("d1", "↑ +0.08 this semester");
-          setText("d2", "of 136 required");
-          setText("d3", "courses active");
-          setText("d4", "1 course at risk");
-        }, 950);
-      }, 650);
-      setTimeout(() => {
-        const bd = document.getElementById("bar-done");
-        const ba = document.getElementById("bar-active");
-        if (bd) bd.style.width = "63%";
-        if (ba) ba.style.width = "11%";
-      }, 1500);
     };
 
     const tl = gsap.timeline({ delay: 0.4, onComplete: afterIntro });
@@ -196,14 +224,12 @@ export default function StudentDashV1() {
 
   return (
     <>
-      {/* ── NEW APPLE/STRIPE FLUID MESH BACKGROUND ── */}
       <div className="mesh-bg">
         <div className="mesh-blob blob-1" />
         <div className="mesh-blob blob-2" />
         <div className="mesh-blob blob-3" />
       </div>
 
-      {/* INTRO */}
       <div id="intro" ref={introRef}>
         <canvas id="intro-canvas" ref={introCanvasRef} />
         <div id="intro-line" />
@@ -213,22 +239,24 @@ export default function StudentDashV1() {
         <div id="intro-flash" />
       </div>
 
-      {/* APP */}
       <div id="app" ref={appRef}>
         <nav id="sidebar" ref={sidebarRef} className={collapse ? "collapse" : ""}>
           <div className="sb-top-bar" />
-          <button className = "sb-toggle" onClick={() => setCollapse(c => !c)}> 
+          <button className="sb-toggle" onClick={() => setCollapse(c => !c)}>
             <span/><span/><span/>
-          </button> 
+          </button>
           <div className="sb-logo">
             <div className="logo-box">A</div>
             <div><div className="logo-name">ARCH</div><div className="logo-tagline">Student Portal</div></div>
           </div>
           <div className="sb-user hov-target">
-            <div className="uav">AB</div>
-            <div><div className="uname">Areeb Bucha</div><div className="uid">21K-3210</div></div>
+            <div className="uav">{(user.name || 'S').charAt(0).toUpperCase()}{(user.name || '').split(' ')[1]?.charAt(0).toUpperCase() || ''}</div>
+            <div>
+              <div className="uname">{user.name || 'Student'}</div>
+              <div className="uid">{user.rollNumber || ''}</div>
+            </div>
           </div>
-          
+
           {[
             ["Overview", [["⊞","Dashboard","/student/dashboard"],["◎","Academic","/student/academic"]]],
             ["Courses",[["＋","Registration","/student/registration"],["◈","Transcript","/student/transcript"],["▦","Marks","/student/marks"],["✓","Attendance","/student/attendance"],["▤","Timetable","/student/timetable"]]],
@@ -238,19 +266,19 @@ export default function StudentDashV1() {
             <div key={sec}>
               <div className="nav-sec">{sec}</div>
               {items.map(([ic, label, path]) => (
-                <div 
-                  className={`ni hov-target${location.pathname === path ? " active" : ""}`} 
+                <div
+                  className={`ni hov-target${window.location.pathname === path ? " active" : ""}`}
                   key={label}
                   onClick={() => navigate(path)}
                   style={{cursor: 'pointer'}}
                 >
                   <div className="ni-ic">{ic}</div>{label}
-                  {label === "Notices" && <span className="nbadge">3</span>}
+                  {label === "Notices" && <span className="nbadge">{dashData.notices.length}</span>}
                 </div>
               ))}
             </div>
           ))}
-          
+
           <div className="sb-foot">Spring 2025 · FAST-NUCES</div>
         </nav>
 
@@ -273,10 +301,10 @@ export default function StudentDashV1() {
           <div id="scroll">
             <div className="sgrid">
               {[
-                { id:"sc1", cls:"sc-a", label:"Cumulative GPA", vid:"v1", did:"d1", ddcls:"d-up", special:"none" },
-                { id:"sc2", cls:"sc-b", label:"Credits Done", vid:"v2", did:"d2", ddcls:"d-blue", special:"none" },
-                { id:"sc3", cls:"sc-c", label:"Enrolled Courses", vid:"v3", did:"d3", ddcls:"d-up", special:"bubbles" },
-                { id:"sc4", cls:"sc-d", label:"Avg Attendance", vid:"v4", did:"d4", ddcls:"d-warn", special:"fire" },
+                { id:"sc1", cls:"sc-a", label:"Cumulative GPA",   vid:"v1", did:"d1", ddcls:"d-up",   special:"none"    },
+                { id:"sc2", cls:"sc-b", label:"Credits Done",      vid:"v2", did:"d2", ddcls:"d-blue", special:"none"    },
+                { id:"sc3", cls:"sc-c", label:"Enrolled Courses",  vid:"v3", did:"d3", ddcls:"d-up",   special:"bubbles" },
+                { id:"sc4", cls:"sc-d", label:"Avg Attendance",    vid:"v4", did:"d4", ddcls:"d-warn", special:"fire"    },
               ].map((c) => (
                 <div className={`sc ${c.cls} hov-target`} id={c.id} key={c.id}>
                   <div className="sc-blob" /><div className="sc-deco" />
@@ -294,9 +322,7 @@ export default function StudentDashV1() {
                   )}
                   {c.special === "fire" && (
                     <div className="card-fire">
-                      {[0,1,2,3,4].map(i => (
-                        <div key={i} className={`cflame cf${i+1}`} />
-                      ))}
+                      {[0,1,2,3,4].map(i => <div key={i} className={`cflame cf${i+1}`} />)}
                     </div>
                   )}
                 </div>
@@ -306,13 +332,12 @@ export default function StudentDashV1() {
             <div className="cgrid">
               <div className="glass-card hov-target" id="card1">
                 <div className="card-shine"/>
-                
                 <div className="ch">
                   <div className="ct"><div className="ctbar"/>Current Courses</div>
                   <div className="ca hov-target" onClick={() => navigate('/student/academic')} style={{cursor: 'pointer'}}>View grades →</div>
                 </div>
 
-                {courses.map((c,i) => (
+                {dashData.courses.map((c, i) => (
                   <div className="crow hov-target" key={i}>
                     <div className="cdot" style={{ background: '#1a78ff', boxShadow: '0 0 10px #1a78ff88' }}/>
                     <div className="cinfo">
@@ -322,6 +347,7 @@ export default function StudentDashV1() {
                     <div className="gbadge">{c.letterGrade ?? '—'}</div>
                   </div>
                 ))}
+
                 <div className="credit-wrap">
                   <div className="credit-hd">
                     <div className="credit-title">Credit Progress</div>
@@ -352,8 +378,8 @@ export default function StudentDashV1() {
                   {dashData.notices.map((n, i) => (
                     <div className="nitem hov-target" key={i}>
                       <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:5}}>
-                        <span className={`ntag ${n.cls}`}>{n.tag}</span>
-                        {n.fire && (
+                        <span className={`ntag ${n.type === 'university' ? 'nt-univ' : 'nt-fac'}`}>{n.tag}</span>
+                        {n.isPinned && (
                           <div className="inline-fire">
                             <div className="iflame if1"/><div className="iflame if2"/><div className="iflame if3"/>
                           </div>
@@ -372,30 +398,34 @@ export default function StudentDashV1() {
                     <div className="ca hov-target" onClick={() => navigate('/student/attendance')} style={{cursor: 'pointer'}}>Full report →</div>
                   </div>
                   <div className="attgrid">
-                    {attendances.map((a,i) => (
-                      <div className={`attmini hov-target ${a.good?"att-ok":"att-bad"}`} key={i}>
-                        {a.good && (
+                    {dashData.attendance.map((a, i) => (
+                      <div className={`attmini hov-target ${a.percentage >= 75 ? "att-ok" : "att-bad"}`} key={i}>
+                        {a.percentage >= 75 && (
                           <div className="att-bubbles">
                             {[0,1,2,3].map(j => <span key={j} className="att-bubble" style={{left:`${10+j*25}%`,animationDelay:`${j*0.4}s`}}/>)}
                           </div>
                         )}
-                        {!a.good && (
+                        {a.percentage < 75 && (
                           <div className="widget-fire">
                             <div className="wf wf1"/><div className="wf wf2"/><div className="wf wf3"/>
                             <div className="wf wf4"/><div className="wf wf5"/>
                           </div>
                         )}
-                        <div className="attpct">{a.pct}</div>
-                        <div className="attlabel">{a.label}</div>
+                        <div className="attpct">{a.percentage ?? 0}%</div>
+                        <div className="attlabel">{a.courseCode}</div>
                       </div>
                     ))}
                   </div>
-                  <div className="att-alert">
-                    <div className="alert-fire">
-                      <div className="af af1"/><div className="af af2"/><div className="af af3"/>
+                  {dashData.attendance.some(a => a.percentage < 75) && (
+                    <div className="att-alert">
+                      <div className="alert-fire">
+                        <div className="af af1"/><div className="af af2"/><div className="af af3"/>
+                      </div>
+                      <span>
+                        {dashData.attendance.filter(a => a.percentage < 75).map(a => a.courseCode).join(', ')} below 75% minimum. Grade at risk.
+                      </span>
                     </div>
-                    <span>DSA at 72% — below 75% minimum. Grade at risk.</span>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
