@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
 import { gsap } from "gsap";
@@ -25,6 +26,28 @@ const STUDENT_FALLBACK = {
   faculty:    "",
 };
 
+// ── SAFELY COERCE A VALUE TO STRING ──────────────────────────────────────────
+// API sometimes returns objects like { name: "...", phone: "..." } for nested
+// fields. This flattens them so React never tries to render a plain object.
+function toStr(val, fallback = "") {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === "string")  return val;
+  if (typeof val === "number")  return String(val);
+  // object — try common string-like keys before giving up
+  if (typeof val === "object") {
+    return (
+      val.name   ??
+      val.value  ??
+      val.text   ??
+      val.label  ??
+      val.phone  ??
+      val.email  ??
+      JSON.stringify(val)
+    );
+  }
+  return fallback;
+}
+
 // ── DERIVE INITIALS FROM NAME ──
 function getInitials(name = "") {
   return name
@@ -36,6 +59,7 @@ function getInitials(name = "") {
 }
 
 export default function StudentProfileV1() {
+  const navigate    = useNavigate();
   const webglRef    = useRef(null);
   const introCanvasRef = useRef(null);
   const introRef    = useRef(null);
@@ -48,30 +72,41 @@ export default function StudentProfileV1() {
   const [userName, setUserName] = useState("Loading...");
   const [userId,   setUserId]   = useState("...");
 
+  // ── LOGOUT ────────────────────────────────────────────────────────────────
+  const handleLogout = () => {
+    sessionStorage.clear();
+    navigate("/login");
+  };
+
   // ── FETCH PROFILE ──────────────────────────────────────────────────────────
   useEffect(() => {
     StudentApi.getProfile()
       .then((res) => {
         const d = res?.student ?? res ?? {};
 
-        const name    = d.name       ?? "";
-        const rollNo  = d.rollNumber ?? d.studentId ?? d.rollNo ?? "";
-        const program = d.program    ?? d.degree    ?? "";
-        const dept    = d.department ?? d.dept      ?? "";
-        const faculty = d.faculty    ?? "";
-        const batch   = d.batch      ?? d.cohort    ?? "";
-        const semester= d.currentSemester
-                          ? `${d.currentSemester}${["th","st","nd","rd"][Math.min(d.currentSemester,3)] ?? "th"} Semester`
-                          : d.semester ?? "";
-        const section = d.section    ?? "";
-        const email   = d.email      ?? d.universityEmail ?? "";
-        const phone   = d.phone      ?? d.phoneNumber     ?? "";
-        const address = d.address    ?? d.residentialAddress ?? "";
-        const dob     = d.dateOfBirth
-                          ? new Date(d.dateOfBirth).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
-                          : d.dob ?? "";
-        const cnic    = d.cnic       ?? d.nationalId ?? "";
-        const guardian= d.guardian   ?? d.guardianName ?? "";
+        const name     = toStr(d.name);
+        const rollNo   = toStr(d.rollNumber ?? d.studentId ?? d.rollNo);
+        const program  = toStr(d.program    ?? d.degree);
+        const dept     = toStr(d.department ?? d.dept);
+        const faculty  = toStr(d.faculty);
+        const batch    = toStr(d.batch      ?? d.cohort);
+        const section  = toStr(d.section);
+        const email    = toStr(d.email      ?? d.universityEmail);
+        // phone/guardian may come back as nested objects — toStr handles it
+        const phone    = toStr(d.phone      ?? d.phoneNumber);
+        const address  = toStr(d.address    ?? d.residentialAddress);
+        const guardian = toStr(d.guardian   ?? d.guardianName);
+        const cnic     = toStr(d.cnic       ?? d.nationalId);
+
+        const rawSem = d.currentSemester;
+        const semester = rawSem
+          ? `${rawSem}${["th","st","nd","rd"][Math.min(rawSem, 3)] ?? "th"} Semester`
+          : toStr(d.semester);
+
+        const dobRaw = d.dateOfBirth;
+        const dob = dobRaw
+          ? new Date(dobRaw).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+          : toStr(d.dob);
 
         setStudent({
           name, rollNo, program, department: dept, faculty,
@@ -277,6 +312,14 @@ export default function StudentProfileV1() {
                   <div className="hero-roll">{student.rollNo}</div>
                   <div className="hero-program">{student.program}</div>
                 </div>
+                {/* ── LOGOUT BUTTON ── matches TeacherProfile style */}
+                <button
+                  className="tp-logout-btn"
+                  onClick={handleLogout}
+                  style={{ marginLeft: "auto", alignSelf: "center" }}
+                >
+                  <span style={{ fontSize: 18, marginRight: 8 }}>⏏</span> Secure Logout
+                </button>
               </div>
 
               <div className="profile-grid">

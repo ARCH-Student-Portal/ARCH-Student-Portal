@@ -67,9 +67,9 @@ html,body{
 /* ── APP LAYOUT ── */
 #app{position:relative;z-index:10;display:flex;height:100vh;width:100vw;opacity:0}
 
-/* ── SIDEBAR (210px Slimmed to match Dash/Marks) ── */
+/* ── SIDEBAR ── */
 #sidebar {
-  width: 210px; min-width: 210px;
+  width: 230px; min-width: 230px;
   background: #ffffff;
   border-right: 1px solid rgba(18,78,170,.22);
   display: flex; flex-direction: column;
@@ -123,13 +123,13 @@ html,body{
 #sidebar.collapse .ni { justify-content:center;padding:8px;margin:1px 4px;font-size:0;gap:0; }
 #sidebar.collapse .ni-ic { font-size:20px; }
 
-/* ── MAIN AREA (48px Topbar) ── */
+/* ── MAIN AREA ── */
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 
 #topbar {
-  height: 48px !important; min-height: 48px !important;
+  height: 56px !important; min-height: 56px !important;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 32px;
+  padding: 0 40px;
   background: rgba(255,255,255,0.7); backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(18,78,170,.22);
   z-index: 20; opacity: 0; box-shadow: 0 8px 20px rgba(0,0,0,.08); position: relative;
@@ -138,17 +138,17 @@ html,body{
   position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
   background: linear-gradient(90deg, transparent, rgba(64,169,255,.55), rgba(255,255,255,.4), rgba(64,169,255,.55), transparent);
 }
-.pg-title { font-size: 20px !important; font-weight: 900; letter-spacing: -0.02em; color: var(--text-main); text-shadow:0 1px 0 rgba(0,0,0,.22); }
+.pg-title { font-size: 24px !important; font-weight: 900; letter-spacing: -0.02em; color: var(--text-main); text-shadow:0 1px 0 rgba(0,0,0,.22); }
 .pg-title span { background: linear-gradient(90deg, #145ec9, var(--blue2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 
 .tb-r     { display: flex; align-items: center; gap: 12px; }
-.sem-chip { padding: 4px 12px !important; border-radius: 20px; font-size: 12px !important; font-weight: 800; letter-spacing: .08em; background: rgba(26,100,255,.12); border: 1px solid rgba(64,169,255,.25); color: var(--dimmer); text-transform: uppercase;}
+.sem-chip { padding: 5px 14px !important; border-radius: 20px; font-size: 13px !important; font-weight: 800; letter-spacing: .08em; background: rgba(26,100,255,.12); border: 1px solid rgba(64,169,255,.25); color: var(--dimmer); text-transform: uppercase;}
 
 .nb-btn {
-  width: 30px !important; height: 30px !important;
+  width: 34px !important; height: 34px !important;
   border-radius: 8px; background: #ffffff; border: 1px solid rgba(18,78,170,.22);
   display: flex; align-items: center; justify-content: center; cursor: pointer; 
-  position: relative; font-size: 14px; transition: all .2s; box-shadow: 0 8px 20px rgba(0,0,0,.08);
+  position: relative; font-size: 16px; transition: all .2s; box-shadow: 0 8px 20px rgba(0,0,0,.08);
 }
 .nb-btn:hover { background: rgba(26,100,255,.1); border-color: rgba(64,169,255,.3); box-shadow: 0 0 16px rgba(26,100,255,.2); }
 .nb-pip {
@@ -156,69 +156,90 @@ html,body{
   border-radius: 50%; background: var(--red); border: 1.5px solid #fff; box-shadow: 0 0 8px var(--red);
 }
 
-/* ── Scroll (Padded for Breathing Room) ── */
+/* ── SCROLL ── */
 #scroll {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  padding: 40px 60px; /* MASSIVELY INCREASED PADDING */
+  padding: 48px 72px;
   position: relative; z-index: 2;
 }
 #scroll::-webkit-scrollbar { width: 8px; }
 #scroll::-webkit-scrollbar-thumb { background: rgba(26,100,255,.2); border-radius: 4px; }
 
-/* ── PROFILE ENTERPRISE LAYOUT ── */
+/* ── PROFILE LAYOUT ── */
 .profile-container {
-  display: flex; flex-direction: column; gap: 32px;
-  max-width: 1400px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 36px;
+  max-width: 1500px; margin: 0 auto;
 }
 
-/* Base Glass Card styling for all profile containers */
+/* ── GLASS CARD ── */
 .glass-card {
   background: rgba(255,255,255,0.95) !important;
   backdrop-filter: blur(10px);
-  border-radius: 24px;
-  padding: 32px 40px;
+  border-radius: 28px;
+  padding: 40px 52px;
   box-shadow: 0 16px 50px rgba(0,0,0,.15);
   border: 1px solid rgba(18,78,170,.22);
   display: flex; flex-direction: column;
 }
 
-/* Animation class */
 .sc {
   opacity: 0; transform: translateY(30px);
   transition: opacity .4s, transform .5s cubic-bezier(.34,1.56,.64,1), box-shadow .25s;
 }
 
-/* HERO CARD */
+/* ── HERO CARD ── */
 .profile-hero-card {
-  flex-direction: row; align-items: center; gap: 40px;
+  flex-direction: row; align-items: center; gap: 48px;
 }
 .hero-avatar {
-  width: 160px; height: 160px; flex-shrink: 0;
+  width: 180px; height: 180px; flex-shrink: 0;
   border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--blue2));
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Bitcount Grid Double', monospace; font-size: 64px; font-weight: 900; color: #fff;
+  font-family: 'Bitcount Grid Double', monospace; font-size: 72px; font-weight: 900; color: #fff;
   box-shadow: 0 12px 30px rgba(26,120,255,.3);
 }
-.hero-details { display: flex; flex-direction: column; gap: 8px; }
-.hero-name { font-size: 42px; font-weight: 900; color: var(--text-main); letter-spacing: -0.02em; text-shadow:0 1px 0 rgba(0,0,0,.22); }
-.hero-roll { font-family: 'Inter', sans-serif; font-size: 24px; font-weight: 900; color: var(--blue); letter-spacing: 0.05em; }
-.hero-program { font-size: 18px; font-weight: 800; color: var(--dimmer); text-transform: uppercase; letter-spacing: 0.05em; }
+.hero-details { display: flex; flex-direction: column; gap: 10px; }
+.hero-name    { font-size: 48px; font-weight: 900; color: var(--text-main); letter-spacing: -0.02em; text-shadow:0 1px 0 rgba(0,0,0,.22); }
+.hero-roll    { font-family: 'Inter', sans-serif; font-size: 26px; font-weight: 900; color: var(--blue); letter-spacing: 0.05em; }
+.hero-program { font-size: 20px; font-weight: 800; color: var(--dimmer); text-transform: uppercase; letter-spacing: 0.05em; }
 
-/* 3-COLUMN INFO GRID */
-.profile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; align-items: stretch;}
+/* ── LOGOUT BUTTON — matches TeacherProfile ── */
+.tp-logout-btn {
+  margin-left: auto;
+  align-self: center;
+  display: flex; align-items: center;
+  padding: 14px 28px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(230, 57, 70, 0.35);
+  background: rgba(230, 57, 70, 0.07);
+  color: var(--red);
+  font-size: 16px; font-weight: 800;
+  cursor: pointer; letter-spacing: 0.04em;
+  transition: all 0.2s;
+}
+.tp-logout-btn:hover {
+  background: rgba(230, 57, 70, 0.14);
+  border-color: rgba(230, 57, 70, 0.6);
+  box-shadow: 0 0 20px rgba(230, 57, 70, 0.2);
+  transform: scale(1.02);
+}
 
-/* Headers inside the cards */
-.card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid rgba(18,78,170,.1); padding-bottom: 16px;}
-.ch-bar { width: 6px; height: 24px; border-radius: 3px; background: linear-gradient(180deg, var(--blue), var(--blue2)); }
-.ch-title { font-size: 22px; font-weight: 900; color: var(--text-main); letter-spacing: 0.02em; }
+/* ── 3-COLUMN INFO GRID ── */
+.profile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; align-items: stretch; }
 
-/* Key-Value Lists */
-.info-list { display: flex; flex-direction: column; gap: 20px; }
-.info-item { display: flex; flex-direction: column; gap: 6px; }
-.info-label { font-size: 13px; font-weight: 800; text-transform: uppercase; color: var(--dimmer); letter-spacing: 0.1em; opacity: 0.8;}
-.info-val { font-size: 18px; font-weight: 900; color: var(--text-main); }
-.info-val.wrap { white-space: normal; line-height: 1.4; }
+/* ── CARD HEADERS ── */
+.card-header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; border-bottom: 2px solid rgba(18,78,170,.1); padding-bottom: 18px; }
+.ch-bar   { width: 7px; height: 28px; border-radius: 3px; background: linear-gradient(180deg, var(--blue), var(--blue2)); }
+.ch-title { font-size: 20px; font-weight: 900; color: var(--text-main); letter-spacing: 0.02em; }
+
+/* ── KEY-VALUE ROWS ── */
+.info-list  { display: flex; flex-direction: column; gap: 22px; }
+.info-item  { display: flex; flex-direction: column; gap: 6px; }
+.info-label { font-size: 13px; font-weight: 800; text-transform: uppercase; color: var(--dimmer); letter-spacing: 0.12em; opacity: 0.85; }
+.info-val   { font-size: 20px; font-weight: 800; color: var(--text-main); line-height: 1.3; }
+.info-val.wrap { white-space: normal; line-height: 1.5; }
 
 @media (max-width: 1200px) {
   .profile-grid { grid-template-columns: 1fr; }
+  #scroll { padding: 32px 28px; }
 }
