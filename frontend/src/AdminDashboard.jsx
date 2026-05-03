@@ -7,23 +7,20 @@ import Sidebar from "./Components/shared/Sidebar";
 import { ADMIN_NAV } from "./config/AdminNav";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
 import StatsGrid from "./data/StatsGrid";
-import "./AdminDashboardV1.css"; // 🔥 DEDICATED, ISOLATED CSS FILE
+import AdminApi from "./config/adminApi";
+import "./AdminDashboardV1.css";
 
-// ── DATA ─────────────────────────────────────────────────────────────
-const DEPT_DATA = [
-  { name: "CS",  count: 1240, max: 1240, color: "#1a78ff" },
-  { name: "EE",  count:  480, max: 1240, color: "#7c3aed" },
-  { name: "MT",  count:  310, max: 1240, color: "#00c96e" },
-  { name: "BBA", count:  520, max: 1240, color: "#ffab00" },
-  { name: "IS",  count:  297, max: 1240, color: "#ff4d6a" },
+// ── FALLBACK DATA (used while loading or on error) ─────────────────────
+const FALLBACK_DEPT_DATA = [
+  { name: "CS",  count: 0, max: 1, color: "#1a78ff" },
+  { name: "EE",  count: 0, max: 1, color: "#7c3aed" },
+  { name: "MT",  count: 0, max: 1, color: "#00c96e" },
+  { name: "BBA", count: 0, max: 1, color: "#ffab00" },
+  { name: "IS",  count: 0, max: 1, color: "#ff4d6a" },
 ];
 
-const ACTIVITY = [
-  { icon: "👤", cls: "nt-uni", title: "New student registered — Rida Fatima (CS)",   time: "2 mins ago" },
-  { icon: "📚", cls: "nt-fac", title: "Course CS-4050 (Deep Learning) was added",     time: "18 mins ago" },
-  { icon: "✏️", cls: "nt-ok",  title: "Marks uploaded for DB Systems — Sec A",        time: "45 mins ago" },
-  { icon: "⚠️", cls: "nt-urg", title: "Enrollment clash flagged — 3 students",        time: "1 hr ago", fire: true },
-  { icon: "🗑️", cls: "nt-urg", title: "Course EE-2001 deactivated by Dr. Shahid",    time: "3 hrs ago" },
+const FALLBACK_ACTIVITY = [
+  { icon: "ℹ️", cls: "nt-fac", title: "No recent activity found.", time: "" },
 ];
 
 export default function AdminDashboardV1() {
@@ -37,6 +34,14 @@ export default function AdminDashboardV1() {
   const topbarRef = useRef(null);
   const [collapse, setCollapse] = useState(false);
 
+  // ── API STATE ──────────────────────────────────────────────────────────
+  const [dashStats, setDashStats]       = useState(null);   // from getDashboard
+  const [recentStudents, setRecentStudents] = useState([]); // from getStudents
+  const [announcements, setAnnouncements]   = useState([]); // from getAnnouncements
+  const [deptData, setDeptData]         = useState(FALLBACK_DEPT_DATA);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+
   const [hasPlayedIntro] = useState(() => {
     if (typeof window !== "undefined") {
       return sessionStorage.getItem("archAdminIntroPlayed") === "true";
@@ -46,14 +51,117 @@ export default function AdminDashboardV1() {
 
   const [showStats, setShowStats] = useState(hasPlayedIntro);
 
-  // ── CINEMATIC INTRO ──
+  // ── FETCH DASHBOARD DATA ───────────────────────────────────────────────
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        setLoading(true);
+
+        const [dashRes, studentsRes, announcementsRes] = await Promise.all([
+          AdminApi.getDashboard(),
+          AdminApi.getStudents(1, 4),
+          AdminApi.getAnnouncements(),
+        ]);
+
+        // Dashboard stats
+        if (dashRes && !dashRes.error) {
+          setDashStats(dashRes);
+
+          // Build dept data from dashboard response
+          // Expects dashRes.departmentStats = [{ name, count }] or similar
+          if (dashRes.departmentStats && Array.isArray(dashRes.departmentStats)) {
+            const maxCount = Math.max(...dashRes.departmentStats.map(d => d.count), 1);
+            const DEPT_COLORS = {
+              CS: "#1a78ff", EE: "#7c3aed", MT: "#00c96e", BBA: "#ffab00", IS: "#ff4d6a",
+            };
+            setDeptData(
+              dashRes.departmentStats.map(d => ({
+                name:  d.name,
+                count: d.count,
+                max:   maxCount,
+                color: DEPT_COLORS[d.name] || "#1a78ff",
+              }))
+            );
+          }
+        }
+
+        // Recent students
+        if (studentsRes && !studentsRes.error) {
+          // API may return { students: [...] } or array directly
+          const list = Array.isArray(studentsRes)
+            ? studentsRes
+            : studentsRes.students || studentsRes.data || [];
+          setRecentStudents(list.slice(0, 4));
+        }
+
+        // Announcements → activity feed
+        if (announcementsRes && !announcementsRes.error) {
+          const list = Array.isArray(announcementsRes)
+            ? announcementsRes
+            : announcementsRes.announcements || announcementsRes.data || [];
+          setAnnouncements(list);
+        }
+      } catch (err) {
+        console.error("Dashboard fetch failed:", err);
+        setError("Failed to load dashboard data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAll();
+  }, []);
+
+  // ── DERIVE STATS CARDS ─────────────────────────────────────────────────
+  // dashStats shape assumed: { totalStudents, activeCourses, facultyMembers, avgAttendance }
+  const statsCards = dashStats
+    ? [
+        { cls: "sc-a", label: "Total Students",  value: dashStats.totalStudents  ?? 0, special: "none",    useCommas: true },
+        { cls: "sc-b", label: "Active Courses",  value: dashStats.activeCourses  ?? 0, special: "none" },
+        { cls: "sc-c", label: "Faculty Members", value: dashStats.facultyMembers ?? 0, special: "bubbles" },
+        { cls: "sc-d", label: "Avg Attendance",  value: dashStats.avgAttendance  ?? 0, special: "fire",    suffix: "%" },
+      ]
+    : [
+        { cls: "sc-a", label: "Total Students",  value: 0, special: "none", useCommas: true },
+        { cls: "sc-b", label: "Active Courses",  value: 0, special: "none" },
+        { cls: "sc-c", label: "Faculty Members", value: 0, special: "bubbles" },
+        { cls: "sc-d", label: "Avg Attendance",  value: 0, special: "fire", suffix: "%" },
+      ];
+
+  // ── DERIVE ACTIVITY FEED FROM ANNOUNCEMENTS ────────────────────────────
+  const ACTIVITY_ICON_MAP = { info: "ℹ️", alert: "⚠️", success: "✅", warning: "⚠️" };
+  const activityFeed = announcements.length > 0
+    ? announcements.slice(0, 5).map(a => ({
+        icon:  ACTIVITY_ICON_MAP[a.type] || "📣",
+        cls:   a.type === "alert" ? "nt-urg" : a.type === "success" ? "nt-ok" : "nt-fac",
+        title: a.title || a.message || a.content || "Announcement",
+        time:  a.createdAt
+          ? new Date(a.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : "",
+        fire:  a.type === "alert",
+      }))
+    : FALLBACK_ACTIVITY;
+
+  // ── TOTAL FROM DEPT DATA ───────────────────────────────────────────────
+  const totalEnrollment = deptData.reduce((sum, d) => sum + d.count, 0);
+
+  // ── STUDENT STATUS HELPER ──────────────────────────────────────────────
+  const statusCls = (status) => {
+    if (!status) return "nt-fac";
+    const s = status.toLowerCase();
+    if (s === "active")  return "nt-ok";
+    if (s === "pending") return "nt-fac";
+    if (s === "dropped") return "nt-urg";
+    return "nt-fac";
+  };
+
+  // ── CINEMATIC INTRO ────────────────────────────────────────────────────
   useEffect(() => {
     if (hasPlayedIntro) {
       if (introRef.current) introRef.current.style.display = "none";
       if (appRef.current) appRef.current.style.opacity = 1;
       if (sidebarRef.current) sidebarRef.current.style.transform = "translateX(0)";
       if (topbarRef.current) topbarRef.current.style.opacity = 1;
-
       document.querySelectorAll(".sc").forEach((el, i) => {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.7)", delay: i * 0.1 });
       });
@@ -61,11 +169,11 @@ export default function AdminDashboardV1() {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.4)", delay: 0.2 + i * 0.1 });
       });
       setShowStats(true);
-      return; 
+      return;
     }
 
     const canvas = introCanvasRef.current;
-    if(!canvas) return;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -101,7 +209,6 @@ export default function AdminDashboardV1() {
       ctx.fillStyle = "rgba(0,4,14,0.18)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       frame++;
-
       stars.forEach((s) => {
         s.opacity += s.twinkle * (Math.random() > 0.5 ? 1 : -1);
         s.opacity = Math.max(0.05, Math.min(0.8, s.opacity));
@@ -110,7 +217,6 @@ export default function AdminDashboardV1() {
         ctx.fillStyle = `rgba(180,210,255,${s.opacity})`;
         ctx.fill();
       });
-
       particles.forEach((p) => {
         p.y -= p.speed * 0.4;
         p.opacity += p.flicker * (Math.random() > 0.5 ? 1 : -1);
@@ -125,7 +231,6 @@ export default function AdminDashboardV1() {
         ctx.letterSpacing = "0.15em";
         ctx.fillText(p.word, p.x, p.y);
       });
-
       const scanY = ((frame * 1.8) % (canvas.height + 60)) - 30;
       const g = ctx.createLinearGradient(0, scanY - 4, 0, scanY + 4);
       g.addColorStop(0, "transparent");
@@ -133,7 +238,6 @@ export default function AdminDashboardV1() {
       g.addColorStop(1, "transparent");
       ctx.fillStyle = g;
       ctx.fillRect(0, scanY - 4, canvas.width, 8);
-
       animId = requestAnimationFrame(draw);
     };
     ctx.fillStyle = "#00040e";
@@ -142,20 +246,17 @@ export default function AdminDashboardV1() {
 
     const afterIntro = () => {
       cancelAnimationFrame(animId);
-      sessionStorage.setItem("archAdminIntroPlayed", "true"); 
-
+      sessionStorage.setItem("archAdminIntroPlayed", "true");
       gsap.set(introRef.current, { display: "none" });
       gsap.to(appRef.current, { opacity: 1, duration: 0.6 });
       gsap.to(sidebarRef.current, { x: 0, duration: 1.2, ease: "expo.out", delay: 0.05 });
       gsap.to(topbarRef.current, { opacity: 1, duration: 0.7, delay: 0.4 });
-      
       document.querySelectorAll(".sc").forEach((el, i) => {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.7)", delay: 0.6 + i * 0.1 });
       });
       document.querySelectorAll(".glass-card").forEach((el, i) => {
         gsap.to(el, { opacity: 1, y: 0, duration: 0.7, ease: "back.out(1.4)", delay: 1.0 + i * 0.12 });
       });
-      
       setTimeout(() => setShowStats(true), 600);
     };
 
@@ -168,48 +269,45 @@ export default function AdminDashboardV1() {
       .to("#intro-logo", { scale: 50, opacity: 0, duration: 0.7, ease: "power4.in" }, 2.4)
       .to("#intro-sub", { opacity: 0, duration: 0.3 }, 2.4)
       .to("#intro-uni", { opacity: 0, duration: 0.3 }, 2.4)
-      .to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4)
-      .to("#intro-flash", { opacity: 1, duration: 0.08 }, 2.85)
-      .to("#intro-flash", { opacity: 0, duration: 0.4 }, 2.93)
-      .to(introRef.current, { opacity: 0, duration: 0.35 }, 2.88);
+      .to("#intro-line", { opacity: 0, duration: 0.3 }, 2.4);
 
     return () => cancelAnimationFrame(animId);
   }, [hasPlayedIntro]);
 
+  // ── RENDER ─────────────────────────────────────────────────────────────
   return (
-    /* 🔥 THE MASTER WRAPPER - STOPS CSS BLEED 🔥 */
-    <div className="admin-dash-wrapper">
-      
+    <div id="admin-root" className="admin-dash-wrapper">
+      {/* MESH BACKGROUND */}
       <div className="mesh-bg">
         <div className="mesh-blob blob-1" />
         <div className="mesh-blob blob-2" />
         <div className="mesh-blob blob-3" />
       </div>
 
-      {/* INTRO */}
-      <div id="intro" ref={introRef}>
-        <canvas id="intro-canvas" ref={introCanvasRef} />
-        <div id="intro-line" />
-        <div id="intro-logo">ARCH</div>
-        <div id="intro-sub">Admin Portal</div>
-        <div id="intro-uni">System Initialization</div>
-        <div id="intro-flash" />
-      </div>
+      {/* INTRO OVERLAY */}
+      {!hasPlayedIntro && (
+        <div id="intro" ref={introRef}>
+          <canvas ref={introCanvasRef} id="intro-canvas" />
+          <div id="intro-line" />
+          <div id="intro-logo">ARCH</div>
+          <div id="intro-sub">Admin Portal</div>
+          <div id="intro-uni">FAST — NUCES</div>
+          <div id="intro-flash" />
+        </div>
+      )}
 
       {/* APP */}
       <div id="app" ref={appRef} style={{ opacity: hasPlayedIntro ? 1 : 0 }}>
-        
-        {/* ── SIDEBAR ── */}
         <Sidebar
+          ref={sidebarRef}
           sections={ADMIN_NAV}
           logoLabel="Admin Portal"
-          userName="Super Admin"
-          userId="ADM-0001"
-          collapse={collapse}
+          userName={JSON.parse(localStorage.getItem("user") || "{}").name ?? "Admin User"}
+          userId={JSON.parse(localStorage.getItem("user") || "{}").adminId ?? "admin"}          collapse={collapse}
           onToggle={() => setCollapse(c => !c)}
         />
 
-        {/* ── MAIN ── */}
+        {/* MAIN */}
         <div id="main">
           <div id="topbar" ref={topbarRef} style={{ opacity: hasPlayedIntro ? 1 : 0 }}>
             <div className="tb-glow" />
@@ -224,34 +322,49 @@ export default function AdminDashboardV1() {
           </div>
 
           <div id="scroll">
-            
-            {/* ── TOP STATS GRID ── */}
+
+            {/* ERROR BANNER */}
+            {error && (
+              <div style={{
+                background: "rgba(255,77,106,0.15)",
+                border: "1px solid #ff4d6a",
+                borderRadius: 10,
+                padding: "12px 20px",
+                marginBottom: 16,
+                color: "#ff4d6a",
+                fontSize: 14,
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            {/* TOP STATS GRID */}
             <StatsGrid
               showStats={showStats}
-              cards={[
-                { cls: "sc-a", label: "Total Students",  value: 2847, special: "none", useCommas: true  },
-                { cls: "sc-b", label: "Active Courses",  value: 89,   special: "none" },
-                { cls: "sc-c", label: "Faculty Members", value: 124,  special: "bubbles" },
-                { cls: "sc-d", label: "Avg Attendance",  value: 94,   special: "fire",    suffix: "%"      },
-              ]}
+              cards={statsCards}
             />
 
-            {/* ── MAIN CONTENT GRID ── */}
+            {/* MAIN CONTENT GRID */}
             <div className="cgrid adm-cgrid">
-              
+
               {/* LEFT COLUMN */}
               <div className="rcol" style={{ gap: "32px" }}>
-                
+
                 {/* Department Distribution */}
-                <div className="glass-card hov-target" style={{ opacity: hasPlayedIntro ? 1 : 0, transform: hasPlayedIntro ? "translateY(0)" : "translateY(40px)" }}>
-                  <div className="card-shine"/>
+                <div
+                  className="glass-card hov-target"
+                  style={{ opacity: hasPlayedIntro ? 1 : 0, transform: hasPlayedIntro ? "translateY(0)" : "translateY(40px)" }}
+                >
+                  <div className="card-shine" />
                   <div className="ch">
-                    <div className="ct"><div className="ctbar"/>Enrollment by Department</div>
-                    <div className="ca" style={{ fontSize: 20, fontWeight: 800 }}>Total: 2,847</div>
+                    <div className="ct"><div className="ctbar" />Enrollment by Department</div>
+                    <div className="ca" style={{ fontSize: 20, fontWeight: 800 }}>
+                      Total: {loading ? "…" : totalEnrollment.toLocaleString()}
+                    </div>
                   </div>
-                  
+
                   <div className="adm-dept-list">
-                    {DEPT_DATA.map((d, i) => (
+                    {deptData.map((d, i) => (
                       <div className="adm-dept-row" key={d.name}>
                         <div className="adm-dept-name">{d.name}</div>
                         <div className="adm-dept-bar-track">
@@ -259,7 +372,7 @@ export default function AdminDashboardV1() {
                             className="adm-dept-bar-fill"
                             initial={{ width: 0 }}
                             animate={{ width: showStats ? `${(d.count / d.max) * 100}%` : "0%" }}
-                            transition={{ duration: 1.2, delay: 0.5 + (i * 0.1), ease: "easeOut" }}
+                            transition={{ duration: 1.2, delay: 0.5 + i * 0.1, ease: "easeOut" }}
                             style={{ background: d.color, boxShadow: `0 0 12px ${d.color}66` }}
                           />
                         </div>
@@ -271,13 +384,16 @@ export default function AdminDashboardV1() {
                   </div>
                 </div>
 
-                {/* Recent Records */}
-                <div className="glass-card hov-target" style={{ opacity: hasPlayedIntro ? 1 : 0, transform: hasPlayedIntro ? "translateY(0)" : "translateY(40px)" }}>
-                  <div className="card-shine"/>
+                {/* Recent Enrollments */}
+                <div
+                  className="glass-card hov-target"
+                  style={{ opacity: hasPlayedIntro ? 1 : 0, transform: hasPlayedIntro ? "translateY(0)" : "translateY(40px)" }}
+                >
+                  <div className="card-shine" />
                   <div className="ch">
-                    <div className="ct"><div className="ctbar"/>Recent Enrollments</div>
-                    <motion.button 
-                      className="adm-btn-secondary" 
+                    <div className="ct"><div className="ctbar" />Recent Enrollments</div>
+                    <motion.button
+                      className="adm-btn-secondary"
                       onClick={() => navigate("/admin/students")}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -286,7 +402,7 @@ export default function AdminDashboardV1() {
                       View All →
                     </motion.button>
                   </div>
-                  
+
                   <div className="adm-table-wrap">
                     <table className="adm-table">
                       <thead>
@@ -298,19 +414,32 @@ export default function AdminDashboardV1() {
                         </tr>
                       </thead>
                       <tbody>
-                        {[
-                          { roll: "24K-0421", name: "Rida Fatima",    prog: "BS-CS", status: "Active", cls: "nt-ok" },
-                          { roll: "24K-0418", name: "Kamran Bashir",  prog: "BS-CS", status: "Active", cls: "nt-ok" },
-                          { roll: "22K-1892", name: "Hira Noor",      prog: "BS-IS", status: "Active", cls: "nt-ok" },
-                          { roll: "23K-0771", name: "Zaid Siddiqui",  prog: "BS-EE", status: "Pending", cls: "nt-fac" },
-                        ].map((r, i) => (
-                          <tr className="crow hov-target" key={i}>
-                            <td className="td-mono">{r.roll}</td>
-                            <td className="cname">{r.name}</td>
-                            <td className="cmeta">{r.prog}</td>
-                            <td><span className={`ntag ${r.cls}`}>{r.status}</span></td>
+                        {loading ? (
+                          <tr>
+                            <td colSpan={4} style={{ textAlign: "center", opacity: 0.5, padding: "20px" }}>
+                              Loading…
+                            </td>
                           </tr>
-                        ))}
+                        ) : recentStudents.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} style={{ textAlign: "center", opacity: 0.5, padding: "20px" }}>
+                              No students found.
+                            </td>
+                          </tr>
+                        ) : (
+                          recentStudents.map((s, i) => (
+                            <tr className="crow hov-target" key={s._id || s.id || i}>
+                              <td className="td-mono">{s.rollNumber || s.roll || s.studentId || "—"}</td>
+                              <td className="cname">{s.name || `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim() || "—"}</td>
+                              <td className="cmeta">{s.program || s.degree || s.department || "—"}</td>
+                              <td>
+                                <span className={`ntag ${statusCls(s.status)}`}>
+                                  {s.status ?? "Active"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -320,12 +449,15 @@ export default function AdminDashboardV1() {
 
               {/* RIGHT COLUMN */}
               <div className="rcol" style={{ gap: "32px" }}>
-                
+
                 {/* Quick Actions */}
-                <div className="glass-card hov-target" style={{ opacity: hasPlayedIntro ? 1 : 0, transform: hasPlayedIntro ? "translateY(0)" : "translateY(40px)" }}>
-                  <div className="card-shine"/>
+                <div
+                  className="glass-card hov-target"
+                  style={{ opacity: hasPlayedIntro ? 1 : 0, transform: hasPlayedIntro ? "translateY(0)" : "translateY(40px)" }}
+                >
+                  <div className="card-shine" />
                   <div className="ch">
-                    <div className="ct"><div className="ctbar"/>Quick Actions</div>
+                    <div className="ct"><div className="ctbar" />Quick Actions</div>
                   </div>
                   <div className="adm-quick-grid">
                     <button className="adm-quick-btn hov-target" onClick={() => navigate("/admin/students")}>
@@ -343,29 +475,42 @@ export default function AdminDashboardV1() {
                   </div>
                 </div>
 
-                {/* Activity Feed */}
-                <div className="glass-card hov-target" style={{ opacity: hasPlayedIntro ? 1 : 0, transform: hasPlayedIntro ? "translateY(0)" : "translateY(40px)", flex: 1 }}>
-                  <div className="card-shine"/>
+                {/* Activity Feed — driven by announcements */}
+                <div
+                  className="glass-card hov-target"
+                  style={{ opacity: hasPlayedIntro ? 1 : 0, transform: hasPlayedIntro ? "translateY(0)" : "translateY(40px)", flex: 1 }}
+                >
+                  <div className="card-shine" />
                   <div className="ch">
-                    <div className="ct"><div className="ctbar"/>System Activity</div>
+                    <div className="ct"><div className="ctbar" />System Activity</div>
                   </div>
                   <div className="rcol" style={{ gap: "16px", marginTop: "16px" }}>
-                    {ACTIVITY.map((a, i) => (
-                      <div className="nitem hov-target" key={i} style={{ padding: "20px 24px", display: "flex", gap: "20px", alignItems: "center" }}>
-                        <div className="act-icon">{a.icon}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
-                            <span className={`ntag ${a.cls}`} style={{ fontSize: "14px" }}>{a.time}</span>
-                            {a.fire && (
-                              <div className="inline-fire">
-                                <div className="iflame if1"/><div className="iflame if2"/><div className="iflame if3"/>
-                              </div>
-                            )}
+                    {loading ? (
+                      <div style={{ textAlign: "center", opacity: 0.5, padding: "20px" }}>Loading…</div>
+                    ) : (
+                      activityFeed.map((a, i) => (
+                        <div
+                          className="nitem hov-target"
+                          key={i}
+                          style={{ padding: "20px 24px", display: "flex", gap: "20px", alignItems: "center" }}
+                        >
+                          <div className="act-icon">{a.icon}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+                              {a.time && (
+                                <span className={`ntag ${a.cls}`} style={{ fontSize: "14px" }}>{a.time}</span>
+                              )}
+                              {a.fire && (
+                                <div className="inline-fire">
+                                  <div className="iflame if1" /><div className="iflame if2" /><div className="iflame if3" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="ntitle" style={{ fontSize: "20px", lineHeight: 1.3 }}>{a.title}</div>
                           </div>
-                          <div className="ntitle" style={{ fontSize: "20px", lineHeight: 1.3 }}>{a.title}</div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
 
