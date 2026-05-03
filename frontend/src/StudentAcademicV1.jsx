@@ -40,10 +40,14 @@ export default function StudentAcademicV1() {
           StudentApi.getGrades(),
         ]);
 
+        console.log("PROFILE:", profileRes);
+        console.log("GPA:", gpaRes);
+        console.log("GRADES:", gradesRes);
+
         // Profile → sidebar
-        if (profileRes && profileRes.name) {
-          setUserName(profileRes.name);
-          setUserId(profileRes.rollNumber || profileRes.studentId || "");
+        if (profileRes?.student) {
+          setUserName(profileRes.student.name);
+          setUserId(profileRes.student.rollNumber || profileRes.student.studentId || "");
         }
 
         // GPA → cgpa, credits, semesters
@@ -51,12 +55,12 @@ export default function StudentAcademicV1() {
           const built = {
             cgpa: gpaRes.cgpa ?? 0,
             credits: {
-              done:      gpaRes.credits?.completed  ?? gpaRes.credits?.done      ?? 0,
-              active:    gpaRes.credits?.inProgress ?? gpaRes.credits?.active    ?? 0,
-              remaining: gpaRes.credits?.remaining  ?? 0,
-              total:     gpaRes.credits?.total      ?? 0,
+              done:      gpaRes.creditsCompleted      ?? 0,
+              active:    gpaRes.creditsInProgress     ?? 0,
+              remaining: gpaRes.creditsRemaining      ?? 0,
+              total:     gpaRes.totalCreditsRequired  ?? 0,
             },
-            semesters: (gpaRes.semesters ?? []).map(sem => ({
+            semesters: (gpaRes.semesterGPAs ?? []).map(sem => ({
               name:    sem.name ?? sem.semester ?? "",
               gpa:     sem.gpa  ?? 0,
               courses: (sem.courses ?? []).map(c => ({
