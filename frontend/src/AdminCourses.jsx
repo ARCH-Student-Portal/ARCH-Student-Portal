@@ -17,9 +17,9 @@ const STATUSES = ["All", "active", "inactive", "draft"];
 function normalizeCourse(c) {
   return {
     id:          c.courseCode  ?? c.id          ?? "",
-    name:        c.title       ?? c.name        ?? "",
+    name:        c.name        ?? c.title        ?? "",   // backend uses `name` not `title`
     dept:        c.department  ?? c.dept        ?? "CS",
-    credits:     c.credits     ?? 3,
+    credits:     c.creditHours ?? c.credits     ?? 3,     // backend uses `creditHours`
     type:        c.type        ?? "Core",
     instructor:  c.instructor  ?? c.teacherName ?? "",
     capacity:    c.capacity    ?? 0,
@@ -27,7 +27,8 @@ function normalizeCourse(c) {
     status:      c.status      ?? "active",
     semester:    c.semester    ?? "",
     description: c.description ?? "",
-    _id:         c._id         ?? c.id,          // keep DB id for PATCH/DELETE
+    fee:         c.fee         ?? 0,                      // preserve fee for CourseContext
+    _id:         c._id         ?? c.id,
   };
 }
 
@@ -55,11 +56,11 @@ function fillColor(enrolled, capacity) {
 }
 
 // ── INLINE COURSE MODAL ──
-function CourseModal({ course, onClose, onSave, saving }) {
+function CourseModal({ course, onClose, onSave, saving, teachers = [], teachersLoading = false }) {
   const [form, setForm] = useState(
     course
-      ? { ...course }
-      : { id: "", name: "", dept: "CS", credits: 3, type: "Core", instructor: "", capacity: 50, enrolled: 0, status: "active", semester: "1st", description: "" }
+    ? { ...course }
+    : { id: "", name: "", dept: "CS", credits: 3, type: "Core", instructor: "", capacity: 50, enrolled: 0, status: "active", semester: "1st", description: "", fee: 0 }
   );
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -99,7 +100,25 @@ function CourseModal({ course, onClose, onSave, saving }) {
           </div>
           <div className="adm-form-group full">
             <label className="adm-form-label" style={{ fontSize: 18 }}>Instructor</label>
-            <input className="adm-form-input" style={{ fontSize: 20, padding: "18px" }} value={form.instructor} onChange={e => set("instructor", e.target.value)} placeholder="Faculty name" />
+            {teachersLoading ? (
+              <div className="adm-form-input" style={{ fontSize: 18, padding: "18px", color: "var(--dimmer)", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ display: "inline-block" }}>⟳</span> Loading teachers…
+              </div>
+            ) : (
+              <select
+                className="adm-form-select"
+                style={{ fontSize: 20, padding: "18px" }}
+                value={form.instructor}
+                onChange={e => set("instructor", e.target.value)}
+              >
+                <option value="">— Select instructor —</option>
+                {teachers.map(t => (
+                  <option key={t._id ?? t.id} value={t.name}>
+                    {t.name}{t.department ? ` - ${t.department}` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="adm-form-group">
             <label className="adm-form-label" style={{ fontSize: 18 }}>Semester</label>
@@ -265,6 +284,8 @@ export default function AdminCourses() {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(null);
   const [saving,     setSaving]     = useState(false);
+  const [teachers,   setTeachers]   = useState([]);
+  const [teachersLoading, setTeachersLoading] = useState(false);
   const [page,       setPage]       = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const PAGE_SIZE = 50; // fetch up to 50 per page; increase if needed
@@ -297,6 +318,21 @@ export default function AdminCourses() {
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
+  // ── FETCH TEACHERS FOR DROPDOWN ──
+  useEffect(() => {
+    let cancelled = false;
+    setTeachersLoading(true);
+    AdminApi.getTeachers()
+      .then(res => {
+        if (cancelled) return;
+        const raw = res.teachers ?? res.data ?? (Array.isArray(res) ? res : []);
+        setTeachers(raw.map(t => ({ _id: t._id ?? t.id, name: t.name ?? t.fullName ?? "", department: t.department ?? "" })));
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setTeachersLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
   const filtered = courses.filter(c => {
     const q = search.toLowerCase();
     const ms = !q || c.id.toLowerCase().includes(q) || c.name.toLowerCase().includes(q) || c.instructor.toLowerCase().includes(q);
@@ -313,10 +349,10 @@ export default function AdminCourses() {
       // Map UI shape → API shape
       const payload = {
         courseCode:  form.id,
-        title:       form.name,
+        name:        form.name,        // was `title` — backend schema field is `name`
         department:  form.dept,
-        credits:     form.credits,
-        type:        form.type,
+        creditHours: form.credits,     // was `credits` — backend schema field is `creditHours`
+        fee:         form.fee ?? 0,
         instructor:  form.instructor,
         capacity:    form.capacity,
         status:      form.status,
@@ -377,7 +413,7 @@ export default function AdminCourses() {
       </div>
 
       <AnimatePresence>
-        {modal && <CourseModal course={modal==="add"?null:modal} onClose={()=>setModal(null)} onSave={handleSave} saving={saving} />}
+        {modal && <CourseModal course={modal==="add"?null:modal} onClose={()=>setModal(null)} onSave={handleSave} saving={saving} teachers={teachers} teachersLoading={teachersLoading} />}
       </AnimatePresence>
       <AnimatePresence>
         {detail && <DetailPanel course={detail} onClose={()=>setDetail(null)} onEdit={c=>{setDetail(null);setModal(c);}} onDelete={handleDelete} />}
