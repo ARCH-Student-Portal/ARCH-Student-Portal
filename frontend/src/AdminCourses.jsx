@@ -1,34 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { gsap } from "gsap";
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
 import Sidebar from "./Components/shared/Sidebar";
 import StatsGrid from "./data/StatsGrid";
 import { ADMIN_NAV } from "./config/AdminNav";
+import AdminApi from "./config/adminApi";
 import "./AdminCourses.css"; // 🔥 100% ISOLATED CSS
 
 const DEPTS    = ["All", "CS", "EE", "MT", "IS", "BBA"];
 const TYPES    = ["All", "Core", "Elective", "Lab", "Seminar"];
 const STATUSES = ["All", "active", "inactive", "draft"];
 
-const INITIAL_COURSES = [
-  { id: "CS-1001", name: "Programming Fundamentals",   dept: "CS",  credits: 3, type: "Core",     instructor: "Dr. Aisha Rauf",      capacity: 60, enrolled: 58, status: "active",   semester: "1st", description: "Introduction to programming using C++. Covers variables, control flow, functions, arrays, and basic OOP." },
-  { id: "CS-2001", name: "Data Structures",             dept: "CS",  credits: 3, type: "Core",     instructor: "Dr. Farhan Siddiqui", capacity: 55, enrolled: 52, status: "active",   semester: "3rd", description: "Arrays, linked lists, stacks, queues, trees, heaps, and graphs. Emphasis on algorithmic complexity." },
-  { id: "CS-2006", name: "Operating Systems",           dept: "CS",  credits: 3, type: "Core",     instructor: "Dr. Bilal Amin",      capacity: 50, enrolled: 48, status: "active",   semester: "5th", description: "Process management, memory, file systems, concurrency, and POSIX API. Practical labs in C." },
-  { id: "CS-3004", name: "Software Design & Analysis",  dept: "CS",  credits: 3, type: "Core",     instructor: "Sir Asim Noor",       capacity: 45, enrolled: 44, status: "active",   semester: "5th", description: "UML, design patterns, SOLID principles, architectural styles, and system modeling." },
-  { id: "CS-3010", name: "Database Systems",            dept: "CS",  credits: 3, type: "Core",     instructor: "Dr. Hina Anwar",      capacity: 55, enrolled: 50, status: "active",   semester: "5th", description: "Relational model, SQL, normalization, transactions, indexing, and stored procedures in SQL Server." },
-  { id: "CS-3020", name: "Artificial Intelligence",     dept: "CS",  credits: 3, type: "Core",     instructor: "Dr. Kashif Shahzad",  capacity: 50, enrolled: 47, status: "active",   semester: "6th", description: "Search, constraint satisfaction, knowledge representation, planning, machine learning intro." },
-  { id: "CS-4010", name: "Machine Learning",            dept: "CS",  credits: 3, type: "Elective", instructor: "Dr. Zainab Mirza",    capacity: 40, enrolled: 38, status: "active",   semester: "7th", description: "Supervised and unsupervised learning, neural networks, backpropagation, SVMs, and model evaluation." },
-  { id: "CS-4050", name: "Deep Learning",               dept: "CS",  credits: 3, type: "Elective", instructor: "Dr. Kashif Shahzad",  capacity: 35, enrolled: 35, status: "active",   semester: "7th", description: "CNNs, RNNs, transformers, and large-scale training. PyTorch-based practical labs." },
-  { id: "CS-1002", name: "Calculus & Analytical Geo.",  dept: "CS",  credits: 3, type: "Core",     instructor: "Sir Tahir Rashid",    capacity: 70, enrolled: 65, status: "active",   semester: "1st", description: "Limits, derivatives, integrals, multivariable calculus, and series." },
-  { id: "EE-2001", name: "Circuit Analysis",            dept: "EE",  credits: 3, type: "Core",     instructor: "Dr. Shahid Baig",     capacity: 40, enrolled: 0,  status: "inactive", semester: "3rd", description: "DC/AC circuits, KVL/KCL, Thevenin/Norton, phasors, and frequency response." },
-  { id: "EE-3010", name: "Signals & Systems",           dept: "EE",  credits: 3, type: "Core",     instructor: "Dr. Sana Tariq",      capacity: 40, enrolled: 38, status: "active",   semester: "5th", description: "Continuous and discrete-time signals, Fourier transforms, Laplace, Z-transforms, and filtering." },
-  { id: "IS-2001", name: "Information Security",        dept: "IS",  credits: 3, type: "Core",     instructor: "Dr. Usman Qureshi",   capacity: 45, enrolled: 40, status: "active",   semester: "5th", description: "Cryptography, network security, authentication protocols, and secure system design." },
-  { id: "CS-1003", name: "Programming Lab",             dept: "CS",  credits: 1, type: "Lab",      instructor: "Sir Ahsan Naeem",     capacity: 30, enrolled: 28, status: "active",   semester: "1st", description: "Hands-on C++ lab complementing Programming Fundamentals. Weekly graded tasks." },
-  { id: "CS-4090", name: "Final Year Project I",        dept: "CS",  credits: 3, type: "Seminar",  instructor: "FYP Committee",       capacity: 80, enrolled: 12, status: "draft",    semester: "7th", description: "Proposal, literature review, and initial implementation phase of the capstone project." },
-  { id: "BBA-1001", name: "Principles of Management",  dept: "BBA", credits: 3, type: "Core",     instructor: "Dr. Maha Saeed",      capacity: 60, enrolled: 55, status: "active",   semester: "1st", description: "Foundational management theories, organizational behavior, leadership, and decision-making." },
-];
+// Normalize API response shape to the shape the UI expects
+function normalizeCourse(c) {
+  return {
+    id:          c.courseCode  ?? c.id          ?? "",
+    name:        c.title       ?? c.name        ?? "",
+    dept:        c.department  ?? c.dept        ?? "CS",
+    credits:     c.credits     ?? 3,
+    type:        c.type        ?? "Core",
+    instructor:  c.instructor  ?? c.teacherName ?? "",
+    capacity:    c.capacity    ?? 0,
+    enrolled:    c.enrolled    ?? c.enrolledCount ?? 0,
+    status:      c.status      ?? "active",
+    semester:    c.semester    ?? "",
+    description: c.description ?? "",
+    _id:         c._id         ?? c.id,          // keep DB id for PATCH/DELETE
+  };
+}
 
 const DEPT_META = {
   CS:  { grad: "linear-gradient(135deg, #1a78ff 0%, #0044cc 100%)", accent: "#1a78ff", light: "rgba(26,120,255,.08)",  tag: "rgba(26,120,255,.12)",  tagText: "#1a55cc", label: "Computer Science"   },
@@ -46,6 +47,7 @@ const TYPE_META = {
 };
 
 function fillColor(enrolled, capacity) {
+  if (!capacity) return { bar: "#94a3b8", text: "#64748b" };
   const r = enrolled / capacity;
   if (r >= 1)    return { bar: "#ff4d6a", text: "#e11d48" };
   if (r >= 0.85) return { bar: "#ffab00", text: "#b45309" };
@@ -53,7 +55,7 @@ function fillColor(enrolled, capacity) {
 }
 
 // ── INLINE COURSE MODAL ──
-function CourseModal({ course, onClose, onSave }) {
+function CourseModal({ course, onClose, onSave, saving }) {
   const [form, setForm] = useState(
     course
       ? { ...course }
@@ -125,9 +127,9 @@ function CourseModal({ course, onClose, onSave }) {
           </div>
         </div>
         <div className="adm-modal-footer" style={{ marginTop: 48 }}>
-          <button className="adm-btn-secondary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={onClose}>Cancel</button>
-          <button className="adm-btn-primary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={() => onSave(form)}>
-            {course ? "Save Changes" : "➕ Add Course"}
+          <button className="adm-btn-secondary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="adm-btn-primary" style={{ fontSize: 20, padding: "16px 32px", opacity: saving ? 0.7 : 1 }} onClick={() => onSave(form)} disabled={saving}>
+            {saving ? "Saving…" : course ? "Save Changes" : "➕ Add Course"}
           </button>
         </div>
       </div>
@@ -259,7 +261,14 @@ export default function AdminCourses() {
   const location = useLocation();
 
   const [collapse,   setCollapse]   = useState(false);
-  const [courses,    setCourses]    = useState(INITIAL_COURSES);
+  const [courses,    setCourses]    = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [saving,     setSaving]     = useState(false);
+  const [page,       setPage]       = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 50; // fetch up to 50 per page; increase if needed
+
   const [search,     setSearch]     = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
@@ -268,6 +277,25 @@ export default function AdminCourses() {
   const [modal,      setModal]      = useState(null);
   const [detail,     setDetail]     = useState(null);
   const [showStats,  setShowStats]  = useState(false);
+
+  // ── FETCH ALL COURSES ──
+  const fetchCourses = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await AdminApi.getCourses(page, PAGE_SIZE);
+      // Backend may return { courses, total } or { data, total } or a plain array
+      const raw = res.courses ?? res.data ?? (Array.isArray(res) ? res : []);
+      setCourses(raw.map(normalizeCourse));
+      setTotalCount(res.total ?? res.totalCount ?? raw.length);
+    } catch (err) {
+      setError("Failed to load courses. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
   const filtered = courses.filter(c => {
     const q = search.toLowerCase();
@@ -278,20 +306,56 @@ export default function AdminCourses() {
       && (statFilter === "All" || c.status === statFilter);
   });
 
-  const handleSave = (form) => {
-    if (modal === "add") {
-      setCourses(p => [form, ...p]);
-    } else {
-      setCourses(p => p.map(c => c.id === form.id ? form : c));
-      if (detail?.id === form.id) setDetail(form);
+  // ── CREATE / UPDATE ──
+  const handleSave = async (form) => {
+    setSaving(true);
+    try {
+      // Map UI shape → API shape
+      const payload = {
+        courseCode:  form.id,
+        title:       form.name,
+        department:  form.dept,
+        credits:     form.credits,
+        type:        form.type,
+        instructor:  form.instructor,
+        capacity:    form.capacity,
+        status:      form.status,
+        semester:    form.semester,
+        description: form.description,
+      };
+
+      if (modal === "add") {
+        const res = await AdminApi.createCourse(payload);
+        const created = normalizeCourse({ ...form, ...(res.course ?? res.data ?? res) });
+        setCourses(p => [created, ...p]);
+        setTotalCount(t => t + 1);
+      } else {
+        const res = await AdminApi.updateCourse(form._id || form.id, payload);
+        const raw = res.course ?? res.data ?? null;
+        const updated = raw ? normalizeCourse({ ...form, ...raw }) : normalizeCourse(form);
+        setCourses(p => p.map(c => (c._id === updated._id || c.id === updated.id) ? updated : c));
+        if (detail?.id === form.id) setDetail(updated);
+      }
+      setModal(null);
+    } catch (err) {
+      alert("Failed to save course. Please try again.");
+    } finally {
+      setSaving(false);
     }
-    setModal(null);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Remove this course? This cannot be undone.")) {
+  // ── DELETE ──
+  const handleDelete = async (id) => {
+    if (!window.confirm("Remove this course? This cannot be undone.")) return;
+    const target = courses.find(c => c.id === id);
+    const dbId = target?._id ?? id;
+    try {
+      await AdminApi.deleteCourse(dbId);
       setCourses(p => p.filter(c => c.id !== id));
+      setTotalCount(t => t - 1);
       setDetail(null);
+    } catch (err) {
+      alert("Failed to delete course. Please try again.");
     }
   };
 
@@ -313,7 +377,7 @@ export default function AdminCourses() {
       </div>
 
       <AnimatePresence>
-        {modal && <CourseModal course={modal==="add"?null:modal} onClose={()=>setModal(null)} onSave={handleSave} />}
+        {modal && <CourseModal course={modal==="add"?null:modal} onClose={()=>setModal(null)} onSave={handleSave} saving={saving} />}
       </AnimatePresence>
       <AnimatePresence>
         {detail && <DetailPanel course={detail} onClose={()=>setDetail(null)} onEdit={c=>{setDetail(null);setModal(c);}} onDelete={handleDelete} />}
@@ -337,7 +401,7 @@ export default function AdminCourses() {
             <div className="tb-glow" />
             <div className="pg-title"><span>Course Catalog</span></div>
             <div className="tb-r">
-              <div className="sem-chip">{courses.length} total</div>
+              <div className="sem-chip">{loading ? "…" : `${totalCount} total`}</div>
               
               <div className="crs-view-toggle" style={{ marginLeft: 16 }}>
                 <button className={`crs-view-btn${viewMode==="grid"?" active":""}`} onClick={()=>setViewMode("grid")} title="Card view" style={{ padding: "12px 18px" }}>
@@ -355,6 +419,24 @@ export default function AdminCourses() {
           </div>
 
           <div id="scroll">
+
+            {/* ── ERROR BANNER ── */}
+            {error && (
+              <div style={{ margin: "0 0 24px", padding: "20px 28px", borderRadius: 16, background: "rgba(255,77,106,.08)", border: "1.5px solid rgba(255,77,106,.25)", color: "#e11d48", fontWeight: 700, fontSize: 17, display: "flex", alignItems: "center", gap: 16 }}>
+                <span style={{ fontSize: 22 }}>⚠️</span>
+                {error}
+                <button onClick={fetchCourses} style={{ marginLeft: "auto", background: "#e11d48", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 800, cursor: "pointer", fontSize: 16 }}>Retry</button>
+              </div>
+            )}
+
+            {/* ── LOADING SKELETON ── */}
+            {loading && (
+              <div style={{ display: "flex", gap: 24, marginBottom: 40, flexWrap: "wrap" }}>
+                {[1,2,3,4].map(i => (
+                  <div key={i} style={{ flex: "1 1 200px", height: 130, borderRadius: 20, background: "linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite", opacity: 0.7 }} />
+                ))}
+              </div>
+            )}
 
             {/* ── GODZILLA STATS GRID ── */}
             <StatsGrid

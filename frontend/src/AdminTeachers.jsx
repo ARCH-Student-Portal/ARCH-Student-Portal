@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as THREE from "three";
 import { gsap } from "gsap";
@@ -7,27 +7,44 @@ import { ADMIN_NAV } from "./config/AdminNav";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
 import StatsGrid from "./data/StatsGrid";
-import "./AdminTeachers.css"; // 🔥 100% ISOLATED CSS
+import AdminApi from "./config/adminApi";
+import "./AdminTeachers.css";
 
-const INITIAL_TEACHERS = [
-  { id: "FAC-001", name: "Dr. Imran Sheikh",     dept: "CS",  designation: "Associate Professor", email: "imran.sheikh@nu.edu.pk",   phone: "+92-300-1010101", status: "active",   courses: 3, experience: "12 yrs", specialization: "Machine Learning"       },
-  { id: "FAC-002", name: "Ms. Ayesha Tariq",     dept: "CS",  designation: "Lecturer",            email: "ayesha.tariq@nu.edu.pk",   phone: "+92-301-2020202", status: "active",   courses: 4, experience: "5 yrs",  specialization: "Web Technologies"       },
-  { id: "FAC-003", name: "Dr. Zafar Iqbal",      dept: "EE",  designation: "Professor",           email: "zafar.iqbal@nu.edu.pk",    phone: "+92-302-3030303", status: "active",   courses: 2, experience: "20 yrs", specialization: "Power Systems"          },
-  { id: "FAC-004", name: "Mr. Hamza Nawaz",      dept: "CS",  designation: "Lecturer",            email: "hamza.nawaz@nu.edu.pk",    phone: "+92-303-4040404", status: "active",   courses: 3, experience: "3 yrs",  specialization: "Data Structures"        },
-  { id: "FAC-005", name: "Dr. Sana Riaz",        dept: "IS",  designation: "Assistant Professor", email: "sana.riaz@nu.edu.pk",      phone: "+92-311-5050505", status: "active",   courses: 3, experience: "8 yrs",  specialization: "Information Security"   },
-  { id: "FAC-006", name: "Mr. Bilal Chaudhry",   dept: "MT",  designation: "Lecturer",            email: "bilal.chaudhry@nu.edu.pk", phone: "+92-321-6060606", status: "inactive", courses: 0, experience: "6 yrs",  specialization: "Calculus & Linear Alg"  },
-  { id: "FAC-007", name: "Dr. Huma Aslam",       dept: "CS",  designation: "Associate Professor", email: "huma.aslam@nu.edu.pk",     phone: "+92-333-7070707", status: "active",   courses: 2, experience: "10 yrs", specialization: "Computer Networks"      },
-  { id: "FAC-008", name: "Ms. Rida Fatima",      dept: "BBA", designation: "Lecturer",            email: "rida.fatima@nu.edu.pk",    phone: "+92-345-8080808", status: "pending",  courses: 0, experience: "2 yrs",  specialization: "Business Communication" },
-  { id: "FAC-009", name: "Dr. Usman Ghani",      dept: "EE",  designation: "Professor",           email: "usman.ghani@nu.edu.pk",    phone: "+92-300-9090909", status: "active",   courses: 3, experience: "17 yrs", specialization: "Digital Signal Proc."   },
-  { id: "FAC-010", name: "Mr. Kamran Bashir",    dept: "CS",  designation: "Lecturer",            email: "kamran.bashir@nu.edu.pk",  phone: "+92-301-1234321", status: "active",   courses: 4, experience: "4 yrs",  specialization: "Operating Systems"      },
-];
+// ── Map API response → component shape ──
+// _id  = MongoDB ObjectId  → used only for API calls (PATCH / DELETE)
+// id   = human-readable ID → displayed in table  (teacherId / facultyId / employeeId / staffId)
+const fromApi = (t) => ({
+  _id:            t._id            ?? t.id             ?? "",
+  id:             t.teacherId      ?? t.facultyId       ?? t.employeeId ?? t.staffId ?? t._id ?? t.id ?? "",
+  name:           t.name           ?? t.fullName        ?? "",
+  dept:           t.dept           ?? t.department      ?? "",
+  designation:    t.designation    ?? t.rank            ?? "",
+  email:          t.email                               ?? "",
+  phone:          t.phone          ?? t.phoneNumber     ?? "",
+  status:         t.status                              ?? "active",
+  courses:        t.courses        ?? t.courseCount     ?? 0,
+  experience:     t.experience     ?? t.yearsExperience ?? "",
+  specialization: t.specialization ?? t.speciality     ?? "",
+});
+
+// ── Map component shape → API payload ──
+const toApi = (form) => ({
+  name:           form.name,
+  dept:           form.dept,
+  designation:    form.designation,
+  email:          form.email,
+  phone:          form.phone,
+  status:         form.status,
+  experience:     form.experience,
+  specialization: form.specialization,
+});
 
 const DEPTS        = ["All", "CS", "EE", "MT", "IS", "BBA"];
 const DESIGNATIONS = ["All", "Professor", "Associate Professor", "Assistant Professor", "Lecturer"];
 const STATUS       = ["All", "active", "inactive", "pending"];
 
-// ── INLINE MODAL ──
-function TeacherModal({ teacher, onClose, onSave }) {
+// ── MODAL ──
+function TeacherModal({ teacher, onClose, onSave, saving }) {
   const [form, setForm] = useState(
     teacher
       ? { ...teacher }
@@ -45,7 +62,14 @@ function TeacherModal({ teacher, onClose, onSave }) {
         <div className="adm-form-grid" style={{ gap: 24 }}>
           <div className="adm-form-group">
             <label className="adm-form-label" style={{ fontSize: 18 }}>Faculty ID</label>
-            <input className="adm-form-input" style={{ fontSize: 24, padding: "20px", fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }} value={form.id} onChange={e => set("id", e.target.value)} placeholder="e.g. FAC-011" />
+            <input
+              className="adm-form-input"
+              style={{ fontSize: 24, padding: "20px", fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", opacity: teacher ? 0.5 : 1 }}
+              value={form.id}
+              onChange={e => !teacher && set("id", e.target.value)}
+              readOnly={!!teacher}
+              placeholder="e.g. FAC-011"
+            />
           </div>
           <div className="adm-form-group">
             <label className="adm-form-label" style={{ fontSize: 18 }}>Full Name</label>
@@ -87,9 +111,9 @@ function TeacherModal({ teacher, onClose, onSave }) {
           </div>
         </div>
         <div className="adm-modal-footer" style={{ marginTop: 48 }}>
-          <button className="adm-btn-secondary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={onClose}>Cancel</button>
-          <button className="adm-btn-primary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={() => onSave(form)}>
-            {teacher ? "Save Changes" : "➕ Add Teacher"}
+          <button className="adm-btn-secondary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="adm-btn-primary" style={{ fontSize: 20, padding: "16px 32px", opacity: saving ? 0.6 : 1 }} onClick={() => onSave(form)} disabled={saving}>
+            {saving ? "Saving…" : teacher ? "Save Changes" : "➕ Add Teacher"}
           </button>
         </div>
       </div>
@@ -97,21 +121,77 @@ function TeacherModal({ teacher, onClose, onSave }) {
   );
 }
 
-// ── MAIN COMPONENT ──
+// ── MAIN ──
 export default function AdminTeachers() {
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const webglRef  = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const webglRef = useRef(null);
 
   const [collapse,   setCollapse]   = useState(false);
-  const [teachers,   setTeachers]   = useState(INITIAL_TEACHERS);
+  const [teachers,   setTeachers]   = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [saving,     setSaving]     = useState(false);
   const [search,     setSearch]     = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [desgFilter, setDesgFilter] = useState("All");
   const [statFilter, setStatFilter] = useState("All");
-  const [modal,      setModal]      = useState(null); 
+  const [modal,      setModal]      = useState(null);
   const [showStats,  setShowStats]  = useState(false);
 
+  // ── FETCH ──
+  const fetchTeachers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await AdminApi.getTeachers();
+      const raw = Array.isArray(res) ? res : (res.teachers ?? res.data ?? []);
+      setTeachers(raw.map(fromApi));
+    } catch (err) {
+      setError("Failed to load teachers. Check connection.");
+    } finally {
+      setLoading(false);
+      setTimeout(() => setShowStats(true), 100);  // trigger after data arrives
+    }
+  }, []);
+
+  useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
+
+  // ── SAVE ──
+  const handleSave = async (form) => {
+    setSaving(true);
+    try {
+      if (modal === "add") {
+        const res = await AdminApi.createTeacher(toApi(form));
+        const created = fromApi(res.teacher ?? res.data ?? res);
+        setTeachers(prev => [created, ...prev]);
+      } else {
+        const apiId = form._id || form.id;  // use ObjectId for URL, not display id
+        const res = await AdminApi.updateTeacher(apiId, toApi(form));
+        const updated = fromApi(res.teacher ?? res.data ?? res);
+        setTeachers(prev => prev.map(t => t._id === updated._id ? updated : t));
+      }
+      setModal(null);
+    } catch (err) {
+      alert("Save failed: " + (err.message ?? "Unknown error"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── DELETE — pass full teacher obj so we have both _id and display id ──
+  const handleDelete = async (teacher) => {
+    if (!window.confirm("Delete this teacher record? This cannot be undone.")) return;
+    const apiId = teacher._id || teacher.id;
+    try {
+      await AdminApi.deleteTeacher(apiId);
+      setTeachers(prev => prev.filter(t => t._id !== teacher._id));
+    } catch (err) {
+      alert("Delete failed: " + (err.message ?? "Unknown error"));
+    }
+  };
+
+  // ── FILTER ──
   const filtered = teachers.filter(t => {
     const q = search.toLowerCase();
     const matchSearch = !q || t.id.toLowerCase().includes(q) || t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q) || t.specialization.toLowerCase().includes(q);
@@ -121,19 +201,7 @@ export default function AdminTeachers() {
     return matchSearch && matchDept && matchDesg && matchStat;
   });
 
-  const handleSave = (form) => {
-    if (modal === "add") setTeachers(prev => [form, ...prev]);
-    else setTeachers(prev => prev.map(t => t.id === form.id ? form : t));
-    setModal(null);
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm("Delete this teacher record? This cannot be undone.")) {
-      setTeachers(prev => prev.filter(t => t.id !== id));
-    }
-  };
-
-  // Three.js Background (Unified Blue Theme)
+  // ── THREE.JS BACKGROUND ──
   useEffect(() => {
     const canvas = webglRef.current;
     let W = window.innerWidth, H = window.innerHeight;
@@ -142,10 +210,8 @@ export default function AdminTeachers() {
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
     camera.position.set(0, 3, 12);
-    
     scene.add(new THREE.AmbientLight(0x0033aa, 0.6));
     const sun = new THREE.DirectionalLight(0x40a9ff, 1.2); sun.position.set(-6, 12, 8); scene.add(sun);
-    
     const COUNT = 140;
     const ptPos = new Float32Array(COUNT*3); const ptCol = new Float32Array(COUNT*3); const ptVel = [];
     for (let i=0;i<COUNT;i++){
@@ -184,15 +250,13 @@ export default function AdminTeachers() {
     document.querySelectorAll(".sc, .admin-isolated-card").forEach((el, i) => {
       gsap.fromTo(el, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", delay: i * 0.06 });
     });
-    setTimeout(() => setShowStats(true), 100);
-  }, [deptFilter, desgFilter, statFilter]); 
+  }, [deptFilter, desgFilter, statFilter]);
 
-  // Designation Rank Color Helper (Unified Colors)
   const desgColor = (d) => {
-    if (d === "Professor")           return { bg: "rgba(26,120,255,.12)", color: "var(--blue)"   };
-    if (d === "Associate Professor") return { bg: "rgba(64,169,255,.12)", color: "var(--blue2)"  };
-    if (d === "Assistant Professor") return { bg: "rgba(0,200,83,.12)",   color: "var(--green)"  };
-    return                                  { bg: "rgba(255,171,0,.12)",  color: "var(--amber)"  };
+    if (d === "Professor")           return { bg: "rgba(26,120,255,.12)", color: "var(--blue)"  };
+    if (d === "Associate Professor") return { bg: "rgba(64,169,255,.12)", color: "var(--blue2)" };
+    if (d === "Assistant Professor") return { bg: "rgba(0,200,83,.12)",   color: "var(--green)" };
+    return                                  { bg: "rgba(255,171,0,.12)",  color: "var(--amber)" };
   };
 
   return (
@@ -203,15 +267,14 @@ export default function AdminTeachers() {
         {modal && (
           <TeacherModal
             teacher={modal === "add" ? null : modal}
-            onClose={() => setModal(null)}
+            onClose={() => !saving && setModal(null)}
             onSave={handleSave}
+            saving={saving}
           />
         )}
       </AnimatePresence>
 
       <div id="app" style={{ opacity: 1, zIndex: 10, position: 'relative' }}>
-        
-        {/* INLINE SIDEBAR */}
         <Sidebar
           sections={ADMIN_NAV}
           logoLabel="Admin Portal"
@@ -221,7 +284,6 @@ export default function AdminTeachers() {
           onToggle={() => setCollapse(c => !c)}
         />
 
-        {/* MAIN */}
         <div id="main">
           <div id="topbar" style={{ opacity: 1 }}>
             <div className="tb-glow" />
@@ -236,7 +298,7 @@ export default function AdminTeachers() {
 
           <div id="scroll">
 
-            {/* ── GODZILLA STATS GRID ── */}
+            {/* ── STATS — always mounted, values 0 during load then animate in ── */}
             <StatsGrid
               showStats={showStats}
               cards={[
@@ -247,7 +309,15 @@ export default function AdminTeachers() {
               ]}
             />
 
-            {/* 🔥 HORIZONTAL FILTER BAR 🔥 */}
+            {/* ── ERROR BANNER ── */}
+            {error && (
+              <div style={{ background: "rgba(255,50,50,.12)", border: "1px solid rgba(255,50,50,.3)", borderRadius: 16, padding: "20px 28px", marginBottom: 24, color: "var(--red)", fontWeight: 700, fontSize: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                ⚠️ {error}
+                <button onClick={fetchTeachers} style={{ background: "var(--red)", color: "#fff", border: "none", borderRadius: 10, padding: "8px 20px", cursor: "pointer", fontWeight: 800, fontSize: 16 }}>Retry</button>
+              </div>
+            )}
+
+            {/* ── FILTER BAR ── */}
             <div className="admin-isolated-card" style={{ marginBottom: 40, padding: "24px 32px" }}>
               <div style={{ display: "flex", flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 20, width: "100%" }}>
                 <div className="adm-filter-search" style={{ padding: "16px 20px", flex: 1, minWidth: 300 }}>
@@ -274,7 +344,7 @@ export default function AdminTeachers() {
               </div>
             </div>
 
-            {/* Table - ANTI SQUASH & GODZILLA SCALED */}
+            {/* ── TABLE ── */}
             <div className="admin-isolated-card" style={{ padding: 0 }}>
               <div className="adm-table-wrap" style={{ borderRadius: 24 }}>
                 <table className="adm-table">
@@ -292,7 +362,13 @@ export default function AdminTeachers() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.length === 0 ? (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={9} style={{ textAlign: "center", padding: "80px", color: "var(--dimmer)", opacity: .6, fontSize: 20, fontWeight: 800 }}>
+                          ⏳ Loading teachers…
+                        </td>
+                      </tr>
+                    ) : filtered.length === 0 ? (
                       <tr>
                         <td colSpan={9} style={{ textAlign: "center", padding: "80px", color: "var(--dimmer)", opacity: .6, fontSize: 20, fontWeight: 800 }}>
                           📭 No teachers match the current filters.
@@ -301,8 +377,9 @@ export default function AdminTeachers() {
                     ) : filtered.map(t => {
                       const dc = desgColor(t.designation);
                       return (
-                        <tr key={t.id} className="adm-tr-hover">
-                          <td className="td-mono">{t.id}</td>
+                        <tr key={t._id || t.id} className="adm-tr-hover">
+                          {/* display human-readable id; fall back to _id only if no readable id exists */}
+                          <td className="td-mono">{t.id || t._id}</td>
                           <td>
                             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                               <div style={{
@@ -340,22 +417,19 @@ export default function AdminTeachers() {
                             </span>
                           </td>
                           <td className="td-dim" style={{ fontSize: 18 }}>{t.specialization}</td>
-                          
-                          {/* 2-FONT RULE: BITCOUNT FOR NUMBERS */}
                           <td style={{ fontFamily: "'Bitcount Grid Double', monospace", fontSize: 28, fontWeight: 700, color: t.courses === 0 ? "var(--dimmer)" : "var(--blue)", textAlign: "center" }}>
                             {t.courses}
                           </td>
                           <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--text-main)" }}>
                             {t.experience || "—"}
                           </td>
-                          
                           <td>
                             <span className={`adm-badge badge-${t.status}`}>{t.status}</span>
                           </td>
                           <td style={{ textAlign: "right" }}>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               <button className="adm-action-btn" title="Edit" onClick={() => setModal(t)} style={{ width: 52, height: 52, fontSize: 22 }}>✏️</button>
-                              <button className="adm-action-btn btn-delete" title="Delete" onClick={() => handleDelete(t.id)} style={{ width: 52, height: 52, fontSize: 22 }}>🗑️</button>
+                              <button className="adm-action-btn btn-delete" title="Delete" onClick={() => handleDelete(t)} style={{ width: 52, height: 52, fontSize: 22 }}>🗑️</button>
                             </div>
                           </td>
                         </tr>
