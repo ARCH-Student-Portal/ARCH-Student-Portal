@@ -24,6 +24,7 @@ const STUDENT_FALLBACK = {
   address:    "",
   department: "",
   faculty:    "",
+  guardianPhone: "",
 };
 
 // ── DERIVE INITIALS FROM NAME ──
@@ -75,12 +76,13 @@ export default function StudentProfileV1() {
                           ? new Date(d.dateOfBirth).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
                           : d.dob ?? "";
         const cnic    = d.cnic       ?? d.nationalId ?? "";
-        const guardian= d.guardian   ?? d.guardianName ?? "";
+        const guardian = d.guardian?.name ?? d.guardianName ?? "";
+        const guardianPhone = d.guardian?.phone ?? "";
 
         setStudent({
           name, rollNo, program, department: dept, faculty,
           batch, semester, section, email, phone, address,
-          dob, cnic, guardian,
+          dob, cnic, guardian, guardianPhone,
           initials: getInitials(name),
         });
         setUserName(name || "Student");
@@ -358,8 +360,12 @@ export default function StudentProfileV1() {
                       <span className="info-val">{student.cnic}</span>
                     </div>
                     <div className="info-item">
-                      <span className="info-label">Guardian Name</span>
-                      <span className="info-val">{student.guardian}</span>
+                       <span className="info-label">Guardian Name</span>
+                       <span className="info-val">{student.guardian}</span>
+                    </div>
+                    <div className="info-item">
+                        <span className="info-label">Guardian Phone</span>
+                        <span className="info-val">{student.guardianPhone}</span>
                     </div>
                   </div>
                 </div>
