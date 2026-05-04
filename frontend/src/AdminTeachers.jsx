@@ -196,8 +196,7 @@ export default function AdminTeachers() {
     const matchSearch = !q || t.id.toLowerCase().includes(q) || t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q) || t.specialization.toLowerCase().includes(q);
     const matchDept   = deptFilter === "All" || t.dept === deptFilter;
     const matchDesg   = desgFilter === "All" || t.designation === desgFilter;
-    const matchStat   = statFilter === "All" || t.status === statFilter;
-    return matchSearch && matchDept && matchDesg && matchStat;
+    return matchSearch && matchDept && matchDesg;
   });
 
   // ── THREE.JS BACKGROUND ──
@@ -277,8 +276,8 @@ export default function AdminTeachers() {
         <Sidebar
           sections={ADMIN_NAV}
           logoLabel="Admin Portal"
-          userName="Super Admin"
-          userId="ADM-0001"
+          userName={JSON.parse(localStorage.getItem('user') || '{}').name || 'Admin'}
+          userId={JSON.parse(localStorage.getItem('user') || '{}').adminId || ''}
           collapse={collapse}
           onToggle={() => setCollapse(c => !c)}
         />
@@ -322,9 +321,7 @@ export default function AdminTeachers() {
                 <select className="adm-filter-select" style={{ fontSize: 18, padding: "16px 20px" }} value={desgFilter} onChange={e => setDesgFilter(e.target.value)}>
                   {DESIGNATIONS.map(d => <option key={d} value={d}>{d === "All" ? "All Designations" : d}</option>)}
                 </select>
-                <select className="adm-filter-select" style={{ fontSize: 18, padding: "16px 20px" }} value={statFilter} onChange={e => setStatFilter(e.target.value)}>
-                  {STATUS.map(s => <option key={s} value={s}>{s === "All" ? "All Status" : s.toUpperCase()}</option>)}
-                </select>
+                
                 <div className="adm-filter-count" style={{ fontSize: 18, padding: "16px 24px" }}>
                   {filtered.length} result{filtered.length !== 1 ? "s" : ""}
                 </div>
@@ -344,20 +341,20 @@ export default function AdminTeachers() {
                       <th>Specialization</th>
                       <th>Courses</th>
                       <th>Experience</th>
-                      <th>Status</th>
+                      
                       <th style={{ textAlign: "right" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={9} style={{ textAlign: "center", padding: "80px", color: "var(--dimmer)", opacity: .6, fontSize: 20, fontWeight: 800 }}>
+                        <td colSpan={8} style={{ textAlign: "center", padding: "80px", color: "var(--dimmer)", opacity: .6, fontSize: 20, fontWeight: 800 }}>
                           ⏳ Loading teachers…
                         </td>
                       </tr>
                     ) : filtered.length === 0 ? (
                       <tr>
-                        <td colSpan={9} style={{ textAlign: "center", padding: "80px", color: "var(--dimmer)", opacity: .6, fontSize: 20, fontWeight: 800 }}>
+                        <td colSpan={8} style={{ textAlign: "center", padding: "80px", color: "var(--dimmer)", opacity: .6, fontSize: 20, fontWeight: 800 }}>
                           📭 No teachers match the current filters.
                         </td>
                       </tr>
@@ -410,9 +407,7 @@ export default function AdminTeachers() {
                           <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--text-main)" }}>
                             {t.experience || "—"}
                           </td>
-                          <td>
-                            <span className={`adm-badge badge-${t.status}`}>{t.status}</span>
-                          </td>
+                          
                           <td style={{ textAlign: "right" }}>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               <button className="adm-action-btn" title="Edit" onClick={() => setModal(t)} style={{ width: 52, height: 52, fontSize: 22 }}>✏️</button>

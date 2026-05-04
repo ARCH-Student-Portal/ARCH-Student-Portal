@@ -6,7 +6,10 @@ const teacherSchema = new mongoose.Schema({
     password: { type: String, required: true },
     employeeId: { type: String, required: true, unique: true },
     department: { type: String, required: true },
-    role: { type: String, default: 'teacher' }
+    role: { type: String, default: 'teacher' },
+    designation: { type: String, default: '' },
+    specialization: { type: String, default: '' },
+    experience: { type: Number, default: 0 }
 });
 
 const Teacher = mongoose.model('Teacher', teacherSchema);
