@@ -87,7 +87,7 @@ function ApproveModal({ pending, onClose, onApprove, saving }) {
               Requested {new Date(pending.createdAt).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })}
             </div>
           </div>
-          <div style={{ marginLeft: "auto", fontSize: 13, fontFamily: "'JetBrains Mono',monospace", color: "var(--amber)", fontWeight: 700 }}>
+          <div style={{ marginLeft: "auto", fontSize: 13, fontFamily: "'JetBrains Mono',monospace", color: "var(--blue)", fontWeight: 700 }}>
             PENDING APPROVAL
           </div>
         </div>
@@ -440,10 +440,8 @@ export default function AdminStudents() {
             <div className="tb-r">
               <div className="sem-chip">{totalCount} Total</div>
               {pending.length > 0 && (
-                <div style={{
-                  background: "rgba(255,171,0,.15)", border: "1px solid rgba(255,171,0,.4)",
-                  borderRadius: 10, padding: "6px 14px", fontSize: 15, fontWeight: 800,
-                  color: "var(--amber)", fontFamily: "'JetBrains Mono',monospace", marginLeft: 8,
+                <div className="sem-chip" style={{
+                  background: "rgba(26,120,255,.15)", border: "1px solid rgba(26,120,255,.4)", color: "var(--blue)"
                 }}>
                   {pending.length} pending
                 </div>
@@ -462,17 +460,14 @@ export default function AdminStudents() {
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
                   <div style={{
                     width: 8, height: 32, borderRadius: 4,
-                    background: "linear-gradient(180deg,var(--amber),#ff6f00)"
+                    background: "linear-gradient(180deg,var(--blue),var(--blue2))"
                   }} />
                   <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-main)" }}>
                     Pending Registrations
                   </div>
                   {!pendingLoading && (
-                    <div style={{
-                      marginLeft: 4, background: "rgba(255,171,0,.15)",
-                      border: "1px solid rgba(255,171,0,.35)", borderRadius: 8,
-                      padding: "4px 12px", fontSize: 14, fontWeight: 800,
-                      color: "var(--amber)", fontFamily: "'JetBrains Mono',monospace"
+                    <div className="sem-chip" style={{
+                      marginLeft: 4, background: "rgba(26,120,255,.15)", border: "1px solid rgba(26,120,255,.35)", color: "var(--blue)"
                     }}>
                       {pending.length} awaiting
                     </div>
@@ -500,7 +495,7 @@ export default function AdminStudents() {
                           {/* avatar */}
                           <div style={{
                             width: 48, height: 48, borderRadius: 12, flexShrink: 0,
-                            background: "linear-gradient(135deg,#ff8f00,#ffc107)",
+                            background: "linear-gradient(135deg,var(--blue),var(--blue2))",
                             display: "flex", alignItems: "center", justifyContent: "center",
                             fontSize: 17, fontWeight: 900, color: "#fff",
                           }}>
@@ -516,12 +511,7 @@ export default function AdminStudents() {
                           </div>
 
                           {/* status chip */}
-                          <div style={{
-                            background: "rgba(255,171,0,.12)", border: "1px solid rgba(255,171,0,.3)",
-                            borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 800,
-                            color: "var(--amber)", fontFamily: "'JetBrains Mono',monospace",
-                            flexShrink: 0,
-                          }}>
+                          <div className="adm-badge badge-pending">
                             PENDING
                           </div>
 
