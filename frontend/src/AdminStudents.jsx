@@ -18,7 +18,15 @@ const mapStudent = (s) => ({
   name:     s.name,
   prog:     s.program    || "—",
   dept:     s.department || "—",
-  sem:      s.semester   || "—",
+  sem: (() => {
+    const raw = s.semester;
+    if (!raw) return "—";
+    const n = parseInt(raw, 10);
+    if (isNaN(n)) return String(raw).trim();
+    const suffix = ["th","st","nd","rd"];
+    const v = n % 100;
+    return n + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
+  })(),
   email:    s.email      || "—",
   phone:    s.phone      || "—",
   status:   s.status     || "active",
