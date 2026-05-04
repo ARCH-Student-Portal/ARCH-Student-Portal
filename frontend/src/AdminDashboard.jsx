@@ -67,7 +67,7 @@ export default function AdminDashboardV1() {
           AdminApi.getStudents(1, 500),
           AdminApi.getAnnouncements(),
           AdminApi.getTeachers(),
-          AdminApi.getCourses(1, 1),
+          AdminApi.getCourses(1, 500),
         ]);
 
         // Dashboard stats
