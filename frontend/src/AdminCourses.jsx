@@ -4,7 +4,6 @@ import { gsap } from "gsap";
 import { motion, AnimatePresence } from "framer-motion";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
 import Sidebar from "./Components/shared/Sidebar";
-import StatsGrid from "./data/StatsGrid";
 import { ADMIN_NAV } from "./config/AdminNav";
 import AdminApi from "./config/adminApi";
 import "./AdminCourses.css"; // 🔥 100% ISOLATED CSS
@@ -17,9 +16,9 @@ const STATUSES = ["All", "active", "inactive", "draft"];
 function normalizeCourse(c) {
   return {
     id:          c.courseCode  ?? c.id          ?? "",
-    name:        c.name        ?? c.title        ?? "",   // backend uses `name` not `title`
+    name:        c.name        ?? c.title        ?? "",
     dept:        c.department  ?? c.dept        ?? "CS",
-    credits:     c.creditHours ?? c.credits     ?? 3,     // backend uses `creditHours`
+    credits:     c.creditHours ?? c.credits     ?? 3,
     type:        c.type        ?? "Core",
     instructor:  c.instructor  ?? c.teacherName ?? "",
     capacity:    c.capacity    ?? 0,
@@ -27,7 +26,7 @@ function normalizeCourse(c) {
     status:      c.status      ?? "active",
     semester:    c.semester    ?? "",
     description: c.description ?? "",
-    fee:         c.fee         ?? 0,                      // preserve fee for CourseContext
+    fee:         c.fee         ?? 0,
     _id:         c._id         ?? c.id,
   };
 }
@@ -56,98 +55,205 @@ function fillColor(enrolled, capacity) {
 }
 
 // ── INLINE COURSE MODAL ──
-function CourseModal({ course, onClose, onSave, saving, teachers = [], teachersLoading = false }) {
+function CourseModal({ course, onClose, onSave, saving, teachers = [], teachersLoading = false, courses = [] }) {
+  const emptySection = () => ({
+    sectionName: "",
+    teacher: "",
+    totalSeats: 40,
+    schedule: [{ day: "Monday", startTime: "08:00", endTime: "09:30", room: "" }],
+  });
+
+  const emptyWeightage = [
+    { type: "quiz",       percentage: 10 },
+    { type: "assignment", percentage: 10 },
+    { type: "mid",        percentage: 30 },
+    { type: "final",      percentage: 50 },
+  ];
+
   const [form, setForm] = useState(
     course
-    ? { ...course }
-    : { id: "", name: "", dept: "CS", credits: 3, type: "Core", instructor: "", capacity: 50, enrolled: 0, status: "active", semester: "1st", description: "", fee: 0 }
+      ? { ...course, prerequisites: course.prerequisites ?? [], weightage: course.weightage ?? emptyWeightage, sections: course.sections ?? [emptySection()] }
+      : { id: "", name: "", dept: "CS", credits: 3, fee: 0, status: "active", description: "", prerequisites: [], weightage: emptyWeightage, sections: [emptySection()] }
   );
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const setWeight = (i, val) => {
+    const w = [...form.weightage];
+    w[i] = { ...w[i], percentage: Number(val) };
+    set("weightage", w);
+  };
+  const totalWeight = form.weightage.reduce((a, b) => a + b.percentage, 0);
+
+  const addSection = () => set("sections", [...form.sections, emptySection()]);
+  const removeSection = (i) => set("sections", form.sections.filter((_, idx) => idx !== i));
+  const setSection = (i, k, v) => {
+    const s = [...form.sections];
+    s[i] = { ...s[i], [k]: v };
+    set("sections", s);
+  };
+
+  const addScheduleRow = (si) => {
+    const s = [...form.sections];
+    s[si].schedule = [...(s[si].schedule ?? []), { day: "Monday", startTime: "08:00", endTime: "09:30", room: "" }];
+    set("sections", s);
+  };
+  const removeScheduleRow = (si, ri) => {
+    const s = [...form.sections];
+    s[si].schedule = s[si].schedule.filter((_, idx) => idx !== ri);
+    set("sections", s);
+  };
+  const setSchedule = (si, ri, k, v) => {
+    const s = [...form.sections];
+    s[si].schedule[ri] = { ...s[si].schedule[ri], [k]: v };
+    set("sections", s);
+  };
+
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
   return (
     <div className="adm-modal-overlay" onClick={onClose}>
-      <div className="adm-modal" style={{ width: "min(900px, 95vw)", maxHeight: "90vh", overflowY: "auto", padding: "48px" }} onClick={e => e.stopPropagation()}>
-        <div className="adm-modal-hd" style={{ marginBottom: 32 }}>
-          <div className="adm-modal-title" style={{ fontSize: 36 }}>{course ? "Edit Course" : "Add New Course"}</div>
-          <button className="adm-modal-close" style={{ fontSize: 32 }} onClick={onClose}>✕</button>
+      <div className="adm-modal adm-modal-wide" onClick={e => e.stopPropagation()}>
+        <div className="adm-modal-hd">
+          <div className="adm-modal-title">{course ? "Edit Course" : "Add New Course"}</div>
+          <button className="adm-modal-close" onClick={onClose}>✕</button>
         </div>
-        <div className="adm-form-grid" style={{ gap: 24 }}>
+
+        {/* ── SECTION 1: BASIC INFO ── */}
+        <div className="adm-form-section-label">Basic Info</div>
+        <div className="adm-form-grid">
           <div className="adm-form-group">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Course ID</label>
-            <input className="adm-form-input" style={{ fontSize: 24, padding: "20px", fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }} value={form.id} onChange={e => set("id", e.target.value)} placeholder="e.g. CS-4011" />
+            <label className="adm-form-label">Course Code</label>
+            <input className="adm-form-input mono-input"
+              value={form.id} onChange={e => set("id", e.target.value)} placeholder="e.g. CS-4011" />
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Credits</label>
-            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.credits} onChange={e => set("credits", Number(e.target.value))}>
+            <label className="adm-form-label">Credit Hours</label>
+            <select className="adm-form-select" value={form.credits} onChange={e => set("credits", Number(e.target.value))}>
               {[1,2,3,4].map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div className="adm-form-group full">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Course Title</label>
-            <input className="adm-form-input" style={{ fontSize: 24, padding: "20px", fontWeight: 800 }} value={form.name} onChange={e => set("name", e.target.value)} placeholder="Full course name" />
+            <label className="adm-form-label">Course Name</label>
+            <input className="adm-form-input bold-input"
+              value={form.name} onChange={e => set("name", e.target.value)} placeholder="Full course name" />
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Department</label>
-            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.dept} onChange={e => set("dept", e.target.value)}>
+            <label className="adm-form-label">Department</label>
+            <select className="adm-form-select" value={form.dept} onChange={e => set("dept", e.target.value)}>
               {["CS","EE","IS","MT","BBA"].map(d => <option key={d}>{d}</option>)}
             </select>
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Type</label>
-            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.type} onChange={e => set("type", e.target.value)}>
-              {["Core","Elective","Lab","Seminar"].map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="adm-form-group full">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Instructor</label>
-            {teachersLoading ? (
-              <div className="adm-form-input" style={{ fontSize: 18, padding: "18px", color: "var(--dimmer)", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ display: "inline-block" }}>⟳</span> Loading teachers…
-              </div>
-            ) : (
-              <select
-                className="adm-form-select"
-                style={{ fontSize: 20, padding: "18px" }}
-                value={form.instructor}
-                onChange={e => set("instructor", e.target.value)}
-              >
-                <option value="">— Select instructor —</option>
-                {teachers.map(t => (
-                  <option key={t._id ?? t.id} value={t.name}>
-                    {t.name}{t.department ? ` - ${t.department}` : ""}
-                  </option>
-                ))}
-              </select>
-            )}
+            <label className="adm-form-label">Fee (PKR)</label>
+            <input className="adm-form-input mono-input" type="number"
+              value={form.fee} onChange={e => set("fee", Number(e.target.value))} min={0} />
           </div>
           <div className="adm-form-group">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Semester</label>
-            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px" }} value={form.semester} onChange={e => set("semester", e.target.value)}>
-              {["1st","2nd","3rd","4th","5th","6th","7th","8th"].map(s => <option key={s}>{s}</option>)}
-            </select>
-          </div>
-          <div className="adm-form-group">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Capacity</label>
-            <input className="adm-form-input" type="number" style={{ fontSize: 20, padding: "18px", fontFamily: "'JetBrains Mono', monospace" }} value={form.capacity} onChange={e => set("capacity", Number(e.target.value))} min={1} />
-          </div>
-          <div className="adm-form-group">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Enrolled</label>
-            <input className="adm-form-input" type="number" style={{ fontSize: 20, padding: "18px", fontFamily: "'JetBrains Mono', monospace" }} value={form.enrolled} onChange={e => set("enrolled", Number(e.target.value))} min={0} />
-          </div>
-          <div className="adm-form-group">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Status</label>
-            <select className="adm-form-select" style={{ fontSize: 20, padding: "18px", fontWeight: 800, color: form.status === "active" ? "var(--green)" : form.status === "inactive" ? "var(--red)" : "var(--amber)" }} value={form.status} onChange={e => set("status", e.target.value)}>
+            <label className="adm-form-label">Status</label>
+            <select className="adm-form-select" value={form.status} onChange={e => set("status", e.target.value)}>
               {["active","inactive","draft"].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
             </select>
           </div>
+          <div className="adm-form-group">
+            <label className="adm-form-label">Prerequisites</label>
+            <select className="adm-form-select adm-prereq-select" multiple
+              value={form.prerequisites}
+              onChange={e => set("prerequisites", Array.from(e.target.selectedOptions, o => o.value))}>
+              {courses.filter(c => c.id !== form.id).map(c => (
+                <option key={c._id ?? c.id} value={c._id ?? c.id}>{c.id} — {c.name}</option>
+              ))}
+            </select>
+            <span className="adm-form-hint">Ctrl/Cmd+click multi-select</span>
+          </div>
           <div className="adm-form-group full">
-            <label className="adm-form-label" style={{ fontSize: 18 }}>Description</label>
-            <textarea className="adm-form-input" rows={4} style={{ resize: "vertical", lineHeight: 1.6, fontSize: 18, padding: "18px" }} value={form.description} onChange={e => set("description", e.target.value)} placeholder="Brief course description..." />
+            <label className="adm-form-label">Description</label>
+            <textarea className="adm-form-input adm-textarea"
+              value={form.description} onChange={e => set("description", e.target.value)} placeholder="Brief course description…" />
           </div>
         </div>
-        <div className="adm-modal-footer" style={{ marginTop: 48 }}>
-          <button className="adm-btn-secondary" style={{ fontSize: 20, padding: "16px 32px" }} onClick={onClose} disabled={saving}>Cancel</button>
-          <button className="adm-btn-primary" style={{ fontSize: 20, padding: "16px 32px", opacity: saving ? 0.7 : 1 }} onClick={() => onSave(form)} disabled={saving}>
+
+        {/* ── SECTION 2: WEIGHTAGE ── */}
+        <div className="adm-form-section-label" style={{ marginTop: 32 }}>
+          Assessment Weightage
+          <span className={`adm-weight-total ${totalWeight === 100 ? "ok" : "err"}`}>{totalWeight}% / 100%</span>
+        </div>
+        <div className="adm-weightage-grid">
+          {form.weightage.map((w, i) => (
+            <div className="adm-weight-row" key={w.type}>
+              <span className="adm-weight-label">{w.type.toUpperCase()}</span>
+              <input className="adm-form-input adm-weight-input" type="number"
+                value={w.percentage} min={0} max={100}
+                onChange={e => setWeight(i, e.target.value)} />
+              <span className="adm-weight-pct">%</span>
+            </div>
+          ))}
+        </div>
+
+        {/* ── SECTION 3: SECTIONS ── */}
+        <div className="adm-form-section-label" style={{ marginTop: 32 }}>
+          Sections
+          <button className="adm-btn-ghost" onClick={addSection}>＋ Add Section</button>
+        </div>
+
+        {form.sections.map((sec, si) => (
+          <div className="adm-section-block" key={si}>
+            <div className="adm-section-block-hd">
+              <span className="adm-section-num">Section {si + 1}</span>
+              {form.sections.length > 1 && (
+                <button className="adm-btn-ghost adm-btn-ghost-red" onClick={() => removeSection(si)}>✕ Remove</button>
+              )}
+            </div>
+            <div className="adm-form-grid">
+              <div className="adm-form-group">
+                <label className="adm-form-label">Section Name</label>
+                <input className="adm-form-input mono-input bold-input"
+                  value={sec.sectionName} onChange={e => setSection(si, "sectionName", e.target.value)} placeholder="A, B, C…" />
+              </div>
+              <div className="adm-form-group">
+                <label className="adm-form-label">Total Seats</label>
+                <input className="adm-form-input mono-input" type="number"
+                  value={sec.totalSeats} onChange={e => setSection(si, "totalSeats", Number(e.target.value))} min={1} />
+              </div>
+              <div className="adm-form-group full">
+                <label className="adm-form-label">Teacher</label>
+                {teachersLoading ? (
+                  <div className="adm-form-input adm-loading-text">⟳ Loading teachers…</div>
+                ) : (
+                  <select className="adm-form-select" value={sec.teacher} onChange={e => setSection(si, "teacher", e.target.value)}>
+                    <option value="">— Select teacher —</option>
+                    {teachers.map(t => (
+                      <option key={t._id ?? t.id} value={t._id ?? t.id}>
+                        {t.name}{t.department ? ` — ${t.department}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            <div className="adm-schedule-label">Schedule</div>
+            {(sec.schedule ?? []).map((row, ri) => (
+              <div className="adm-schedule-row" key={ri}>
+                <select className="adm-form-select adm-sched-day" value={row.day} onChange={e => setSchedule(si, ri, "day", e.target.value)}>
+                  {DAYS.map(d => <option key={d}>{d}</option>)}
+                </select>
+                <input className="adm-form-input adm-sched-time mono-input" type="time" value={row.startTime} onChange={e => setSchedule(si, ri, "startTime", e.target.value)} />
+                <span className="adm-sched-sep">→</span>
+                <input className="adm-form-input adm-sched-time mono-input" type="time" value={row.endTime} onChange={e => setSchedule(si, ri, "endTime", e.target.value)} />
+                <input className="adm-form-input adm-sched-room" value={row.room} onChange={e => setSchedule(si, ri, "room", e.target.value)} placeholder="Room / Lab" />
+                <button className="adm-btn-ghost adm-btn-ghost-red" onClick={() => removeScheduleRow(si, ri)} disabled={(sec.schedule ?? []).length <= 1}>✕</button>
+              </div>
+            ))}
+            <button className="adm-btn-ghost" style={{ marginTop: 8 }} onClick={() => addScheduleRow(si)}>＋ Add Time Slot</button>
+          </div>
+        ))}
+
+        <div className="adm-modal-footer">
+          <button className="adm-btn-secondary adm-modal-btn" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="adm-btn-primary adm-modal-btn"
+            onClick={() => onSave(form)} disabled={saving || totalWeight !== 100}
+            style={{ opacity: saving ? 0.7 : 1 }}>
             {saving ? "Saving…" : course ? "Save Changes" : "➕ Add Course"}
           </button>
         </div>
@@ -181,7 +287,7 @@ function DetailPanel({ course, onClose, onEdit, onDelete }) {
     >
       <motion.aside
         className="crs-detail-panel"
-        style={{ width: "min(600px, 88vw)" }} 
+        style={{ width: "min(600px, 88vw)" }}
         initial={{ x: 80, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 80, opacity: 0 }}
@@ -204,8 +310,6 @@ function DetailPanel({ course, onClose, onEdit, onDelete }) {
         </div>
 
         <div className="crs-detail-body" style={{ padding: "32px 40px 40px", gap: 32 }}>
-
-          {/* Stat row */}
           <div className="crs-detail-stat-row">
             {[
               { val: course.enrolled,   label: "Enrolled",  col: fc.text },
@@ -220,22 +324,17 @@ function DetailPanel({ course, onClose, onEdit, onDelete }) {
             ))}
           </div>
 
-          {/* Fill bar */}
           <div className="crs-detail-fill-section">
             <div className="crs-detail-fill-header" style={{ fontSize: 14, marginBottom: 12 }}>
               <span>Enrollment</span>
               <span style={{ fontFamily: "'JetBrains Mono',monospace", color: fc.text, fontWeight: 800 }}>{course.enrolled} / {course.capacity}</span>
             </div>
             <div className="crs-detail-track" style={{ height: 16, borderRadius: 8 }}>
-              <div
-                className="crs-detail-fill"
-                style={{ width: 0, background: `linear-gradient(90deg, ${fc.bar}, ${fc.bar}dd)`, borderRadius: 8 }}
-              />
+              <div className="crs-detail-fill" style={{ width: 0, background: `linear-gradient(90deg, ${fc.bar}, ${fc.bar}dd)`, borderRadius: 8 }} />
               <div className="crs-detail-fill-glow" style={{ width: `${Math.min(pct,100)}%`, background: fc.bar, height: 32, borderRadius: 16 }} />
             </div>
           </div>
 
-          {/* Info grid */}
           <div className="crs-info-grid" style={{ gap: 8 }}>
             {[
               { label: "Instructor", val: course.instructor, icon: "👤" },
@@ -288,7 +387,7 @@ export default function AdminCourses() {
   const [teachersLoading, setTeachersLoading] = useState(false);
   const [page,       setPage]       = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const PAGE_SIZE = 50; // fetch up to 50 per page; increase if needed
+  const PAGE_SIZE = 50;
 
   const [search,     setSearch]     = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
@@ -297,7 +396,6 @@ export default function AdminCourses() {
   const [viewMode,   setViewMode]   = useState("grid");
   const [modal,      setModal]      = useState(null);
   const [detail,     setDetail]     = useState(null);
-  const [showStats,  setShowStats]  = useState(false);
 
   // ── FETCH ALL COURSES ──
   const fetchCourses = useCallback(async () => {
@@ -305,7 +403,6 @@ export default function AdminCourses() {
     setError(null);
     try {
       const res = await AdminApi.getCourses(page, PAGE_SIZE);
-      // Backend may return { courses, total } or { data, total } or a plain array
       const raw = res.courses ?? res.data ?? (Array.isArray(res) ? res : []);
       setCourses(raw.map(normalizeCourse));
       setTotalCount(res.total ?? res.totalCount ?? raw.length);
@@ -318,7 +415,7 @@ export default function AdminCourses() {
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
-  // ── FETCH TEACHERS FOR DROPDOWN ──
+  // ── FETCH TEACHERS ──
   useEffect(() => {
     let cancelled = false;
     setTeachersLoading(true);
@@ -346,18 +443,23 @@ export default function AdminCourses() {
   const handleSave = async (form) => {
     setSaving(true);
     try {
-      // Map UI shape → API shape
       const payload = {
-        courseCode:  form.id,
-        name:        form.name,        // was `title` — backend schema field is `name`
-        department:  form.dept,
-        creditHours: form.credits,     // was `credits` — backend schema field is `creditHours`
-        fee:         form.fee ?? 0,
-        instructor:  form.instructor,
-        capacity:    form.capacity,
-        status:      form.status,
-        semester:    form.semester,
-        description: form.description,
+        courseCode:    form.id,
+        name:          form.name,
+        department:    form.dept,
+        creditHours:   form.credits,
+        fee:           form.fee ?? 0,
+        status:        form.status,
+        description:   form.description,
+        prerequisites: form.prerequisites ?? [],
+        weightage:     form.weightage ?? [],
+        sections:      (form.sections ?? []).map(s => ({
+          sectionName:    s.sectionName,
+          teacher:        s.teacher,
+          totalSeats:     s.totalSeats,
+          seatsAvailable: s.totalSeats,
+          schedule:       s.schedule ?? [],
+        })),
       };
 
       if (modal === "add") {
@@ -396,16 +498,13 @@ export default function AdminCourses() {
   };
 
   useEffect(() => {
-    document.querySelectorAll(".sc, .admin-isolated-card, .crs-card").forEach((el, i) => {
+    document.querySelectorAll(".crs-card, .admin-isolated-card").forEach((el, i) => {
       gsap.fromTo(el, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", delay: i * 0.06 });
     });
-    setTimeout(() => setShowStats(true), 100);
-  }, [viewMode, deptFilter, typeFilter, statFilter]); 
+  }, [viewMode, deptFilter, typeFilter, statFilter]);
 
   return (
     <div className="admin-crs-wrapper">
-      
-      {/* 🔥 THE FLUID MESH BACKGROUND (NO THREE.JS) 🔥 */}
       <div className="mesh-bg">
         <div className="mesh-blob blob-1" />
         <div className="mesh-blob blob-2" />
@@ -413,15 +512,13 @@ export default function AdminCourses() {
       </div>
 
       <AnimatePresence>
-        {modal && <CourseModal course={modal==="add"?null:modal} onClose={()=>setModal(null)} onSave={handleSave} saving={saving} teachers={teachers} teachersLoading={teachersLoading} />}
+        {modal && <CourseModal course={modal==="add"?null:modal} onClose={()=>setModal(null)} onSave={handleSave} saving={saving} teachers={teachers} teachersLoading={teachersLoading} courses={courses} />}
       </AnimatePresence>
       <AnimatePresence>
         {detail && <DetailPanel course={detail} onClose={()=>setDetail(null)} onEdit={c=>{setDetail(null);setModal(c);}} onDelete={handleDelete} />}
       </AnimatePresence>
 
       <div id="app" style={{ opacity: 1, zIndex: 10, position: 'relative' }}>
-        
-        {/* INLINE SIDEBAR */}
         <Sidebar
           sections={ADMIN_NAV}
           logoLabel="Admin Portal"
@@ -431,14 +528,12 @@ export default function AdminCourses() {
           onToggle={() => setCollapse(c => !c)}
         />
 
-        {/* MAIN */}
         <div id="main">
           <div id="topbar" style={{ opacity: 1 }}>
             <div className="tb-glow" />
             <div className="pg-title"><span>Course Catalog</span></div>
             <div className="tb-r">
               <div className="sem-chip">{loading ? "…" : `${totalCount} total`}</div>
-              
               <div className="crs-view-toggle" style={{ marginLeft: 16 }}>
                 <button className={`crs-view-btn${viewMode==="grid"?" active":""}`} onClick={()=>setViewMode("grid")} title="Card view" style={{ padding: "12px 18px" }}>
                   <svg width="20" height="20" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="0" width="6" height="6" rx="1.5"/><rect x="8" y="0" width="6" height="6" rx="1.5"/><rect x="0" y="8" width="6" height="6" rx="1.5"/><rect x="8" y="8" width="6" height="6" rx="1.5"/></svg>
@@ -447,7 +542,6 @@ export default function AdminCourses() {
                   <svg width="20" height="20" viewBox="0 0 14 14" fill="currentColor"><rect x="0" y="0" width="14" height="2.5" rx="1.25"/><rect x="0" y="5.75" width="14" height="2.5" rx="1.25"/><rect x="0" y="11.5" width="14" height="2.5" rx="1.25"/></svg>
                 </button>
               </div>
-
               <button className="adm-btn-primary" onClick={()=>setModal("add")} style={{ fontSize: 18, padding: "10px 24px", marginLeft: 16 }}>
                 ➕ Add Course
               </button>
@@ -455,7 +549,6 @@ export default function AdminCourses() {
           </div>
 
           <div id="scroll">
-
             {/* ── ERROR BANNER ── */}
             {error && (
               <div style={{ margin: "0 0 24px", padding: "20px 28px", borderRadius: 16, background: "rgba(255,77,106,.08)", border: "1.5px solid rgba(255,77,106,.25)", color: "#e11d48", fontWeight: 700, fontSize: 17, display: "flex", alignItems: "center", gap: 16 }}>
@@ -473,17 +566,6 @@ export default function AdminCourses() {
                 ))}
               </div>
             )}
-
-            {/* ── GODZILLA STATS GRID ── */}
-            <StatsGrid
-              showStats={showStats}
-              cards={[
-                { cls: "sc-a", label: "Total Courses", value: courses.length,                                   special: "none"    },
-                { cls: "sc-d", label: "Active Status", value: courses.filter(c=>c.status==="active").length,    special: "bubbles" },
-                { cls: "sc-b", label: "Drafts",        value: courses.filter(c=>c.status==="draft").length,     special: "none"    },
-                { cls: "sc-c", label: "Inactive",      value: courses.filter(c=>c.status==="inactive").length,  special: "fire"    },
-              ]}
-            />
 
             {/* 🔥 HORIZONTAL FILTER BAR 🔥 */}
             <div className="admin-isolated-card" style={{ marginBottom: 40, padding: "24px 32px" }}>
@@ -513,7 +595,7 @@ export default function AdminCourses() {
               </div>
             </div>
 
-            {/* ══ GODZILLA 2-FONT GRID VIEW ══ */}
+            {/* ══ GRID VIEW ══ */}
             {viewMode === "grid" && (
               <div className="admin-isolated-card" style={{ padding: 32, background: "transparent", border: "none", boxShadow: "none" }}>
                 <div className="crs-grid">
@@ -539,9 +621,7 @@ export default function AdminCourses() {
                           </div>
                         </div>
                         <div className="crs-card-body" style={{ padding: "32px", gap: 12 }}>
-                          {/* FONT 1: JETBRAINS MONO */}
                           <div className="crs-card-id" style={{ fontSize: 18, fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: "var(--dimmer)" }}>{c.id}</div>
-                          {/* FONT 2: INTER BLACK */}
                           <div className="crs-card-name" style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.2, color: "var(--text-main)" }}>{c.name}</div>
                           <div className="crs-card-instructor" style={{ fontSize: 18, marginTop: 4, marginBottom: 20, color: "var(--dimmer)", fontWeight: 600 }}>
                             {c.instructor}
@@ -551,8 +631,6 @@ export default function AdminCourses() {
                             <span className="crs-card-pill" style={{ background: "rgba(26,120,255,.08)", color: "var(--blue)", fontSize: 15, padding: "8px 16px", borderRadius: 10, fontWeight: 800 }}>⚡ {c.credits} cr</span>
                             <span className="crs-card-pill" style={{ background: "#f1f5f9", color: "var(--dimmer)", fontSize: 15, padding: "8px 16px", borderRadius: 10, fontWeight: 800 }}>📅 Sem {c.semester}</span>
                           </div>
-                          
-                          {/* FONT RULE 1 & 2 TOGETHER */}
                           <div className="crs-card-fill-wrap" style={{ marginTop: "auto", display: 'flex', alignItems: 'center', gap: 12 }}>
                             <span style={{ fontSize: 18, color: "var(--dimmer)", fontWeight: 600 }}>Enrollment</span>
                             <span style={{ fontFamily: "'Bitcount Grid Double', monospace", color: fc.text, fontWeight: 700, fontSize: 28 }}>{c.enrolled}/{c.capacity}</span>
@@ -569,7 +647,7 @@ export default function AdminCourses() {
               </div>
             )}
 
-            {/* ══ LIST VIEW (SUPERSIZED) ══ */}
+            {/* ══ LIST VIEW ══ */}
             {viewMode === "list" && (
               <div className="admin-isolated-card" style={{ padding: 0 }}>
                 <div className="adm-table-wrap" style={{ borderRadius: 24 }}>
@@ -637,7 +715,6 @@ export default function AdminCourses() {
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </div>

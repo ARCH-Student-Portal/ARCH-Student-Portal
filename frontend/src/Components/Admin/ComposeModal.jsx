@@ -82,7 +82,6 @@ export default function ComposeModal({ existing, onClose, onSave, saving }) {
               value={form.weekNumber ?? ""}
               onChange={e => set("weekNumber", e.target.value ? Number(e.target.value) : null)}
             >
-              <option value="">No specific week</option>
               {Array.from({ length: 16 }, (_, i) => (
                 <option key={i + 1} value={i + 1}>Week {i + 1}</option>
               ))}
