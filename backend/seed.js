@@ -35,41 +35,52 @@ const seed = async () => {
 
     // ── TEACHERS ───────────────────────────────────────────────────────────
     const teacher1 = await Teacher.create({
-        name: 'Dr. Ahmad Raza',
-        email: 'ahmad@arch.com',
-        password: hashedPassword,
-        employeeId: 'T-001',
-        department: 'CS',
-        role: 'teacher'
-    });
+    name: 'Dr. Ahmad Raza',
+    email: 'ahmad@arch.com',
+    password: hashedPassword,
+    employeeId: 'T-001',
+    department: 'CS',
+    designation: 'Associate Professor',
+    specialization: 'Software Engineering & Design Patterns',
+    experience: 8,
+    role: 'teacher'
+});
 
-    const teacher2 = await Teacher.create({
-        name: 'Dr. Ayesha Khan',
-        email: 'ayesha@arch.com',
-        password: hashedPassword,
-        employeeId: 'T-002',
-        department: 'CS',
-        role: 'teacher'
-    });
+const teacher2 = await Teacher.create({
+    name: 'Dr. Ayesha Khan',
+    email: 'ayesha@arch.com',
+    password: hashedPassword,
+    employeeId: 'T-002',
+    department: 'CS',
+    designation: 'Assistant Professor',
+    specialization: 'Database Systems & Data Engineering',
+    experience: 5,
+    role: 'teacher'
+});
 
-    const teacher3 = await Teacher.create({
-        name: 'Dr. Bilal Hassan',
-        email: 'bilal@arch.com',
-        password: hashedPassword,
-        employeeId: 'T-003',
-        department: 'CS',
-        role: 'teacher'
-    });
+const teacher3 = await Teacher.create({
+    name: 'Dr. Bilal Hassan',
+    email: 'bilal@arch.com',
+    password: hashedPassword,
+    employeeId: 'T-003',
+    department: 'CS',
+    designation: 'Lecturer',
+    specialization: 'Algorithms & Competitive Programming',
+    experience: 3,
+    role: 'teacher'
+});
 
-    const teacher4 = await Teacher.create({
-        name: 'Dr. Sara Malik',
-        email: 'sara@arch.com',
-        password: hashedPassword,
-        employeeId: 'T-004',
-        department: 'CS',
-        role: 'teacher'
-    });
-
+const teacher4 = await Teacher.create({
+    name: 'Dr. Sara Malik',
+    email: 'sara@arch.com',
+    password: hashedPassword,
+    employeeId: 'T-004',
+    department: 'CS',
+    designation: 'Associate Professor',
+    specialization: 'Software Engineering & Mathematics',
+    experience: 6,
+    role: 'teacher'
+});
     // ── STUDENTS ───────────────────────────────────────────────────────────
     const student1 = await Student.create({
         name: 'Areeb Bucha',
