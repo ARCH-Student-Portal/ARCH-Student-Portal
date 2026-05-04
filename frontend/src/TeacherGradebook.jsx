@@ -35,7 +35,8 @@ function gradeClass(g) {
 function normalizeSections(sectionsArr, gradebooksMap) {
   const out = {};
   sectionsArr.forEach((sec) => {
-    const gb = gradebooksMap[sec.id] || {};
+    const secKey = sec.sectionId ?? sec.id ?? sec._id;
+    const gb = gradebooksMap[secKey] || {};
     const assessments = gb.assessments || [
       { key: "q1",    label: "Q1",   max: 10 },
       { key: "q2",    label: "Q2",   max: 10 },
@@ -54,12 +55,12 @@ function normalizeSections(sectionsArr, gradebooksMap) {
       ),
       scores: s.scores   || assessments.reduce((acc, a) => ({ ...acc, [a.key]: null }), {}),
     }));
-    out[sec.id] = {
-      name:        sec.name        || sec.courseName || sec.id,
-      code:        sec.code        || `${sec.id} · Sec ${sec.section || "A"}`,
-      assessments,
-      students,
-    };
+    out[secKey] = {
+    name:        sec.courseName  || sec.name  || sec.id,
+    code:        `${sec.courseCode || sec.code || secKey} · Sec ${sec.sectionName || sec.section || "A"}`,
+    assessments,
+    students,
+};
   });
   return out;
 }
@@ -104,18 +105,33 @@ export default function TeacherGradebook() {
         }
 
         const gbResults = await Promise.allSettled(
-          sectionsArr.map((s) => TeacherApi.getGradebook(s.id))
-        );
+    sectionsArr.map((s) => TeacherApi.getGradebook(s.sectionId ?? s.id))
+);
 
         const gradebooksMap = {};
-        sectionsArr.forEach((s, i) => {
-          const res = gbResults[i];
-          if (res.status === "fulfilled") {
-            gradebooksMap[s.id] = res.value?.data || res.value || {};
-          }
-        });
+sectionsArr.forEach((s, i) => {
+    const res = gbResults[i];
+    if (res.status === "fulfilled") {
+        const raw = res.value?.data || res.value || {};
+        gradebooksMap[s.sectionId ?? s.id] = {
+            students: (raw.gradebook || []).map(g => ({
+                id:   g.rollNumber,
+                name: g.studentName,
+                att:  g.attendancePercentage !== null && g.attendancePercentage !== undefined ? `${g.attendancePercentage}%` : '—',                scores: {
+                    q1:    g.assessments?.quiz?.[0]?.obtainedMarks ?? null,
+                    q2:    g.assessments?.quiz?.[1]?.obtainedMarks ?? null,
+                    asgn:  g.assessments?.assignment?.[0]?.obtainedMarks ?? null,
+                    mid:   g.assessments?.mid?.[0]?.obtainedMarks ?? null,
+                    final: g.assessments?.final?.[0]?.obtainedMarks ?? null,
+                }
+            }))
+        };
+    }
+});
 
         const normalized = normalizeSections(sectionsArr, gradebooksMap);
+        
+        
 
         const scoresInit = {};
         Object.entries(normalized).forEach(([secId, data]) => {
@@ -329,8 +345,8 @@ export default function TeacherGradebook() {
         <Sidebar
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
-          userName="Dr. Ahmed"
-          userId="EMP-8492"
+          userName={JSON.parse(localStorage.getItem('user') || '{}').name || 'Teacher'}
+          userId={JSON.parse(localStorage.getItem('user') || '{}').employeeId || ''}
           collapse={collapse}
           onToggle={() => setCollapse((c) => !c)}
         />
@@ -371,11 +387,11 @@ export default function TeacherGradebook() {
                 <>
                   <div className="gb-controls">
                     <div className="marks-tab-container">
-                      {Object.keys(sectionsData).map((sec) => (
-                        <motion.button key={sec} className={`marks-tab ${activeSection === sec ? "active" : ""}`} onClick={() => { setActiveSection(sec); setSearch(""); }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                          {sec}
-                        </motion.button>
-                      ))}
+                      {Object.entries(sectionsData).map(([secId, secData]) => (
+    <                   motion.button key={secId} className={`marks-tab ${activeSection === secId ? "active" : ""}`} onClick={() => { setActiveSection(secId); setSearch(""); }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      {secData.code}
+                      </motion.button>
+))}
                     </div>
                     <div className="gb-right-controls">
                       <div className="gb-search">

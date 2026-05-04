@@ -206,8 +206,8 @@ export default function TeacherAttendance() {
           ref={sidebarRef}
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
-          userName="Dr. Ahmed"
-          userId="EMP-8492"
+          userName={JSON.parse(localStorage.getItem('user') || '{}').name || 'Teacher'}
+          userId={JSON.parse(localStorage.getItem('user') || '{}').employeeId || ''}
           collapse={collapse}
           onToggle={() => setCollapse(c => !c)}
         />
