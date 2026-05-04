@@ -38,7 +38,7 @@ export default function TeacherSectionsV1() {
     TeacherApi.getSections()
       .then((res) => {
         if (cancelled) return;
-        const list = Array.isArray(res) ? res : res?.data ?? [];
+        const list = Array.isArray(res) ? res : res?.sections ?? res?.data ?? [];
         setSections(list);
         if (list.length > 0) setActiveTab(list[0].id ?? list[0]._id ?? list[0].sectionId);
       })
@@ -66,37 +66,41 @@ export default function TeacherSectionsV1() {
       .then(([studRes, gradeRes, attRes]) => {
         if (cancelled) return;
 
-        const students = Array.isArray(studRes) ? studRes : studRes?.data ?? [];
-        const grades   = Array.isArray(gradeRes) ? gradeRes : gradeRes?.data ?? [];
-        const att      = Array.isArray(attRes)   ? attRes   : attRes?.data   ?? [];
+        const students = Array.isArray(studRes) ? studRes : studRes?.students ?? studRes?.data ?? [];
+        const grades = Array.isArray(gradeRes) ? gradeRes : gradeRes?.gradebook ?? gradeRes?.data ?? [];
+        const att = Array.isArray(attRes) ? attRes : attRes?.attendance ?? attRes?.data ?? [];
 
-        const gradeMap = {};
-        grades.forEach((g) => { gradeMap[g.studentId ?? g.id] = g.grade ?? g.letterGrade ?? "—"; });
+const gradeMap = {};
+grades.forEach((g) => {
+    const key = g.rollNumber ?? g.studentId ?? g.id;
+    gradeMap[key] = g.letterGrade ?? g.grade ?? "—";
+});
 
-        const attMap = {};
-        att.forEach((a) => {
-          if (a.attendancePercent !== undefined) {
-            attMap[a.studentId ?? a.id] = `${a.attendancePercent}%`;
-          } else if (a.present !== undefined && a.total !== undefined) {
-            attMap[a.studentId ?? a.id] = `${Math.round((a.present / a.total) * 100)}%`;
-          } else {
-            attMap[a.studentId ?? a.id] = a.attendance ?? "—";
-          }
-        });
+const attMap = {};
+att.forEach((a) => {
+    const key = a.studentId ?? a.rollNumber ?? a.id;
+    if (a.attendancePercentage !== undefined && a.attendancePercentage !== null) {
+        attMap[key] = `${a.attendancePercentage}%`;
+    } else if (a.attendedLectures !== undefined && a.totalLectures !== undefined && a.totalLectures > 0) {
+        attMap[key] = `${Math.round((a.attendedLectures / a.totalLectures) * 100)}%`;
+    } else {
+        attMap[key] = "—";
+    }
+});
 
         const merged = students.map((s) => {
-          const sid    = s.id ?? s._id ?? s.studentId;
-          const attPct = attMap[sid] ?? "—";
-          const attNum = parseInt(attPct);
-          const status = isNaN(attNum) ? "ok" : attNum < 70 ? "danger" : attNum < 80 ? "warn" : "ok";
-          return {
-            id:    s.rollNumber ?? s.rollNo ?? sid,
-            name:  s.name ?? `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim(),
-            att:   attPct,
-            grade: gradeMap[sid] ?? "—",
-            status,
-          };
-        });
+    const sid    = s.rollNumber ?? s.id ?? s._id ?? s.studentId;
+    const attPct = attMap[sid] ?? "—";
+    const attNum = parseInt(attPct);
+    const status = isNaN(attNum) ? "ok" : attNum < 70 ? "danger" : attNum < 80 ? "warn" : "ok";
+    return {
+        id:    sid,
+        name:  s.name ?? `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim(),
+        att:   attPct,
+        grade: gradeMap[sid] ?? "—",
+        status,
+    };
+});
 
         const totalStudents = merged.length;
         const validAtts     = merged.map((s) => parseInt(s.att)).filter((n) => !isNaN(n));
@@ -223,11 +227,13 @@ export default function TeacherSectionsV1() {
 
   const getSectionLabel = (s) => s.courseCode ?? s.code ?? s.sectionCode ?? s.id ?? s._id ?? "Section";
   const getSectionName  = (s) => s.courseName ?? s.name ?? s.title ?? "Untitled Course";
-  const getSectionMeta  = (s) => {
-    const code = s.sectionCode ?? s.code ?? "";
-    const time = s.schedule ?? s.time ?? s.timeslot ?? "";
-    return [code, time].filter(Boolean).join("  |  ");
-  };
+  const getSectionMeta = (s) => {
+    const secName = s.sectionName ? `Sec ${s.sectionName}` : "";
+    const schedule = Array.isArray(s.schedule) && s.schedule.length > 0
+        ? `${s.schedule[0].day} ${s.schedule[0].startTime}–${s.schedule[0].endTime}`
+        : "";
+    return [secName, schedule].filter(Boolean).join("  |  ");
+};
 
   return (
     <>
@@ -248,8 +254,8 @@ export default function TeacherSectionsV1() {
           ref={sidebarRef}
           sections={TEACHER_NAV}
           logoLabel="Faculty Portal"
-          userName="Dr. Ahmed"
-          userId="EMP-8492"
+          userName={JSON.parse(localStorage.getItem('user') || '{}').name || 'Teacher'}
+          userId={JSON.parse(localStorage.getItem('user') || '{}').employeeId || ''}
           collapse={collapse}
           onToggle={() => setCollapse((c) => !c)}
         />
