@@ -8,8 +8,6 @@ import Sidebar from "./Components/shared/Sidebar";
 import { STUDENT_NAV } from "./config/studentNav";
 import StudentApi from "./config/studentApi";
 
-const MANDATORY_COURSES = ["CS-3001", "CS-2012"];
-
 function adaptEnrolled(c, idx) {
   const schedule = c.schedule ?? [];
   const time = schedule.length > 0
@@ -24,8 +22,9 @@ function adaptEnrolled(c, idx) {
     price:        c.fee          ?? 0,
     prof:         c.teacher?.name ?? "",
     slot:         c.section      ?? "",
+    timeStart:    schedule.length > 0 ? `${schedule[0].day}-${schedule[0].startTime}` : "",
+    timeEnd:      schedule.length > 0 ? `${schedule[0].day}-${schedule[0].endTime}`   : "",
     time,
-    mandatory:    MANDATORY_COURSES.includes(c.courseCode),
   };
 }
 
@@ -38,9 +37,12 @@ function adaptAvailable(course, enrolledCodes, enrolledSlots) {
       : "";
     let status    = sec.seatsAvailable <= 0 ? "full" : "open";
     let clashWith = null;
-    if (enrolledSlots.has(slot) && slot) {
+    const courseTimeKey = schedule.length > 0
+      ? `${schedule[0].day}-${schedule[0].startTime}`
+      : "";
+    if (courseTimeKey && enrolledSlots.has(courseTimeKey)) {
       status    = "clash";
-      clashWith = [...enrolledSlots].find(s => s === slot) ?? null;
+      clashWith = courseTimeKey;
     } else if (!(course.prereqMet ?? true)) {
       status = "locked";
     }
@@ -55,9 +57,9 @@ function adaptAvailable(course, enrolledCodes, enrolledSlots) {
       prof:      sec.teacher   ?? "",
       slot,
       time,
+      timeStart: schedule.length > 0 ? `${schedule[0].day}-${schedule[0].startTime}` : "",
       seats:     sec.seatsAvailable ?? 0,
       maxSeats:  sec.totalSeats     ?? 0,
-      mandatory: MANDATORY_COURSES.includes(course.courseCode),
       req:       course.prerequisites?.length > 0 ? course.prerequisites[0] : null,
       prereqMet: course.prereqMet ?? true,
       status,
@@ -113,7 +115,7 @@ export default function StudentRegistrationV1() {
       const enrolledList = (enrolledRes?.courses ?? []).map(adaptEnrolled);
       setEnrolled(enrolledList);
       const enrolledCodes = new Set(enrolledList.map(c => c.code));
-      const enrolledSlots = new Set(enrolledList.map(c => c.slot).filter(Boolean));
+      const enrolledSlots = new Set(enrolledList.map(c => c.timeStart).filter(Boolean));
       setAvailablePool(
         (availableRes?.courses ?? [])
           .filter(c => !enrolledCodes.has(c.courseCode))
@@ -131,8 +133,6 @@ export default function StudentRegistrationV1() {
   // ── COMPUTED ──────────────────────────────────────────────────────────────
   const totalCredits      = enrolled.reduce((acc, c) => acc + (c.credits ?? 0), 0);
   const totalTuition      = enrolled.reduce((acc, c) => acc + (c.price   ?? 0), 0);
-  const mandatoryMissing  = MANDATORY_COURSES.filter(code => !enrolled.some(e => e.code === code));
-  const prerequisiteErrors = enrolled.filter(c => c.req && !enrolled.some(e => e.code === c.req));
 
   const enrolledCodes = new Set(enrolled.map(c => c.code));
   const enrolledSlots = new Set(enrolled.map(c => c.slot).filter(Boolean));
@@ -142,9 +142,9 @@ export default function StudentRegistrationV1() {
     .map(course => {
       let status    = course.seats <= 0 ? "full" : "open";
       let clashWith = null;
-      if (enrolledSlots.has(course.slot) && course.slot) {
+      if (course.timeStart && enrolledSlots.has(course.timeStart)) {
         status    = "clash";
-        clashWith = enrolled.find(e => e.slot === course.slot)?.code ?? null;
+        clashWith = enrolled.find(e => e.timeStart === course.timeStart)?.code ?? null;
       } else if (!course.prereqMet) {
         status = "locked";
       }
@@ -210,14 +210,6 @@ export default function StudentRegistrationV1() {
     }
     if (totalCredits < MIN_CREDITS) {
       setModalConfig({ isOpen: true, title: "Minimum Credits Not Met", message: `You must enroll in at least ${MIN_CREDITS} credits. You currently have ${totalCredits}.`, type: "error" });
-      return;
-    }
-    if (mandatoryMissing.length > 0) {
-      setModalConfig({ isOpen: true, title: "Missing Mandatory Courses", message: `Missing mandatory: ${mandatoryMissing.join(", ")}.`, type: "error" });
-      return;
-    }
-    if (prerequisiteErrors.length > 0) {
-      setModalConfig({ isOpen: true, title: "Prerequisite Error", message: `You enrolled in ${prerequisiteErrors[0].code} but dropped its prerequisite (${prerequisiteErrors[0].req}).`, type: "error" });
       return;
     }
     setModalConfig({
@@ -387,7 +379,6 @@ export default function StudentRegistrationV1() {
                         <div className="cc-top">
                           <div className="cc-code-wrap">
                             <span className="cc-code">{course.code}</span>
-                            {course.mandatory && <span className="badge-mandatory">Mandatory</span>}
                           </div>
                           <div className="cc-price">Rs. {course.price.toLocaleString()}</div>
                         </div>
@@ -452,7 +443,6 @@ export default function StudentRegistrationV1() {
                           <div className="cc-top">
                             <div className="cc-code-wrap">
                               <span className="cc-code">{course.code}</span>
-                              {course.mandatory && <span className="badge-mandatory">Mandatory</span>}
                             </div>
                           </div>
                           <div className="cc-name">{course.name}</div>
