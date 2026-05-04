@@ -28,15 +28,17 @@ const fromApi = (t) => ({
 });
 
 // ── Map component shape → API payload ──
-const toApi = (form) => ({
+const toApi = (form, isNew = false) => ({
+  employeeId:     form.id,
   name:           form.name,
-  dept:           form.dept,
+  department:     form.dept,
   designation:    form.designation,
   email:          form.email,
   phone:          form.phone,
   status:         form.status,
   experience:     form.experience,
   specialization: form.specialization,
+  ...(isNew && { password: "test1234", role: "teacher" }),
 });
 
 const DEPTS        = ["All", "CS", "EE", "MT", "IS", "BBA"];
@@ -162,7 +164,7 @@ export default function AdminTeachers() {
     setSaving(true);
     try {
       if (modal === "add") {
-        const res = await AdminApi.createTeacher(toApi(form));
+        const res = await AdminApi.createTeacher(toApi(form, true));
         const created = fromApi(res.teacher ?? res.data ?? res);
         setTeachers(prev => [created, ...prev]);
       } else {
