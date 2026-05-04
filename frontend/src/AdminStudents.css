@@ -160,9 +160,7 @@
 .admin-stu-wrapper .adm-badge { font-size: 16px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; padding: 10px 20px; border-radius: 12px; display: inline-block; }
 .admin-stu-wrapper .badge-active { background: rgba(0,200,83,.1); color: var(--green); border: 1px solid rgba(0,200,83,.25); }
 .admin-stu-wrapper .badge-inactive { background: rgba(239,68,68,.1); color: var(--red); border: 1px solid rgba(239,68,68,.25); }
-.admin-stu-wrapper .badge-pending { background: rgba(255,171,0,.1); color: var(--amber); border: 1px solid rgba(255,171,0,.25); }
-
-/* ── BUTTONS ── */
+.admin-stu-wrapper .badge-pending { background: rgba(26,120,255,.18); color: var(--blue); border: 1px solid rgba(26,120,255,.4); }/* ── BUTTONS ── */
 .admin-stu-wrapper .adm-btn-primary { background: linear-gradient(135deg, var(--blue), var(--blue2)); color: #fff; border: none; border-radius: 16px; font-family: 'Inter', sans-serif; font-weight: 800; cursor: pointer; transition: all .2s; box-shadow: 0 6px 20px rgba(26,120,255,.25); }
 .admin-stu-wrapper .adm-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(26,120,255,.4); }
 .admin-stu-wrapper .adm-btn-secondary { background: #f8fafc; color: var(--text-main); border: 2px solid var(--border); border-radius: 16px; font-family: 'Inter', sans-serif; font-weight: 800; cursor: pointer; transition: all .2s; }
