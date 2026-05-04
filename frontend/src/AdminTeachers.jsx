@@ -6,7 +6,6 @@ import Sidebar from "./Components/shared/Sidebar";
 import { ADMIN_NAV } from "./config/AdminNav";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
 import AnimatedCounter from "./Utilities/AnimatedCounter";
-import StatsGrid from "./data/StatsGrid";
 import AdminApi from "./config/adminApi";
 import "./AdminTeachers.css";
 
@@ -139,7 +138,6 @@ export default function AdminTeachers() {
   const [desgFilter, setDesgFilter] = useState("All");
   const [statFilter, setStatFilter] = useState("All");
   const [modal,      setModal]      = useState(null);
-  const [showStats,  setShowStats]  = useState(false);
 
   // ── FETCH ──
   const fetchTeachers = useCallback(async () => {
@@ -153,7 +151,6 @@ export default function AdminTeachers() {
       setError("Failed to load teachers. Check connection.");
     } finally {
       setLoading(false);
-      setTimeout(() => setShowStats(true), 100);  // trigger after data arrives
     }
   }, []);
 
@@ -299,18 +296,6 @@ export default function AdminTeachers() {
           </div>
 
           <div id="scroll">
-
-            {/* ── STATS — always mounted, values 0 during load then animate in ── */}
-            <StatsGrid
-              showStats={showStats}
-              cards={[
-                { cls: "sc-a", label: "Total Faculty",  value: teachers.length,                                  special: "none"    },
-                { cls: "sc-d", label: "Active Status",  value: teachers.filter(t=>t.status==="active").length,   special: "bubbles" },
-                { cls: "sc-b", label: "Pending Rev.",   value: teachers.filter(t=>t.status==="pending").length,  special: "none"    },
-                { cls: "sc-c", label: "Inactive/Leave", value: teachers.filter(t=>t.status==="inactive").length, special: "fire"    },
-              ]}
-            />
-
             {/* ── ERROR BANNER ── */}
             {error && (
               <div style={{ background: "rgba(255,50,50,.12)", border: "1px solid rgba(255,50,50,.3)", borderRadius: 16, padding: "20px 28px", marginBottom: 24, color: "var(--red)", fontWeight: 700, fontSize: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
