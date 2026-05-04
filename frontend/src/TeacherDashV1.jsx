@@ -17,7 +17,7 @@ function buildCourses(sections = []) {
   return sections.map((s, i) => ({
     color: SECTION_COLORS[i % SECTION_COLORS.length],
     name: s.courseName || s.course?.name || "Unknown Course",
-    code: `${s.courseCode || s.course?.code || "—"} · Sec ${s.section || s.name || "?"}`,
+    code: `${s.courseCode || s.course?.code || "—"} · Sec ${s.sectionName || s.section || s.name || "?"}`,
     grade: `${s.studentCount ?? s.students?.length ?? "—"} Students`,
   }));
 }
@@ -27,7 +27,7 @@ function buildNotices(announcements = []) {
     tag: a.status === "draft" ? "Draft" : "Sent",
     cls: a.status === "draft" ? "tag-faculty" : "tag-univ",
     title: a.title || a.message || "Untitled",
-    date: `${a.sectionLabel || a.section || ""} · ${a.timeAgo || a.createdAt || ""}`,
+    date: `${a.sectionLabel || a.section || ""} · ${a.timeAgo || (a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : "")}`,
     fire: a.urgent || a.priority === "high" || false,
   }));
 }
@@ -294,10 +294,9 @@ export default function TeacherDashV1() {
   }, []);
 
   // ── DERIVED SIDEBAR PROPS ──
-  const userName = profile
-    ? `${profile.title || "Dr."} ${profile.firstName || profile.name || "Faculty"}`
-    : "Dr. Ahmed";
-  const userId = profile?.employeeId || profile?.id || "EMP-—";
+  const teacherUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const userName = teacherUser.name || 'Teacher';
+  const userId = teacherUser.employeeId || '';
 
   return (
     <>
