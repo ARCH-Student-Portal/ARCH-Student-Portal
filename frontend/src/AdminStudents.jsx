@@ -4,7 +4,6 @@ import { ADMIN_NAV } from "./config/AdminNav";
 import { gsap } from "gsap";
 import { AnimatePresence, motion } from "framer-motion";
 import useWebGLBackground from "./Utilities/UseWebGLBackground";
-import StatsGrid from "./data/StatsGrid";
 import AdminApi from "./config/adminApi";
 import "./AdminStudents.css";
 
@@ -241,7 +240,6 @@ export default function AdminStudents() {
   const [semFilter,  setSemFilter]  = useState("All");
   const [statFilter, setStatFilter] = useState("All");
   const [modal,      setModal]      = useState(null);
-  const [showStats,  setShowStats]  = useState(false);
 
   // ── FETCH PENDING ──
   const fetchPending = useCallback(async () => {
@@ -389,7 +387,6 @@ export default function AdminStudents() {
     document.querySelectorAll(".sc, .admin-isolated-card").forEach((el, i) => {
       gsap.fromTo(el, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out", delay: i * 0.06 });
     });
-    setTimeout(() => setShowStats(true), 100);
   }, [deptFilter, semFilter, statFilter]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
@@ -561,17 +558,6 @@ export default function AdminStudents() {
                 ⚠️ {error} — <button style={{ color: "var(--blue)", background: "none", border: "none", cursor: "pointer", fontWeight: 800 }} onClick={() => fetchStudents(page)}>Retry</button>
               </div>
             )}
-
-            {/* STATS */}
-            <StatsGrid
-              showStats={showStats}
-              cards={[
-                { cls: "sc-a", label: "Total Enrolled",  value: totalCount,                                          special: "none"    },
-                { cls: "sc-d", label: "Active Status",   value: students.filter(s => s.status === "active").length,  special: "bubbles" },
-                { cls: "sc-b", label: "Pending Rev.",    value: students.filter(s => s.status === "pending").length, special: "none"    },
-                { cls: "sc-c", label: "Inactive/Alum",  value: students.filter(s => s.status === "inactive").length, special: "fire"    },
-              ]}
-            />
 
             {/* FILTER BAR */}
             <div className="admin-isolated-card" style={{ marginBottom: 40, padding: "24px 32px" }}>
